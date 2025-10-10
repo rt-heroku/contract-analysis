@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig } from 'axios';
-import muleSoftConfig from '../config/muleSoft';
+import { getMuleSoftConfig } from '../config/muleSoft';
 import logger from '../utils/logger';
 import loggingService from './logging.service';
 import { MuleSoftContractResponse, MuleSoftDataResponse } from '../types';
@@ -12,9 +12,13 @@ class MuleSoftService {
     userId?: number,
     jobIdParam?: string,
     relatedRecordType?: string,
-    relatedRecordId?: number
+    relatedRecordId?: number,
+    requestBody?: any
   ): Promise<T> {
     const startTime = Date.now();
+    
+    // Get config from database
+    const muleSoftConfig = await getMuleSoftConfig();
     const fullUrl = `${muleSoftConfig.baseUrl}${endpoint}?job=${jobId}`;
 
     const config: AxiosRequestConfig = {
@@ -33,11 +37,15 @@ class MuleSoftService {
     }
 
     let response;
+    const bodyToSend = requestBody || {};
 
     try {
       logger.info(`Making MuleSoft API request to ${endpoint} with jobId: ${jobId}`);
+      if (requestBody) {
+        logger.info(`Request includes payload from previous step`);
+      }
       
-      response = await axios.post(fullUrl, {}, config);
+      response = await axios.post(fullUrl, bodyToSend, config);
 
       const duration = Date.now() - startTime;
 
@@ -48,7 +56,7 @@ class MuleSoftService {
         requestMethod: 'POST',
         requestUrl: fullUrl,
         requestHeaders: sanitizeHeaders(config.headers),
-        requestBody: { jobId },
+        requestBody: requestBody || { jobId },
         responseStatus: response.status,
         responseBody: response.data,
         responseTimeMs: duration,
@@ -62,7 +70,10 @@ class MuleSoftService {
     } catch (err: any) {
       const duration = Date.now() - startTime;
 
-      logger.error('MuleSoft API request failed:', err.message);
+      // Log the actual error properly
+      const errorMessage = err.message || 'Unknown error';
+      const errorCode = err.code || 'NO_CODE';
+      logger.error(`MuleSoft API request failed: ${errorMessage} (Code: ${errorCode})`);
 
       // Log failed API call
       await loggingService.logApiCall({
@@ -92,7 +103,8 @@ class MuleSoftService {
     userId?: number,
     uploadId?: number
   ): Promise<MuleSoftContractResponse> {
-    const endpoint = muleSoftConfig.endpoints.processDocument;
+    const config = await getMuleSoftConfig();
+    const endpoint = config.endpoints.processDocument;
 
     return this.makeRequest<MuleSoftContractResponse>(
       endpoint,
@@ -105,14 +117,16 @@ class MuleSoftService {
   }
 
   /**
-   * Analyze data file
+   * Analyze data file with contract context
    */
   async analyzeDataFile(
     jobId: string,
     userId?: number,
-    analysisId?: number
+    analysisId?: number,
+    contractResult?: MuleSoftContractResponse
   ): Promise<MuleSoftDataResponse> {
-    const endpoint = muleSoftConfig.endpoints.analyzeData;
+    const config = await getMuleSoftConfig();
+    const endpoint = config.endpoints.analyzeData;
 
     return this.makeRequest<MuleSoftDataResponse>(
       endpoint,
@@ -120,7 +134,8 @@ class MuleSoftService {
       userId,
       jobId,
       'contract_analysis',
-      analysisId
+      analysisId,
+      contractResult
     );
   }
 
@@ -129,7 +144,8 @@ class MuleSoftService {
    */
   async testConnection(): Promise<boolean> {
     try {
-      const response = await axios.get(muleSoftConfig.baseUrl, {
+      const config = await getMuleSoftConfig();
+      const response = await axios.get(config.baseUrl, {
         timeout: 5000,
       });
       return response.status === 200;

@@ -42,6 +42,7 @@ model User {
   notifications   Notification[]
   apiLogs         ApiLog[]
   deletedRecords  AnalysisRecord[] @relation("DeletedBy")
+  prompts         Prompt[]
 
   @@map("users")
 }
@@ -224,6 +225,7 @@ model AnalysisRecord {
   contractAnalysisId  Int?      @map("contract_analysis_id")
   dataAnalysisId      Int?      @map("data_analysis_id")
   status              String    @db.VarChar(50)
+  errorMessage        String?   @map("error_message") @db.Text
   isDeleted           Boolean   @default(false) @map("is_deleted")
   deletedBy           Int?      @map("deleted_by")
   deletedAt           DateTime? @map("deleted_at")
@@ -287,5 +289,40 @@ model Notification {
   @@index([isRead])
   @@index([createdAt(sort: Desc)])
   @@map("notifications")
+}
+
+model Prompt {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(200)
+  description String?   @db.Text
+  content     String    @db.Text
+  isActive    Boolean   @default(true) @map("is_active")
+  category    String?   @db.VarChar(100)
+  createdBy   Int       @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  creator   User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  variables PromptVariable[]
+
+  @@index([createdBy])
+  @@index([isActive])
+  @@map("prompts")
+}
+
+model PromptVariable {
+  id           Int     @id @default(autoincrement())
+  promptId     Int     @map("prompt_id")
+  variableName String  @map("variable_name") @db.VarChar(100)
+  displayName  String  @map("display_name") @db.VarChar(200)
+  description  String? @db.Text
+  isRequired   Boolean @default(false) @map("is_required")
+  defaultValue String? @map("default_value") @db.Text
+  variableType String  @default("text") @map("variable_type") @db.VarChar(50)
+
+  prompt Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@index([promptId])
+  @@map("prompt_variables")
 }
 

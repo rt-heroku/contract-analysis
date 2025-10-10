@@ -36,11 +36,11 @@ export const TopBar: React.FC = () => {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center px-6 gap-4">
+    <header className="h-16 bg-white border-b border-gray-200 flex items-center px-6">
       {/* Hamburger Menu */}
       <button
         onClick={toggleSidebar}
-        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        className="p-2 hover:bg-gray-100 rounded-lg transition-colors mr-4"
       >
         <Menu className="w-5 h-5 text-gray-700" />
       </button>
@@ -57,8 +57,8 @@ export const TopBar: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Side */}
-      <div className="flex items-center gap-4">
+      {/* Right Side - Push to far right */}
+      <div className="flex items-center gap-4 ml-auto">
         {/* Notifications */}
         <button
           onClick={() => navigate('/notifications')}

@@ -8,7 +8,7 @@ const logFormat = winston.format.combine(
 );
 
 const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  level: process.env.LOG_LEVEL || 'info', // Default to 'info', set LOG_LEVEL=debug to see debug logs
   format: logFormat,
   defaultMeta: { service: 'document-processing-api' },
   transports: [

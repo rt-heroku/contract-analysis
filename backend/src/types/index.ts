@@ -44,6 +44,32 @@ export interface MuleSoftDataResponse {
   status: string;
   analysis_markdown: string;
   data_table: any[];
+  jsonData?: {
+    contract_summary?: {
+      document: string;
+      terms: string[];
+      products_reference: string[];
+    };
+    validation_summary?: {
+      matched_products: string[];
+      missing_products: string[];
+      over_limit_products: string[];
+      quantity_discrepancies: Array<{
+        product: string;
+        expected: number;
+        actual: number;
+      }>;
+      pricing_issues: any[];
+      term_violations: any[];
+    };
+    anomalies_detected?: Array<{
+      issue: string;
+      explanation: string;
+      possible_cause: string;
+    }>;
+    compliance_score?: string;
+    recommendations?: string[];
+  };
   [key: string]: any; // Index signature for Prisma JSON compatibility
 }
 

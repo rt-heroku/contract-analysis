@@ -5,10 +5,6 @@ const prisma = new PrismaClient({
   log: [
     {
       emit: 'event',
-      level: 'query',
-    },
-    {
-      emit: 'event',
       level: 'error',
     },
     {
@@ -18,13 +14,14 @@ const prisma = new PrismaClient({
   ],
 });
 
-// Log database queries in development
-if (process.env.NODE_ENV !== 'production') {
-  prisma.$on('query' as never, (e: any) => {
-    logger.debug('Query: ' + e.query);
-    logger.debug('Duration: ' + e.duration + 'ms');
-  });
-}
+// Query logging disabled for cleaner logs
+// To re-enable, uncomment below and add 'query' to log array above:
+// if (process.env.NODE_ENV !== 'production') {
+//   prisma.$on('query' as never, (e: any) => {
+//     logger.debug('Query: ' + e.query);
+//     logger.debug('Duration: ' + e.duration + 'ms');
+//   });
+// }
 
 prisma.$on('error' as never, (e: any) => {
   logger.error('Database Error:', e);

@@ -20,6 +20,32 @@ class UserService {
   }
 
   /**
+   * Get user with roles (for /api/users/me endpoint)
+   */
+  async getUserWithRoles(userId: number) {
+    const user = await this.getUserById(userId);
+    
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      isActive: user.isActive,
+      roles: user.userRoles.map((ur) => ({
+        id: ur.role.id,
+        name: ur.role.name,
+        description: ur.role.description,
+      })),
+      createdAt: user.createdAt,
+      lastLogin: user.lastLogin,
+    };
+  }
+
+  /**
    * Get user profile
    */
   async getUserProfile(userId: number) {

@@ -1,10 +1,14 @@
 import bcrypt from 'bcrypt';
 import prisma from '../config/database';
 import logger from './logger';
+import { seedDefaultSettings } from './seedSettings';
 
 async function seed() {
   try {
     logger.info('Starting database seeding...');
+
+    // Seed system settings first
+    await seedDefaultSettings();
 
     // Create roles
     const adminRole = await prisma.role.upsert({

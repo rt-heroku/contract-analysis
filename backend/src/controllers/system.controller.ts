@@ -17,6 +17,11 @@ class SystemController {
 
       const roleIds = userRoles.map((ur) => ur.roleId);
 
+      // If no roles or no roleIds, return empty menu (frontend will use fallback)
+      if (roleIds.length === 0) {
+        return res.json({ menu: [] });
+      }
+
       // Get menu items accessible by user's roles
       const menuPermissions = await prisma.menuPermission.findMany({
         where: {
@@ -31,6 +36,11 @@ class SystemController {
 
       // Get unique menu items
       const menuItemIds = [...new Set(menuPermissions.map((mp) => mp.menuItemId))];
+
+      // If no menu items, return empty menu (frontend will use fallback)
+      if (menuItemIds.length === 0) {
+        return res.json({ menu: [] });
+      }
 
       const menuItems = await prisma.menuItem.findMany({
         where: {
@@ -49,7 +59,8 @@ class SystemController {
 
       res.json({ menu: menuTree });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      // Return empty menu on error (frontend will use fallback)
+      res.json({ menu: [] });
     }
   }
 

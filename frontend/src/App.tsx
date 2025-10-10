@@ -8,6 +8,8 @@ import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { Processing } from './pages/Processing';
 import { AnalysisDetails } from './pages/AnalysisDetails';
+import { Settings } from './pages/Settings';
+import { Prompts } from './pages/Prompts';
 
 const App = () => {
   return (
@@ -22,10 +24,11 @@ const App = () => {
             {/* Protected Routes */}
             <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
             <Route path="/processing" element={<MainLayout><Processing /></MainLayout>} />
+            <Route path="/prompts" element={<MainLayout><Prompts /></MainLayout>} />
             <Route path="/profile" element={<MainLayout><div className="p-8">Profile - Coming Soon</div></MainLayout>} />
             <Route path="/history" element={<MainLayout><div className="p-8">History - Coming Soon</div></MainLayout>} />
             <Route path="/analysis/:id" element={<MainLayout><AnalysisDetails /></MainLayout>} />
-            <Route path="/settings" element={<MainLayout><div className="p-8">Settings - Coming Soon</div></MainLayout>} />
+            <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
             <Route path="/notifications" element={<MainLayout><div className="p-8">Notifications - Coming Soon</div></MainLayout>} />
             
             {/* Admin Routes */}

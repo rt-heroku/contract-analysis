@@ -26,29 +26,53 @@ export const Sidebar: React.FC = () => {
   const location = useLocation();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [expandedItems, setExpandedItems] = useState<number[]>([]);
+  const [appName, setAppName] = useState('DocProcess');
+  const [appLogo, setAppLogo] = useState('');
+
+  // Fetch app settings
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await api.get('/settings/public');
+        const settings = response.data.settings;
+        if (settings.app_name) setAppName(settings.app_name);
+        if (settings.app_logo_url) setAppLogo(settings.app_logo_url);
+      } catch (error) {
+        // Use defaults
+      }
+    };
+    fetchSettings();
+  }, []);
 
   useEffect(() => {
+    const defaultMenu = [
+      { id: 1, title: 'Dashboard', icon: 'home', route: '/dashboard', orderIndex: 1, isActive: true, children: [] },
+      { id: 2, title: 'Processing', icon: 'file-text', route: '/processing', orderIndex: 2, isActive: true, children: [] },
+      { id: 3, title: 'Prompts', icon: 'file-text', route: '/prompts', orderIndex: 3, isActive: true, children: [] },
+      { id: 4, title: 'History', icon: 'history', route: '/history', orderIndex: 4, isActive: true, children: [] },
+      { id: 5, title: 'Profile', icon: 'user', route: '/profile', orderIndex: 5, isActive: true, children: [] },
+      { id: 6, title: 'Settings', icon: 'settings', route: '/settings', orderIndex: 6, isActive: true, children: [] },
+    ];
+
     const fetchMenu = async () => {
       try {
         const response = await api.get('/system/menu');
-        setMenuItems(response.data.menu);
+        // If menu is empty, use default menu
+        if (response.data.menu && response.data.menu.length > 0) {
+          setMenuItems(response.data.menu);
+        } else {
+          setMenuItems(defaultMenu);
+        }
       } catch (error) {
-        console.error('Failed to fetch menu:', error);
-        // Fallback menu if API fails
-        setMenuItems([
-          { id: 1, title: 'Dashboard', icon: 'home', route: '/dashboard', orderIndex: 1, isActive: true, children: [] },
-          { id: 2, title: 'Processing', icon: 'file-text', route: '/processing', orderIndex: 2, isActive: true, children: [] },
-          { id: 3, title: 'History', icon: 'history', route: '/history', orderIndex: 3, isActive: true, children: [] },
-          { id: 4, title: 'Profile', icon: 'user', route: '/profile', orderIndex: 4, isActive: true, children: [] },
-          { id: 5, title: 'Settings', icon: 'settings', route: '/settings', orderIndex: 5, isActive: true, children: [] },
-        ]);
+        // Silently fall back to default menu
+        setMenuItems(defaultMenu);
       }
     };
 
     if (user) {
       fetchMenu();
     } else {
-      // Show default menu when not logged in
+      // Show limited menu when not logged in
       setMenuItems([
         { id: 1, title: 'Dashboard', icon: 'home', route: '/dashboard', orderIndex: 1, isActive: true, children: [] },
         { id: 2, title: 'Processing', icon: 'file-text', route: '/processing', orderIndex: 2, isActive: true, children: [] },
@@ -116,10 +140,22 @@ export const Sidebar: React.FC = () => {
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-            <FileText className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-bold text-lg text-gray-900">DocProcess</span>
+          {appLogo ? (
+            <img 
+              src={appLogo} 
+              alt={appName} 
+              className="h-8 w-8 object-contain"
+              onError={(e) => {
+                // Fallback to icon if image fails
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-white" />
+            </div>
+          )}
+          <span className="font-bold text-lg text-gray-900">{appName}</span>
         </div>
       </div>
 

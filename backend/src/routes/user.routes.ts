@@ -6,6 +6,9 @@ import { updateProfileSchema, changePasswordSchema } from '../utils/validators';
 
 const router = Router();
 
+// Get current user with roles
+router.get('/me', authenticate, userController.getMe);
+
 router.get('/profile', authenticate, userController.getProfile);
 router.put('/profile', authenticate, validate(updateProfileSchema), userController.updateProfile);
 router.post('/avatar', authenticate, userController.updateAvatar);

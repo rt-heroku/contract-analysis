@@ -77,12 +77,19 @@ class DocumentService {
       }
 
       // Step 1: Process contract document
-      logger.info(`Processing contract and data for jobId: ${jobId}`);
-      const contractResult = await muleSoftService.processContractDocument(
-        jobId,
-        userId,
-        contractUploadId
-      );
+      logger.info(`[Step 1/2] Processing contract document for jobId: ${jobId}`);
+      let contractResult;
+      try {
+        contractResult = await muleSoftService.processContractDocument(
+          jobId,
+          userId,
+          contractUploadId
+        );
+        logger.info(`[Step 1/2] Contract processing successful for jobId: ${jobId}`);
+      } catch (error: any) {
+        logger.error(`[Step 1/2] Contract processing FAILED for jobId: ${jobId}. Stopping analysis.`, error.message);
+        throw error; // Re-throw to outer catch block
+      }
 
       // Save contract analysis
       const contractAnalysis = await prisma.contractAnalysis.create({
@@ -106,13 +113,21 @@ class DocumentService {
       });
 
       // Step 2: Analyze data with contract context
-      logger.info(`Running final analysis for jobId: ${jobId}`);
-      const dataResult = await muleSoftService.analyzeDataFile(
-        jobId,
-        userId,
-        contractAnalysis.id
-      );
-
+      logger.info(`[Step 2/2] Running final analysis for jobId: ${jobId}`);
+      logger.info(`Passing contract result to /analyze endpoint`);
+      let dataResult;
+      try {
+        dataResult = await muleSoftService.analyzeDataFile(
+          jobId,
+          userId,
+          contractAnalysis.id,
+          contractResult
+        );
+        logger.info(`[Step 2/2] Analysis successful for jobId: ${jobId}`);
+      } catch (error: any) {
+        logger.error(`[Step 2/2] Analysis FAILED for jobId: ${jobId}`, error.message);
+        throw error; // Re-throw to outer catch block
+      }
       // Save data analysis
       const dataAnalysis = await prisma.dataAnalysis.create({
         data: {
@@ -146,13 +161,42 @@ class DocumentService {
 
       logger.info(`Processing completed for analysis record ${analysisRecordId}`);
     } catch (error: any) {
-      logger.error('Document processing error:', error);
+      logger.error('❌ Document processing FAILED - Analysis stopped', error);
 
-      // Update analysis record as failed
+      // Determine which step failed and create appropriate error message
+      let errorMessage = 'Failed to process documents. Please try again.';
+      let errorDetails = error.message || 'Unknown error';
+      let errorStep = 'Unknown step';
+      
+      if (error.message?.includes('MuleSoft API Error')) {
+        errorMessage = 'MuleSoft service is currently unavailable. Please check if the service is running and try again.';
+        
+        // Determine which step failed based on stack trace or error context
+        if (error.stack?.includes('processContractDocument')) {
+          errorStep = 'Step 1/2 - Contract Document Processing';
+        } else if (error.stack?.includes('analyzeDataFile')) {
+          errorStep = 'Step 2/2 - Data Analysis';
+        }
+        
+        if (error.message.includes('ECONNREFUSED')) {
+          errorDetails = `Connection refused - MuleSoft service is not running or not reachable (${errorStep})`;
+        } else if (error.message.includes('timeout')) {
+          errorDetails = `Request timeout - MuleSoft service took too long to respond (${errorStep})`;
+        } else if (error.message.includes('ENOTFOUND')) {
+          errorDetails = `DNS error - MuleSoft service hostname could not be resolved (${errorStep})`;
+        } else {
+          errorDetails = `${error.message} (${errorStep})`;
+        }
+      }
+      
+      logger.error(`Error details: ${errorDetails}`);
+
+      // Update analysis record as failed with error details
       await prisma.analysisRecord.update({
         where: { id: analysisRecordId },
         data: {
           status: ANALYSIS_STATUS.FAILED,
+          errorMessage: errorDetails,
         },
       });
 
@@ -160,7 +204,7 @@ class DocumentService {
       await notificationService.createNotification({
         userId,
         title: 'Processing Error',
-        message: `Failed to process documents. Please try again.`,
+        message: errorMessage,
         type: NOTIFICATION_TYPES.ERROR,
         actionUrl: '/processing',
         relatedRecordType: 'analysis_record',

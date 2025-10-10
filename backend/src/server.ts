@@ -1,5 +1,6 @@
 import express, { Express } from 'express';
 import cors from 'cors';
+import path from 'path';
 import config from './config/env';
 import logger from './utils/logger';
 import routes from './routes';
@@ -26,6 +27,9 @@ app.use((req, _res, next) => {
 
 // API Routes
 app.use('/api', routes);
+
+// Serve uploaded files (logos, etc.)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check (before static files)
 app.get('/health', (_req, res) => {

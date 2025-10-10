@@ -7,6 +7,23 @@ import { ACTION_TYPES } from '../utils/constants';
 import { getClientIp, getUserAgent } from '../utils/helpers';
 
 class UserController {
+  /**
+   * Get current user with roles
+   */
+  async getMe(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const user = await userService.getUserWithRoles(req.user.id);
+
+      res.json({ user });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   async getProfile(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {
