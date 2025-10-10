@@ -8,6 +8,7 @@ import adminRoutes from './admin.routes';
 import systemRoutes from './system.routes';
 import settingsRoutes from './settings.routes';
 import promptRoutes from './prompt.routes';
+import dashboardRoutes from './dashboard.routes';
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.use('/admin', adminRoutes);
 router.use('/system', systemRoutes);
 router.use('/settings', settingsRoutes);
 router.use('/prompts', promptRoutes);
+router.use('/dashboard', dashboardRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {

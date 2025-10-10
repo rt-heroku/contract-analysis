@@ -19,12 +19,20 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [statsRes, analysesRes] = await Promise.all([
-          api.get('/analysis/statistics'),
-          api.get('/analysis?limit=5'),
-        ]);
-        setStats(statsRes.data.statistics);
-        setRecentAnalyses(analysesRes.data.analyses || []);
+        const response = await api.get('/dashboard/statistics');
+        const data = response.data;
+        
+        // Transform data for stat cards
+        setStats({
+          total: data.statistics.totalAnalyses,
+          completed: data.statistics.completedAnalyses,
+          processing: data.statistics.processingAnalyses,
+          failed: data.statistics.failedAnalyses,
+          successRate: data.statistics.successRate,
+          totalUploads: data.statistics.totalUploads,
+        });
+        
+        setRecentAnalyses(data.recentAnalyses || []);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -64,10 +72,23 @@ export const Dashboard: React.FC = () => {
       icon: XCircle,
       color: 'text-red-600 bg-red-100',
     },
+    {
+      title: 'Success Rate',
+      value: `${stats?.successRate || 0}%`,
+      icon: CheckCircle,
+      color: 'text-green-600 bg-green-100',
+    },
+    {
+      title: 'Total Uploads',
+      value: stats?.totalUploads || 0,
+      icon: Upload,
+      color: 'text-purple-600 bg-purple-100',
+    },
   ];
 
   const getStatusVariant = (status: string) => {
-    switch (status) {
+    const lowerStatus = status.toLowerCase();
+    switch (lowerStatus) {
       case 'completed': return 'success';
       case 'processing': return 'warning';
       case 'failed': return 'error';
@@ -88,7 +109,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -151,7 +172,7 @@ export const Dashboard: React.FC = () => {
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">
-                      {analysis.contractUpload?.filename || 'Document Analysis'}
+                      {analysis.contractFile || 'Document Analysis'}
                     </p>
                     <p className="text-sm text-gray-500">
                       {formatRelativeTime(analysis.createdAt)}

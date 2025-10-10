@@ -1,30 +1,26 @@
 import { Router } from 'express';
 import adminController from '../controllers/admin.controller';
 import { authenticate } from '../middleware/auth';
-import { requireAdmin } from '../middleware/roleCheck';
-import { validate } from '../middleware/validator';
-import { updateUserSchema } from '../utils/validators';
+import { requireAdmin } from '../middleware/admin';
 
 const router = Router();
 
-// All routes require authentication and admin role
+// All admin routes require authentication and admin role
 router.use(authenticate);
 router.use(requireAdmin);
 
-// User management
-router.get('/users', adminController.getUsers);
-router.get('/users/:id', adminController.getUser);
-router.put('/users/:id', validate(updateUserSchema), adminController.updateUser);
-router.delete('/users/:id', adminController.deleteUser);
-router.post('/users/:id/reset-password', adminController.resetUserPassword);
-
-// Logs
+// Activity Logs
 router.get('/activity-logs', adminController.getActivityLogs);
+
+// API Logs
 router.get('/api-logs', adminController.getApiLogs);
 
-// Settings
-router.get('/settings', adminController.getSystemSettings);
+// Sessions
+router.get('/sessions', adminController.getSessions);
+
+// User Management
+router.get('/users', adminController.getUsers);
+router.delete('/users/:id', adminController.deleteUser);
+router.put('/users/:id/status', adminController.updateUserStatus);
 
 export default router;
-
-

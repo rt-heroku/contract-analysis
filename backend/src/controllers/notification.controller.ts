@@ -1,11 +1,11 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../types';
-import notificationService from '../services/notification.service';
-import loggingService from '../services/logging.service';
-import { ACTION_TYPES } from '../utils/constants';
-import { getClientIp, getUserAgent } from '../utils/helpers';
+import prisma from '../config/database';
 
 class NotificationController {
+  /**
+   * Get notifications for current user (paginated)
+   */
   async getNotifications(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {
@@ -13,43 +13,60 @@ class NotificationController {
       }
 
       const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const skip = (page - 1) * limit;
 
-      const result = await notificationService.getUserNotifications(
-        req.user.id,
-        page,
-        limit
-      );
+      const [notifications, total] = await Promise.all([
+        prisma.notification.findMany({
+          where: { userId: req.user.id },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        prisma.notification.count({
+          where: { userId: req.user.id },
+        }),
+      ]);
 
-      // Log activity
-      await loggingService.logActivity({
-        userId: req.user.id,
-        actionType: ACTION_TYPES.NOTIFICATION.VIEW,
-        actionDescription: 'Viewed notifications',
-        ipAddress: getClientIp(req),
-        userAgent: getUserAgent(req),
+      res.json({
+        notifications,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
       });
-
-      res.json(result);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 
+  /**
+   * Get unread notification count
+   */
   async getUnreadCount(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const count = await notificationService.getUnreadCount(req.user.id);
+      const unreadCount = await prisma.notification.count({
+        where: {
+          userId: req.user.id,
+          isRead: false,
+        },
+      });
 
-      res.json({ unreadCount: count });
+      res.json({ unreadCount });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 
+  /**
+   * Mark a notification as read
+   */
   async markAsRead(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {
@@ -58,47 +75,51 @@ class NotificationController {
 
       const notificationId = parseInt(req.params.id);
 
-      await notificationService.markAsRead(notificationId, req.user.id);
+      // Verify notification belongs to user
+      const notification = await prisma.notification.findFirst({
+        where: {
+          id: notificationId,
+          userId: req.user.id,
+        },
+      });
 
-      // Log activity
-      await loggingService.logActivity({
-        userId: req.user.id,
-        actionType: ACTION_TYPES.NOTIFICATION.MARK_READ,
-        actionDescription: `Marked notification #${notificationId} as read`,
-        ipAddress: getClientIp(req),
-        userAgent: getUserAgent(req),
+      if (!notification) {
+        return res.status(404).json({ error: 'Notification not found' });
+      }
+
+      await prisma.notification.update({
+        where: { id: notificationId },
+        data: { isRead: true },
       });
 
       res.json({ message: 'Notification marked as read' });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 
+  /**
+   * Mark all notifications as read for current user
+   */
   async markAllAsRead(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      await notificationService.markAllAsRead(req.user.id);
-
-      // Log activity
-      await loggingService.logActivity({
-        userId: req.user.id,
-        actionType: ACTION_TYPES.NOTIFICATION.MARK_READ,
-        actionDescription: 'Marked all notifications as read',
-        ipAddress: getClientIp(req),
-        userAgent: getUserAgent(req),
+      await prisma.notification.updateMany({
+        where: {
+          userId: req.user.id,
+          isRead: false,
+        },
+        data: { isRead: true },
       });
 
       res.json({ message: 'All notifications marked as read' });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 }
 
 export default new NotificationController();
-
-

@@ -1,214 +1,306 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../types';
-import userService from '../services/user.service';
-import loggingService from '../services/logging.service';
 import prisma from '../config/database';
+import loggingService from '../services/logging.service';
 import { ACTION_TYPES } from '../utils/constants';
 import { getClientIp, getUserAgent } from '../utils/helpers';
 
 class AdminController {
+  /**
+   * Get activity logs (paginated, searchable)
+   */
+  async getActivityLogs(req: AuthenticatedRequest, res: Response) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const search = req.query.search as string;
+      const skip = (page - 1) * limit;
+
+      const where: any = {};
+      
+      if (search) {
+        where.OR = [
+          { actionType: { contains: search, mode: 'insensitive' } },
+          { actionDescription: { contains: search, mode: 'insensitive' } },
+          { user: { email: { contains: search, mode: 'insensitive' } } },
+        ];
+      }
+
+      const [logs, total] = await Promise.all([
+        prisma.activityLog.findMany({
+          where,
+          include: {
+            user: {
+              select: { email: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        prisma.activityLog.count({ where }),
+      ]);
+
+      res.json({
+        logs,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Get API logs (paginated, searchable)
+   */
+  async getApiLogs(req: AuthenticatedRequest, res: Response) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const search = req.query.search as string;
+      const skip = (page - 1) * limit;
+
+      const where: any = {};
+      
+      if (search) {
+        where.OR = [
+          { requestUrl: { contains: search, mode: 'insensitive' } },
+          { jobId: { contains: search, mode: 'insensitive' } },
+          { user: { email: { contains: search, mode: 'insensitive' } } },
+        ];
+      }
+
+      const [logs, total] = await Promise.all([
+        prisma.apiLog.findMany({
+          where,
+          include: {
+            user: {
+              select: { email: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        prisma.apiLog.count({ where }),
+      ]);
+
+      res.json({
+        logs,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Get active sessions (paginated)
+   */
+  async getSessions(req: AuthenticatedRequest, res: Response) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const skip = (page - 1) * limit;
+
+      const [sessions, total] = await Promise.all([
+        prisma.session.findMany({
+          where: {
+            expiresAt: { gt: new Date() }, // Only active sessions
+          },
+          include: {
+            user: {
+              select: { email: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        prisma.session.count({
+          where: {
+            expiresAt: { gt: new Date() },
+          },
+        }),
+      ]);
+
+      res.json({
+        sessions,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Get users (paginated, searchable)
+   */
   async getUsers(req: AuthenticatedRequest, res: Response) {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
-      const search = req.query.search as string | undefined;
+      const search = req.query.search as string;
+      const skip = (page - 1) * limit;
 
-      const result = await userService.getAllUsers(page, limit, search);
-
-      // Log activity
-      if (req.user) {
-        await loggingService.logActivity({
-          userId: req.user.id,
-          actionType: ACTION_TYPES.ADMIN.VIEW_USERS,
-          actionDescription: 'Viewed user list',
-          ipAddress: getClientIp(req),
-          userAgent: getUserAgent(req),
-        });
+      const where: any = {};
+      
+      if (search) {
+        where.OR = [
+          { email: { contains: search, mode: 'insensitive' } },
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
+        ];
       }
 
-      res.json(result);
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        prisma.user.count({ where }),
+      ]);
+
+      // Transform data to include role as string
+      const transformedUsers = await Promise.all(
+        users.map(async (user) => {
+          const roles = await prisma.role.findMany({
+            where: {
+              userRoles: {
+                some: { userId: user.id },
+              },
+            },
+          });
+
+          return {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: roles.length > 0 ? roles[0].name : 'user',
+            isActive: user.isActive,
+            createdAt: user.createdAt,
+            lastLogin: user.lastLogin,
+          };
+        })
+      );
+
+      res.json({
+        users: transformedUsers,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 
-  async getUser(req: AuthenticatedRequest, res: Response) {
+  /**
+   * Delete a user
+   */
+  async deleteUser(req: AuthenticatedRequest, res: Response) {
     try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
       const userId = parseInt(req.params.id);
 
-      const user = await userService.getUserById(userId);
+      // Prevent self-deletion
+      if (userId === req.user.id) {
+        return res.status(400).json({ error: 'Cannot delete your own account' });
+      }
 
-      if (!user) {
+      // Check if user exists
+      const userToDelete = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!userToDelete) {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      // Log activity
-      if (req.user) {
-        await loggingService.logActivity({
-          userId: req.user.id,
-          actionType: ACTION_TYPES.ADMIN.VIEW_USER,
-          actionDescription: `Viewed user #${userId}`,
-          ipAddress: getClientIp(req),
-          userAgent: getUserAgent(req),
-        });
-      }
-
-      res.json({ user });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  }
-
-  async updateUser(req: AuthenticatedRequest, res: Response) {
-    try {
-      const userId = parseInt(req.params.id);
-
-      const user = await userService.updateUser(userId, req.body);
-
-      // Log activity
-      if (req.user) {
-        await loggingService.logActivity({
-          userId: req.user.id,
-          actionType: ACTION_TYPES.ADMIN.UPDATE_USER,
-          actionDescription: `Updated user #${userId}`,
-          ipAddress: getClientIp(req),
-          userAgent: getUserAgent(req),
-          metadata: req.body,
-        });
-      }
-
-      res.json({
-        message: 'User updated successfully',
-        user,
+      // Delete user (cascade will handle related records)
+      await prisma.user.delete({
+        where: { id: userId },
       });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  }
-
-  async deleteUser(req: AuthenticatedRequest, res: Response) {
-    try {
-      const userId = parseInt(req.params.id);
-
-      await userService.deleteUser(userId);
 
       // Log activity
-      if (req.user) {
-        await loggingService.logActivity({
-          userId: req.user.id,
-          actionType: ACTION_TYPES.ADMIN.DELETE_USER,
-          actionDescription: `Deleted user #${userId}`,
-          ipAddress: getClientIp(req),
-          userAgent: getUserAgent(req),
-        });
-      }
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: ACTION_TYPES.ADMIN.DELETE_USER,
+        actionDescription: `Deleted user ${userToDelete.email}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
 
       res.json({ message: 'User deleted successfully' });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 
-  async resetUserPassword(req: AuthenticatedRequest, res: Response) {
+  /**
+   * Update user active status
+   */
+  async updateUserStatus(req: AuthenticatedRequest, res: Response) {
     try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
       const userId = parseInt(req.params.id);
-      const { newPassword } = req.body;
+      const { isActive } = req.body;
 
-      if (!newPassword) {
-        return res.status(400).json({ error: 'New password is required' });
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ error: 'isActive must be a boolean' });
       }
 
-      await userService.resetUserPassword(userId, newPassword);
-
-      // Log activity
-      if (req.user) {
-        await loggingService.logActivity({
-          userId: req.user.id,
-          actionType: ACTION_TYPES.ADMIN.UPDATE_USER,
-          actionDescription: `Reset password for user #${userId}`,
-          ipAddress: getClientIp(req),
-          userAgent: getUserAgent(req),
-        });
+      // Prevent self-deactivation
+      if (userId === req.user.id && !isActive) {
+        return res.status(400).json({ error: 'Cannot deactivate your own account' });
       }
 
-      res.json({ message: 'Password reset successfully' });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  }
-
-  async getActivityLogs(req: AuthenticatedRequest, res: Response) {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 50;
-
-      const filters: any = {};
-      if (req.query.userId) filters.userId = parseInt(req.query.userId as string);
-      if (req.query.actionType) filters.actionType = req.query.actionType as string;
-      if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
-      if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
-
-      const result = await loggingService.getAllActivityLogs(filters, page, limit);
-
-      // Log activity
-      if (req.user) {
-        await loggingService.logActivity({
-          userId: req.user.id,
-          actionType: ACTION_TYPES.ADMIN.VIEW_LOGS,
-          actionDescription: 'Viewed activity logs',
-          ipAddress: getClientIp(req),
-          userAgent: getUserAgent(req),
-        });
-      }
-
-      res.json(result);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  }
-
-  async getApiLogs(req: AuthenticatedRequest, res: Response) {
-    try {
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 50;
-
-      const filters: any = {};
-      if (req.query.userId) filters.userId = parseInt(req.query.userId as string);
-      if (req.query.status) filters.status = parseInt(req.query.status as string);
-      if (req.query.startDate) filters.startDate = new Date(req.query.startDate as string);
-      if (req.query.endDate) filters.endDate = new Date(req.query.endDate as string);
-
-      const result = await loggingService.getApiLogs(filters, page, limit);
-
-      // Log activity
-      if (req.user) {
-        await loggingService.logActivity({
-          userId: req.user.id,
-          actionType: ACTION_TYPES.ADMIN.VIEW_API_LOGS,
-          actionDescription: 'Viewed API logs',
-          ipAddress: getClientIp(req),
-          userAgent: getUserAgent(req),
-        });
-      }
-
-      res.json(result);
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  }
-
-  async getSystemSettings(_req: AuthenticatedRequest, res: Response) {
-    try {
-      const settings = await prisma.systemSetting.findMany({
-        where: { isSecret: false },
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: { isActive },
       });
 
-      res.json({ settings });
+      // Log activity
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: ACTION_TYPES.ADMIN.UPDATE_USER,
+        actionDescription: `${isActive ? 'Activated' : 'Deactivated'} user ${user.email}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.json({ message: 'User status updated successfully' });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      res.status(500).json({ error: error.message });
     }
   }
 }
 
 export default new AdminController();
-
