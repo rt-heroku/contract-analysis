@@ -417,7 +417,7 @@ export const AnalysisDetails: React.FC = () => {
             }`}
           >
             <div className="flex items-center gap-2">
-              {analysisStatus === 'ready' ? (
+              {analysisStatus === 'completed' ? (
                 <CheckCircle className="w-4 h-4 text-green-600" />
               ) : (
                 <Clock className="w-4 h-4 text-yellow-600" />
