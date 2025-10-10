@@ -321,6 +321,95 @@ class PromptController {
       res.status(400).json({ error: error.message });
     }
   }
+
+  /**
+   * Set a prompt as default (Admin only)
+   * Only one prompt can be default at a time
+   */
+  async setDefault(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: 'Not authenticated' });
+        return;
+      }
+
+      // Check if user is admin
+      const isAdmin = req.user.roles?.some((role: string) => 
+        role.toLowerCase() === 'admin'
+      );
+
+      if (!isAdmin) {
+        res.status(403).json({ error: 'Admin access required' });
+        return;
+      }
+
+      const { id } = req.params;
+      const promptId = parseInt(id);
+
+      // Check if prompt exists
+      const prompt = await prisma.prompt.findUnique({
+        where: { id: promptId },
+      });
+
+      if (!prompt) {
+        res.status(404).json({ error: 'Prompt not found' });
+        return;
+      }
+
+      // Use transaction to ensure only one default
+      await prisma.$transaction(async (tx) => {
+        // First, unset all other defaults
+        await tx.prompt.updateMany({
+          where: { isDefault: true },
+          data: { isDefault: false },
+        });
+
+        // Then set this one as default
+        await tx.prompt.update({
+          where: { id: promptId },
+          data: { isDefault: true },
+        });
+      });
+
+      res.json({ message: 'Prompt set as default successfully' });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Unset default (Admin only)
+   */
+  async unsetDefault(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: 'Not authenticated' });
+        return;
+      }
+
+      // Check if user is admin
+      const isAdmin = req.user.roles?.some((role: string) => 
+        role.toLowerCase() === 'admin'
+      );
+
+      if (!isAdmin) {
+        res.status(403).json({ error: 'Admin access required' });
+        return;
+      }
+
+      const { id } = req.params;
+      const promptId = parseInt(id);
+
+      await prisma.prompt.update({
+        where: { id: promptId },
+        data: { isDefault: false },
+      });
+
+      res.json({ message: 'Default prompt unset successfully' });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
 }
 
 export default new PromptController();

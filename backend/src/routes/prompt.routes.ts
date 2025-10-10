@@ -28,5 +28,9 @@ router.delete('/:id', promptController.deletePrompt);
 // Execute a prompt with variables
 router.post('/:id/execute', promptController.executePrompt);
 
+// Set/unset default prompt (Admin only - auth check in controller)
+router.put('/:id/set-default', promptController.setDefault);
+router.put('/:id/unset-default', promptController.unsetDefault);
+
 export default router;
 

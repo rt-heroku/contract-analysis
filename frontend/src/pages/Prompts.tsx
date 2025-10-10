@@ -5,7 +5,8 @@ import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
-import { Plus, Edit, Trash2, Eye, EyeOff, Search, Save, X, Download, Upload as UploadIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff, Search, Save, X, Download, Upload as UploadIcon, Star } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 interface Variable {
   id?: number;
@@ -23,6 +24,7 @@ interface Prompt {
   description: string | null;
   content: string;
   isActive: boolean;
+  isDefault: boolean;
   category: string | null;
   createdAt: string;
   updatedAt: string;
@@ -35,6 +37,7 @@ interface Prompt {
 }
 
 export const Prompts: React.FC = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,6 +46,9 @@ export const Prompts: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check if user is admin
+  const isAdmin = user?.roles?.some((role: string) => role.toLowerCase() === 'admin');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -232,6 +238,26 @@ export const Prompts: React.FC = () => {
       fetchPrompts();
     } catch (error) {
       console.error('Failed to toggle prompt:', error);
+    }
+  };
+
+  const handleSetDefault = async (id: number) => {
+    try {
+      await api.put(`/prompts/${id}/set-default`);
+      fetchPrompts();
+    } catch (error: any) {
+      console.error('Failed to set default:', error);
+      alert(error.response?.data?.error || 'Failed to set default prompt');
+    }
+  };
+
+  const handleUnsetDefault = async (id: number) => {
+    try {
+      await api.put(`/prompts/${id}/unset-default`);
+      fetchPrompts();
+    } catch (error: any) {
+      console.error('Failed to unset default:', error);
+      alert(error.response?.data?.error || 'Failed to unset default prompt');
     }
   };
 
@@ -539,6 +565,12 @@ export const Prompts: React.FC = () => {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-semibold text-gray-900">{prompt.name}</h3>
+                    {prompt.isDefault && (
+                      <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-current" />
+                        Default
+                      </span>
+                    )}
                     {!prompt.isActive && (
                       <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
                         Inactive
@@ -564,7 +596,7 @@ export const Prompts: React.FC = () => {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   onClick={() => handleEdit(prompt)}
                   variant="outline"
@@ -581,6 +613,17 @@ export const Prompts: React.FC = () => {
                   {prompt.isActive ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
                   {prompt.isActive ? 'Deactivate' : 'Activate'}
                 </Button>
+                {isAdmin && (
+                  <Button
+                    onClick={() => prompt.isDefault ? handleUnsetDefault(prompt.id) : handleSetDefault(prompt.id)}
+                    variant="outline"
+                    size="sm"
+                    className={prompt.isDefault ? "text-yellow-600 hover:bg-yellow-50" : ""}
+                  >
+                    <Star className={`w-4 h-4 mr-2 ${prompt.isDefault ? 'fill-current' : ''}`} />
+                    {prompt.isDefault ? 'Unset Default' : 'Set as Default'}
+                  </Button>
+                )}
                 <Button
                   onClick={() => handleDelete(prompt.id)}
                   variant="outline"

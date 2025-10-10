@@ -297,6 +297,7 @@ model Prompt {
   description String?   @db.Text
   content     String    @db.Text
   isActive    Boolean   @default(true) @map("is_active")
+  isDefault   Boolean   @default(false) @map("is_default")
   category    String?   @db.VarChar(100)
   createdBy   Int       @map("created_by")
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -307,6 +308,7 @@ model Prompt {
 
   @@index([createdBy])
   @@index([isActive])
+  @@index([isDefault])
   @@map("prompts")
 }
 

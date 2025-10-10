@@ -27,6 +27,7 @@ interface Prompt {
   description?: string;
   content: string;
   isActive: boolean;
+  isDefault: boolean;
   category?: string;
   variables: PromptVariable[];
 }
@@ -54,6 +55,22 @@ export const Processing: React.FC = () => {
         const response = await api.get('/prompts');
         const activePrompts = response.data.filter((p: Prompt) => p.isActive);
         setPrompts(activePrompts);
+
+        // Auto-select default prompt or the only prompt
+        if (activePrompts.length > 0) {
+          // First, check if there's a default prompt
+          const defaultPrompt = activePrompts.find((p: Prompt) => p.isDefault);
+          
+          if (defaultPrompt) {
+            // Select the default prompt
+            setSelectedPrompt(defaultPrompt);
+            setPromptSearch(defaultPrompt.name);
+          } else if (activePrompts.length === 1) {
+            // If there's only one prompt, select it
+            setSelectedPrompt(activePrompts[0]);
+            setPromptSearch(activePrompts[0].name);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch prompts:', error);
       }
