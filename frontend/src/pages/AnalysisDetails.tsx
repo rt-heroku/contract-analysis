@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import html2pdf from 'html2pdf.js';
+import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
@@ -11,7 +12,8 @@ import {
   Download, 
   CheckCircle, 
   Clock, 
-  ArrowLeft 
+  ArrowLeft,
+  AlertCircle
 } from 'lucide-react';
 
 // Mock data for UI development
@@ -182,29 +184,94 @@ The distribution agreement demonstrates a balanced, compliant approach to promot
 };
 
 export const AnalysisDetails: React.FC = () => {
-  const { id: _id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'extraction' | 'analysis'>('extraction');
-  const [analysisStatus, setAnalysisStatus] = useState<'processing' | 'ready'>('processing');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showMarkdown, setShowMarkdown] = useState(false);
+  
+  // Real data from API
+  const [analysisData, setAnalysisData] = useState<any>(null);
+  const [extraction, setExtraction] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [analysisStatus, setAnalysisStatus] = useState<'processing' | 'completed' | 'failed'>('processing');
 
-  // Simulate polling for analysis completion
+  // Fetch analysis data from API and poll for updates
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnalysisStatus('ready');
-    }, 3000); // Simulate 3 second processing
+    let pollInterval: ReturnType<typeof setInterval>;
 
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchAnalysis = async () => {
+      try {
+        const response = await api.get(`/analysis/${id}`);
+        const data = response.data.analysis;
+        
+        setAnalysisData(data);
+        setAnalysisStatus(data.status);
+
+        // If we have contract analysis, set extraction data
+        if (data.contractAnalysis) {
+          setExtraction({
+            document: data.contractAnalysis.documentName || 'Document',
+            status: data.contractAnalysis.status || 'PROCESSING',
+            terms: data.contractAnalysis.terms || [],
+            products: data.contractAnalysis.products || []
+          });
+        }
+
+        // If we have data analysis, set result
+        if (data.dataAnalysis) {
+          setAnalysisResult({
+            status: data.status,
+            analysisMarkdown: data.dataAnalysis.analysisMarkdown || '',
+            dataTable: data.dataAnalysis.dataTable || []
+          });
+        }
+
+        // Stop polling if completed or failed
+        if (data.status === 'completed' || data.status === 'failed') {
+          if (pollInterval) clearInterval(pollInterval);
+          setLoading(false);
+        }
+
+      } catch (err: any) {
+        console.error('Failed to fetch analysis:', err);
+        setError(err.response?.data?.error || 'Failed to load analysis');
+        setLoading(false);
+        if (pollInterval) clearInterval(pollInterval);
+      }
+    };
+
+    // Initial fetch
+    fetchAnalysis();
+
+    // Poll every 5 seconds while processing
+    pollInterval = setInterval(() => {
+      if (analysisStatus === 'processing') {
+        fetchAnalysis();
+      } else {
+        clearInterval(pollInterval);
+      }
+    }, 5000);
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [id, analysisStatus]);
 
   const handleExportPDF = async () => {
+    if (!extraction || !analysisResult) {
+      alert('Please wait for analysis to complete before exporting PDF');
+      return;
+    }
+
     // Create a comprehensive PDF with all sections
     const pdfContent = document.createElement('div');
     pdfContent.style.padding = '40px';
     pdfContent.style.fontFamily = 'Arial, sans-serif';
     pdfContent.style.maxWidth = '800px';
     
-    // Build complete PDF content
+    // Build complete PDF content with REAL data
     pdfContent.innerHTML = `
       <div style="text-align: center; margin-bottom: 40px;">
         <h1 style="color: #1a202c; margin-bottom: 10px;">Contract Analysis Report</h1>
@@ -213,52 +280,22 @@ export const AnalysisDetails: React.FC = () => {
 
       <div style="margin-bottom: 40px; padding: 20px; background: #f7fafc; border-radius: 8px;">
         <h2 style="color: #2d3748; margin-bottom: 15px; border-bottom: 2px solid #4299e1; padding-bottom: 10px;">📄 Document Extraction</h2>
-        <p><strong>Document:</strong> ${MOCK_EXTRACTION.document}</p>
-        <p><strong>Status:</strong> <span style="color: #48bb78;">${MOCK_EXTRACTION.status}</span></p>
+        <p><strong>Document:</strong> ${extraction.document}</p>
+        <p><strong>Status:</strong> <span style="color: #48bb78;">${extraction.status}</span></p>
         
         <h3 style="color: #4a5568; margin-top: 20px;">Terms:</h3>
         <ul style="margin: 10px 0; padding-left: 20px;">
-          ${MOCK_EXTRACTION.terms.map(term => `<li style="margin: 5px 0;">${term}</li>`).join('')}
+          ${extraction.terms.map((term: string) => `<li style="margin: 5px 0;">${term}</li>`).join('')}
         </ul>
         
         <h3 style="color: #4a5568; margin-top: 20px;">Products:</h3>
         <ul style="margin: 10px 0; padding-left: 20px;">
-          ${MOCK_EXTRACTION.products.map(product => `<li style="margin: 5px 0;">${product}</li>`).join('')}
+          ${extraction.products.map((product: string) => `<li style="margin: 5px 0;">${product}</li>`).join('')}
         </ul>
       </div>
 
       <div style="margin-bottom: 40px;">
-        <h2 style="color: #2d3748; margin-bottom: 15px; border-bottom: 2px solid #4299e1; padding-bottom: 10px;">📊 Analysis Summary</h2>
-        <table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
-          <thead>
-            <tr style="background-color: #f7fafc;">
-              <th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left;">Metric</th>
-              <th style="border: 1px solid #e2e8f0; padding: 12px; text-align: left;">Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="border: 1px solid #e2e8f0; padding: 12px;">Total Products</td>
-              <td style="border: 1px solid #e2e8f0; padding: 12px;">${MOCK_ANALYSIS_RESULT.jsonData.summary.totalProducts}</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid #e2e8f0; padding: 12px;">Total Units</td>
-              <td style="border: 1px solid #e2e8f0; padding: 12px;">${MOCK_ANALYSIS_RESULT.jsonData.summary.totalUnits}</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid #e2e8f0; padding: 12px;">Distribution Model</td>
-              <td style="border: 1px solid #e2e8f0; padding: 12px;">${MOCK_ANALYSIS_RESULT.jsonData.summary.distributionModel}</td>
-            </tr>
-            <tr>
-              <td style="border: 1px solid #e2e8f0; padding: 12px;">Compliance Status</td>
-              <td style="border: 1px solid #e2e8f0; padding: 12px;"><strong style="color: #48bb78;">${MOCK_ANALYSIS_RESULT.jsonData.summary.complianceStatus}</strong></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div style="margin-bottom: 40px;">
-        ${document.querySelector('.markdown-content')?.innerHTML || MOCK_ANALYSIS_RESULT.markdownReport}
+        ${document.querySelector('.markdown-content')?.innerHTML || analysisResult.analysisMarkdown}
       </div>
 
       <div style="margin-top: 60px; padding-top: 20px; border-top: 2px solid #e2e8f0; text-align: center; color: #718096; font-size: 12px;">
@@ -270,7 +307,7 @@ export const AnalysisDetails: React.FC = () => {
     // Configure PDF options
     const options = {
       margin: [10, 10, 10, 10] as [number, number, number, number],
-      filename: `Analysis_Report_${MOCK_EXTRACTION.document.replace('.pdf', '')}_${Date.now()}.pdf`,
+      filename: `Analysis_Report_${extraction.document.replace('.pdf', '')}_${Date.now()}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
@@ -284,6 +321,42 @@ export const AnalysisDetails: React.FC = () => {
       alert('Failed to generate PDF. Please try again.');
     }
   };
+
+  // Show loading state
+  if (loading && !analysisData) {
+    return (
+      <div className="max-w-7xl mx-auto flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Loading size="lg" />
+          <p className="text-gray-600">Loading analysis data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <Card>
+          <div className="flex items-center gap-3 text-red-600">
+            <AlertCircle className="w-6 h-6" />
+            <div>
+              <h3 className="font-semibold">Error Loading Analysis</h3>
+              <p className="text-sm text-gray-600">{error}</p>
+            </div>
+          </div>
+          <Button onClick={() => navigate('/history')} className="mt-4">
+            Back to History
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  // Use real data or fallback to mock for display
+  const displayExtraction = extraction || MOCK_EXTRACTION;
+  const displayAnalysis = analysisResult || MOCK_ANALYSIS_RESULT;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -301,7 +374,7 @@ export const AnalysisDetails: React.FC = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Analysis Details</h1>
             <p className="text-gray-600 mt-1">
-              Document: <span className="font-medium">{MOCK_EXTRACTION.document}</span>
+              Document: <span className="font-medium">{displayExtraction.document}</span>
             </p>
           </div>
         </div>
@@ -313,8 +386,8 @@ export const AnalysisDetails: React.FC = () => {
             <Download className="w-5 h-5" />
             Download PDF Report
           </Button>
-          <Badge variant={MOCK_EXTRACTION.status === 'SUCCEEDED' ? 'success' : 'warning'}>
-            {MOCK_EXTRACTION.status}
+          <Badge variant={displayExtraction.status === 'SUCCEEDED' ? 'success' : 'warning'}>
+            {displayExtraction.status}
           </Badge>
         </div>
       </div>
@@ -361,7 +434,7 @@ export const AnalysisDetails: React.FC = () => {
           {/* Terms Section */}
           <Card title="Extracted Terms">
             <div className="space-y-3">
-              {MOCK_EXTRACTION.terms.map((term, index) => (
+              {displayExtraction.terms.map((term: string, index: number) => (
                 <div
                   key={index}
                   className="p-4 bg-blue-50 border border-blue-200 rounded-lg"
@@ -387,7 +460,7 @@ export const AnalysisDetails: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {MOCK_EXTRACTION.products.map((product, index) => (
+                  {displayExtraction.products.map((product: string, index: number) => (
                     <tr key={index} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {index + 1}
@@ -531,7 +604,7 @@ export const AnalysisDetails: React.FC = () => {
                   </div>
                 ) : (
                   <div className="markdown-content prose max-w-none">
-                    <ReactMarkdown>{MOCK_ANALYSIS_RESULT.markdownReport}</ReactMarkdown>
+                    <ReactMarkdown>{displayAnalysis.analysisMarkdown || displayAnalysis.markdownReport}</ReactMarkdown>
                   </div>
                 )}
               </Card>

@@ -57,7 +57,24 @@ Both backend and frontend now build successfully and are ready for Heroku deploy
 
 ---
 
-### Issue 5: Frontend Build - "default is not exported by src/App.js"
+### Issue 5: Frontend Build - Missing @types/react-dom
+**Problem**: Frontend type definitions and build tools were in `devDependencies`.
+
+**Solution**: Moved all build-required packages to `dependencies`:
+- `@types/react`
+- `@types/react-dom`
+- `@vitejs/plugin-react`
+- `vite`
+- `autoprefixer`
+- `postcss`
+- `tailwindcss`
+
+**Files Modified**:
+- `frontend/package.json`
+
+---
+
+### Issue 6: Frontend Build - "default is not exported by src/App.js"
 **Problem**: 
 1. Frontend build script ran `tsc` which created `.js` files in `src/`
 2. Vite tried to import from these compiled `.js` files instead of `.tsx` files
