@@ -16,8 +16,6 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-};
-
 export const AnalysisDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -360,26 +358,26 @@ export const AnalysisDetails: React.FC = () => {
                       <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
                         <p className="text-blue-600 text-sm font-medium">Total Products</p>
                         <p className="text-3xl font-bold text-blue-900 mt-1">
-                          {MOCK_ANALYSIS_RESULT.jsonData.summary.totalProducts}
+                          {displayAnalysis.jsonData.summary.totalProducts}
                         </p>
                       </div>
                       <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
                         <p className="text-green-600 text-sm font-medium">Total Units</p>
                         <p className="text-3xl font-bold text-green-900 mt-1">
-                          {MOCK_ANALYSIS_RESULT.jsonData.summary.totalUnits}
+                          {displayAnalysis.jsonData.summary.totalUnits}
                         </p>
                       </div>
                       <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
                         <p className="text-purple-600 text-sm font-medium">Distribution Model</p>
                         <p className="text-lg font-bold text-purple-900 mt-1">
-                          {MOCK_ANALYSIS_RESULT.jsonData.summary.distributionModel}
+                          {displayAnalysis.jsonData.summary.distributionModel}
                         </p>
                       </div>
                       <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-lg border border-emerald-200">
                         <p className="text-emerald-600 text-sm font-medium">Compliance</p>
                         <p className="text-lg font-bold text-emerald-900 mt-1 flex items-center gap-2">
                           <CheckCircle className="w-5 h-5" />
-                          {MOCK_ANALYSIS_RESULT.jsonData.summary.complianceStatus}
+                          {displayAnalysis.jsonData.summary.complianceStatus}
                         </p>
                       </div>
                     </div>
@@ -390,19 +388,19 @@ export const AnalysisDetails: React.FC = () => {
                       <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                         <div className="flex gap-2">
                           <span className="font-medium text-gray-700">Funding:</span>
-                          <span className="text-gray-900">{MOCK_ANALYSIS_RESULT.jsonData.keyTerms.fundingStructure}</span>
+                          <span className="text-gray-900">{displayAnalysis.jsonData.keyTerms.fundingStructure}</span>
                         </div>
                         <div className="flex gap-2">
                           <span className="font-medium text-gray-700">Compliance:</span>
-                          <span className="text-gray-900">{MOCK_ANALYSIS_RESULT.jsonData.keyTerms.pricingCompliance}</span>
+                          <span className="text-gray-900">{displayAnalysis.jsonData.keyTerms.pricingCompliance}</span>
                         </div>
                         <div className="flex gap-2">
                           <span className="font-medium text-gray-700">Mechanics:</span>
-                          <span className="text-gray-900">{MOCK_ANALYSIS_RESULT.jsonData.keyTerms.approvedMechanics.join(', ')}</span>
+                          <span className="text-gray-900">{displayAnalysis.jsonData.keyTerms.approvedMechanics.join(', ')}</span>
                         </div>
                         <div className="flex gap-2">
                           <span className="font-medium text-gray-700">Limit:</span>
-                          <span className="text-gray-900">{MOCK_ANALYSIS_RESULT.jsonData.keyTerms.customerLimit}</span>
+                          <span className="text-gray-900">{displayAnalysis.jsonData.keyTerms.customerLimit}</span>
                         </div>
                       </div>
                     </div>
@@ -426,7 +424,7 @@ export const AnalysisDetails: React.FC = () => {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {MOCK_ANALYSIS_RESULT.jsonData.productBreakdown.map((item, index) => (
+                            {displayAnalysis.jsonData.productBreakdown.map((item: any, index: number) => (
                               <tr key={index} className="hover:bg-gray-50">
                                 <td className="px-6 py-4 text-sm text-gray-900">
                                   {item.product}
@@ -470,7 +468,7 @@ export const AnalysisDetails: React.FC = () => {
                 }
               >
                 <div className="markdown-content prose max-w-none">
-                  <ReactMarkdown>{MOCK_ANALYSIS_RESULT.markdownReport}</ReactMarkdown>
+                  <ReactMarkdown>{displayAnalysis.markdownReport}</ReactMarkdown>
                 </div>
               </Card>
             </>
