@@ -16,6 +16,171 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+// Mock data for UI development
+const MOCK_EXTRACTION = {
+  document: "Dreamfields_Distribution_Agreement_Puff_Utica_REC.pdf",
+  status: "SUCCEEDED",
+  terms: [
+    "Promotional discount funded 50% by Distributor and 50% by Retailer (25/25 split). SRP markdowns must comply with state minimums. Approved mechanics: price-drop",
+    " bundle (2 for)",
+    " cart add-on. Limits: 4 units per customer/day."
+  ],
+  products: [
+    "Infused Jeeter XL 2g Blueberry Kush - Units sold (ref): 4",
+    "Infused Jeeter 1g Blue ZKZ - Units sold (ref): 3",
+    "Infused Jeeter 1g Preroll Strawberry Cough - Units sold (ref): 3",
+    "Infused Jeeter Resin Cannons 0.5g X 3 Prerolls Scott's OG - Units sold (ref): 3",
+    "Infused Baby Jeeter 0.5g X 5 (2.5g) Preroll Island Papaya - Units sold (ref): 3",
+    "Infused Baby Jeeter 0.5g X 5 Tropicali - Units sold (ref): 3",
+    "Infused Baby Jeeter 0.5g X 5 (2.5g) Preroll Pink Lemon - Units sold (ref): 3",
+    "Infused Baby Jeeter 0.5g X 5 Sour Tsunami - Units sold (ref): 3",
+    "Infused Jeeter 1g Preroll Milkman - Units sold (ref): 3",
+    "Infused Baby Jeeter 0.5g X 5 Peaches - Units sold (ref): 3"
+  ]
+};
+
+const MOCK_ANALYSIS_RESULT = {
+  status: "Ready",
+  jsonData: {
+    summary: {
+      totalProducts: 10,
+      totalUnits: 31,
+      distributionModel: "50/50 Split",
+      complianceStatus: "Compliant"
+    },
+    keyTerms: {
+      fundingStructure: "50% Distributor, 50% Retailer (25/25 split)",
+      pricingCompliance: "SRP markdowns comply with state minimums",
+      approvedMechanics: ["price-drop", "bundle (2 for)", "cart add-on"],
+      customerLimit: "4 units per customer/day"
+    },
+    productBreakdown: [
+      { product: "Infused Jeeter XL 2g Blueberry Kush", unitsSold: 4, category: "Premium" },
+      { product: "Infused Jeeter 1g Blue ZKZ", unitsSold: 3, category: "Standard" },
+      { product: "Infused Jeeter 1g Preroll Strawberry Cough", unitsSold: 3, category: "Standard" },
+      { product: "Infused Jeeter Resin Cannons", unitsSold: 3, category: "Specialty" },
+      { product: "Baby Jeeter Island Papaya", unitsSold: 3, category: "Mini" },
+      { product: "Baby Jeeter Tropicali", unitsSold: 3, category: "Mini" },
+      { product: "Baby Jeeter Pink Lemon", unitsSold: 3, category: "Mini" },
+      { product: "Baby Jeeter Sour Tsunami", unitsSold: 3, category: "Mini" },
+      { product: "Infused Jeeter Milkman", unitsSold: 3, category: "Standard" },
+      { product: "Baby Jeeter Peaches", unitsSold: 3, category: "Mini" }
+    ]
+  },
+  markdownReport: `# Distribution Agreement Analysis Report
+
+## Document Information
+- **File**: Dreamfields_Distribution_Agreement_Puff_Utica_REC.pdf
+- **Analysis Date**: ${new Date().toLocaleDateString()}
+- **Status**: ✅ Complete
+
+---
+
+## Executive Summary
+
+This distribution agreement establishes a **50/50 promotional discount funding model** between the Distributor and Retailer, with a 25/25 split structure. All pricing mechanisms comply with state-mandated minimum pricing requirements.
+
+### Key Metrics
+- **Total Products**: 10
+- **Total Units Sold**: 31
+- **Compliance Status**: ✅ Fully Compliant
+- **Distribution Model**: 50% Distributor / 50% Retailer
+
+---
+
+## Terms & Conditions
+
+### Funding Structure
+The promotional discount is funded equally between parties:
+- **Distributor Contribution**: 50% (25% effective split)
+- **Retailer Contribution**: 50% (25% effective split)
+
+### Pricing Compliance
+All suggested retail price (SRP) markdowns must:
+- Comply with state minimum pricing requirements
+- Follow approved promotional mechanics
+- Maintain regulatory compliance
+
+### Approved Promotional Mechanics
+1. **Price Drop**: Direct price reduction at point of sale
+2. **Bundle Offers**: "2 for" promotional pricing
+3. **Cart Add-On**: Additional product incentives
+
+### Purchase Limitations
+- **Maximum per customer**: 4 units per day
+- **Enforcement**: Point-of-sale restrictions apply
+
+---
+
+## Product Analysis
+
+### Premium Category (1 product)
+- **Infused Jeeter XL 2g Blueberry Kush**
+  - Units Sold: 4
+  - Performance: High demand premium product
+
+### Standard Category (3 products)
+| Product | Units Sold | Notes |
+|---------|-----------|-------|
+| Infused Jeeter 1g Blue ZKZ | 3 | Standard performance |
+| Infused Jeeter 1g Strawberry Cough | 3 | Consistent sales |
+| Infused Jeeter 1g Milkman | 3 | Steady demand |
+
+### Specialty Category (1 product)
+- **Infused Jeeter Resin Cannons 0.5g X 3**
+  - Units Sold: 3
+  - Specialty Scott's OG blend
+
+### Mini Category (5 products)
+| Product | Units Sold | Size |
+|---------|-----------|------|
+| Baby Jeeter Island Papaya | 3 | 0.5g X 5 (2.5g) |
+| Baby Jeeter Tropicali | 3 | 0.5g X 5 |
+| Baby Jeeter Pink Lemon | 3 | 0.5g X 5 (2.5g) |
+| Baby Jeeter Sour Tsunami | 3 | 0.5g X 5 |
+| Baby Jeeter Peaches | 3 | 0.5g X 5 |
+
+---
+
+## Distribution Insights
+
+### Sales Performance
+- **Average units per product**: 3.1 units
+- **Top performer**: Infused Jeeter XL 2g Blueberry Kush (4 units)
+- **Category breakdown**: 
+  - Mini products: 48% (5 products)
+  - Standard products: 29% (3 products)
+  - Premium products: 10% (1 product)
+  - Specialty products: 10% (1 product)
+
+### Compliance Verification
+✅ All terms comply with state regulations  
+✅ Promotional mechanics approved  
+✅ Customer limits enforced  
+✅ Pricing structure validated  
+
+---
+
+## Recommendations
+
+1. **Expand Premium Line**: Consider increasing inventory of premium 2g products based on strong performance
+2. **Bundle Opportunities**: Leverage approved "2 for" mechanics for Mini category products
+3. **Seasonal Promotions**: Implement cart add-on strategy during peak periods
+4. **Compliance Monitoring**: Continue regular audits to maintain regulatory compliance
+
+---
+
+## Conclusion
+
+The distribution agreement demonstrates a balanced, compliant approach to promotional funding with strong product diversity. The 50/50 split model ensures fair distribution of promotional costs while maintaining competitive pricing within state regulatory frameworks.
+
+**Overall Status**: ✅ Approved and Compliant
+
+---
+
+*Report generated by DreamFields Document Processing System*  
+*For questions or clarifications, contact your distribution manager*
+`
 };
 
 export const AnalysisDetails: React.FC = () => {

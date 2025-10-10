@@ -31,7 +31,7 @@ const config: Config = {
   mulesoftApiBaseUrl: process.env.MULESOFT_API_BASE_URL || '',
   mulesoftApiUsername: process.env.MULESOFT_API_USERNAME || '',
   mulesoftApiPassword: process.env.MULESOFT_API_PASSWORD || '',
-  mulesoftApiTimeout: parseInt(process.env.MULESOFT_API_TIMEOUT || '30000', 10),
+  mulesoftApiTimeout: parseInt(process.env.MULESOFT_API_TIMEOUT || '180000', 10), // 3 minutes default
   maxFileSizePdf: parseInt(process.env.MAX_FILE_SIZE_PDF || '10485760', 10),
   maxFileSizeExcel: parseInt(process.env.MAX_FILE_SIZE_EXCEL || '52428800', 10),
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000',
