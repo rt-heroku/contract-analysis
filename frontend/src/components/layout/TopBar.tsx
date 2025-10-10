@@ -4,7 +4,6 @@ import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { Menu, Bell, User, Settings, LogOut, Search } from 'lucide-react';
-import { getInitials } from '@/utils/helpers';
 
 export const TopBar: React.FC = () => {
   const navigate = useNavigate();
@@ -12,6 +11,7 @@ export const TopBar: React.FC = () => {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUnreadCount = async () => {
@@ -27,6 +27,25 @@ export const TopBar: React.FC = () => {
       fetchUnreadCount();
       const interval = setInterval(fetchUnreadCount, 10000); // Poll every 10s
       return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      try {
+        const response = await api.get('/users/profile');
+        if (response.data.profile.avatarBase64) {
+          setAvatarUrl(`data:image/png;base64,${response.data.profile.avatarBase64}`);
+        } else {
+          setAvatarUrl(null);
+        }
+      } catch (error) {
+        // Ignore errors
+      }
+    };
+
+    if (user) {
+      fetchAvatar();
     }
   }, [user]);
 
@@ -78,9 +97,17 @@ export const TopBar: React.FC = () => {
             onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <div className="w-8 h-8 bg-primary-600 text-white rounded-full flex items-center justify-center font-medium text-sm">
-              {getInitials(user?.firstName, user?.lastName)}
-            </div>
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Profile"
+                className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+              />
+            ) : (
+              <div className="w-8 h-8 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center">
+                <User className="w-5 h-5" />
+              </div>
+            )}
             <div className="text-left hidden md:block">
               <p className="text-sm font-medium text-gray-900">
                 {user?.firstName || user?.email?.split('@')[0]}

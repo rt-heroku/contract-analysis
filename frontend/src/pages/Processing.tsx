@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import api from '@/lib/api';
@@ -6,9 +6,30 @@ import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Modal } from '@/components/common/Modal';
 import { Loading } from '@/components/common/Loading';
-import { FileText, Upload, X, CheckCircle } from 'lucide-react';
+import { Input } from '@/components/common/Input';
+import { FileText, Upload, X, CheckCircle, Search, AlertCircle } from 'lucide-react';
 import { validateFileType, validateFileSize } from '@/utils/validation';
 import { formatFileSize } from '@/utils/helpers';
+
+interface PromptVariable {
+  id: number;
+  variableName: string;
+  displayName: string;
+  description?: string;
+  isRequired: boolean;
+  defaultValue?: string;
+  variableType: 'text' | 'file' | 'number' | 'json';
+}
+
+interface Prompt {
+  id: number;
+  name: string;
+  description?: string;
+  content: string;
+  isActive: boolean;
+  category?: string;
+  variables: PromptVariable[];
+}
 
 export const Processing: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +39,71 @@ export const Processing: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
   const [processingStatus, setProcessingStatus] = useState('');
+
+  // Prompt selection
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
+  const [promptSearch, setPromptSearch] = useState('');
+  const [showPromptDropdown, setShowPromptDropdown] = useState(false);
+  const [variableValues, setVariableValues] = useState<Record<string, string>>({});
+
+  // Fetch available prompts
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      try {
+        const response = await api.get('/prompts');
+        const activePrompts = response.data.filter((p: Prompt) => p.isActive);
+        setPrompts(activePrompts);
+      } catch (error) {
+        console.error('Failed to fetch prompts:', error);
+      }
+    };
+    fetchPrompts();
+  }, []);
+
+  // Initialize variable values with defaults when prompt is selected
+  useEffect(() => {
+    if (selectedPrompt) {
+      const initialValues: Record<string, string> = {};
+      selectedPrompt.variables.forEach((variable) => {
+        initialValues[variable.variableName] = variable.defaultValue || '';
+      });
+      setVariableValues(initialValues);
+    } else {
+      setVariableValues({});
+    }
+  }, [selectedPrompt]);
+
+  const handlePromptSelect = (prompt: Prompt) => {
+    setSelectedPrompt(prompt);
+    setPromptSearch(prompt.name);
+    setShowPromptDropdown(false);
+  };
+
+  const handleVariableChange = (variableName: string, value: string) => {
+    setVariableValues((prev) => ({
+      ...prev,
+      [variableName]: value,
+    }));
+  };
+
+  const validateVariables = (): boolean => {
+    if (!selectedPrompt) return true;
+
+    for (const variable of selectedPrompt.variables) {
+      if (variable.isRequired && !variableValues[variable.variableName]) {
+        setError(`Required variable "${variable.displayName}" is missing`);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const filteredPrompts = prompts.filter((prompt) =>
+    prompt.name.toLowerCase().includes(promptSearch.toLowerCase()) ||
+    (prompt.description && prompt.description.toLowerCase().includes(promptSearch.toLowerCase())) ||
+    (prompt.category && prompt.category.toLowerCase().includes(promptSearch.toLowerCase()))
+  );
 
   const onContractDrop = (acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
@@ -83,6 +169,11 @@ export const Processing: React.FC = () => {
       return;
     }
 
+    // Validate required variables if prompt is selected
+    if (!validateVariables()) {
+      return;
+    }
+
     setProcessing(true);
     setError('');
 
@@ -114,10 +205,18 @@ export const Processing: React.FC = () => {
 
       // Start processing
       setProcessingStatus('Starting document processing...');
-      const processRes = await api.post('/analysis/start', {
+      const processPayload: any = {
         contractUploadId: contractUploadRes.data.upload.id,
         dataUploadId: dataUploadRes.data.upload.id,
-      });
+      };
+
+      // Include prompt data if selected
+      if (selectedPrompt) {
+        processPayload.promptId = selectedPrompt.id;
+        processPayload.promptVariables = variableValues;
+      }
+
+      const processRes = await api.post('/analysis/start', processPayload);
 
       // Navigate to analysis page
       setTimeout(() => {
@@ -237,6 +336,155 @@ export const Processing: React.FC = () => {
         </div>
       </Card>
 
+      {/* Prompt Selection (Optional) */}
+      <Card title="Step 3: AI Prompt (Optional)">
+        <p className="text-sm text-gray-600 mb-4">
+          Select an AI prompt to enhance the analysis with custom instructions and variables.
+        </p>
+
+        {/* Prompt Search */}
+        <div className="relative mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search prompts..."
+              value={promptSearch}
+              onChange={(e) => {
+                setPromptSearch(e.target.value);
+                setShowPromptDropdown(true);
+              }}
+              onFocus={() => setShowPromptDropdown(true)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Prompt Dropdown */}
+          {showPromptDropdown && filteredPrompts.length > 0 && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowPromptDropdown(false)}
+              />
+              <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                {filteredPrompts.map((prompt) => (
+                  <button
+                    key={prompt.id}
+                    onClick={() => handlePromptSelect(prompt)}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="font-medium text-gray-900">{prompt.name}</div>
+                    {prompt.description && (
+                      <div className="text-sm text-gray-600 mt-1">{prompt.description}</div>
+                    )}
+                    {prompt.category && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        Category: {prompt.category}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Selected Prompt Display */}
+        {selectedPrompt && (
+          <div className="mb-4 p-4 bg-primary-50 border border-primary-200 rounded-lg">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h3 className="font-semibold text-primary-900">{selectedPrompt.name}</h3>
+                {selectedPrompt.description && (
+                  <p className="text-sm text-primary-700 mt-1">{selectedPrompt.description}</p>
+                )}
+                {selectedPrompt.variables.length > 0 && (
+                  <p className="text-xs text-primary-600 mt-2">
+                    {selectedPrompt.variables.length} variable(s) detected
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedPrompt(null);
+                  setPromptSearch('');
+                  setVariableValues({});
+                }}
+                className="p-2 hover:bg-primary-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-primary-600" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Variable Inputs */}
+        {selectedPrompt && selectedPrompt.variables.length > 0 && (
+          <div className="space-y-4">
+            <div className="border-t border-gray-200 pt-4">
+              <h4 className="font-medium text-gray-900 mb-4">Configure Variables</h4>
+              {selectedPrompt.variables.map((variable) => (
+                <div key={variable.id} className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {variable.displayName}
+                    {variable.isRequired && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  {variable.description && (
+                    <p className="text-xs text-gray-500 mb-2">{variable.description}</p>
+                  )}
+                  
+                  {variable.variableType === 'text' && (
+                    <Input
+                      type="text"
+                      value={variableValues[variable.variableName] || ''}
+                      onChange={(e) => handleVariableChange(variable.variableName, e.target.value)}
+                      placeholder={`Enter ${variable.displayName.toLowerCase()}`}
+                      className={variable.isRequired && !variableValues[variable.variableName] ? 'border-red-300' : ''}
+                    />
+                  )}
+
+                  {variable.variableType === 'number' && (
+                    <Input
+                      type="number"
+                      value={variableValues[variable.variableName] || ''}
+                      onChange={(e) => handleVariableChange(variable.variableName, e.target.value)}
+                      placeholder={`Enter ${variable.displayName.toLowerCase()}`}
+                      className={variable.isRequired && !variableValues[variable.variableName] ? 'border-red-300' : ''}
+                    />
+                  )}
+
+                  {variable.variableType === 'json' && (
+                    <textarea
+                      value={variableValues[variable.variableName] || ''}
+                      onChange={(e) => handleVariableChange(variable.variableName, e.target.value)}
+                      placeholder={`Enter JSON for ${variable.displayName.toLowerCase()}`}
+                      rows={4}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm ${
+                        variable.isRequired && !variableValues[variable.variableName] ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                    />
+                  )}
+
+                  {variable.variableType === 'file' && (
+                    <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                      <AlertCircle className="w-4 h-4 inline-block mr-2 text-gray-500" />
+                      File variables will be automatically populated from uploaded documents
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {prompts.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            <p>No active prompts available.</p>
+            <p className="text-sm mt-2">Create prompts in the Prompts page to use them here.</p>
+          </div>
+        )}
+      </Card>
+
       {/* Process Button */}
       <div className="flex gap-4">
         <Button
@@ -252,6 +500,9 @@ export const Processing: React.FC = () => {
           onClick={() => {
             setContractFile(null);
             setDataFile(null);
+            setSelectedPrompt(null);
+            setPromptSearch('');
+            setVariableValues({});
             setError('');
           }}
           disabled={processing}

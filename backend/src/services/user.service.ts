@@ -111,7 +111,7 @@ class UserService {
   /**
    * Update user avatar
    */
-  async updateAvatar(userId: number, avatarBase64: string) {
+  async updateAvatar(userId: number, avatarBase64: string | null) {
     await prisma.userProfile.update({
       where: { userId },
       data: { avatarBase64 },

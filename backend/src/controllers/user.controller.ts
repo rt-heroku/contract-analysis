@@ -103,6 +103,29 @@ class UserController {
     }
   }
 
+  async deleteAvatar(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      await userService.updateAvatar(req.user.id, null);
+
+      // Log activity
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: ACTION_TYPES.USER.UPDATE_AVATAR,
+        actionDescription: 'Removed avatar',
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.json({ message: 'Avatar removed successfully' });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   async changePassword(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {

@@ -10,6 +10,8 @@ import { Processing } from './pages/Processing';
 import { AnalysisDetails } from './pages/AnalysisDetails';
 import { Settings } from './pages/Settings';
 import { Prompts } from './pages/Prompts';
+import { History } from './pages/History';
+import { Profile } from './pages/Profile';
 
 const App = () => {
   return (
@@ -25,8 +27,8 @@ const App = () => {
             <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
             <Route path="/processing" element={<MainLayout><Processing /></MainLayout>} />
             <Route path="/prompts" element={<MainLayout><Prompts /></MainLayout>} />
-            <Route path="/profile" element={<MainLayout><div className="p-8">Profile - Coming Soon</div></MainLayout>} />
-            <Route path="/history" element={<MainLayout><div className="p-8">History - Coming Soon</div></MainLayout>} />
+            <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
+            <Route path="/history" element={<MainLayout><History /></MainLayout>} />
             <Route path="/analysis/:id" element={<MainLayout><AnalysisDetails /></MainLayout>} />
             <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
             <Route path="/notifications" element={<MainLayout><div className="p-8">Notifications - Coming Soon</div></MainLayout>} />
