@@ -9,7 +9,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Processing } from './pages/Processing';
 import { AnalysisDetails } from './pages/AnalysisDetails';
 
-function App() {
+const App = () => {
   return (
     <AuthProvider>
       <AppProvider>
@@ -39,7 +39,7 @@ function App() {
       </AppProvider>
     </AuthProvider>
   );
-}
+};
 
 export default App;
 
