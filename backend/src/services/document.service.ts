@@ -1,0 +1,306 @@
+import prisma from '../config/database';
+import muleSoftService from './muleSoft.service';
+import notificationService from './notification.service';
+import logger from '../utils/logger';
+import { ANALYSIS_STATUS, NOTIFICATION_TYPES } from '../utils/constants';
+import { ProcessingResult } from '../types';
+
+class DocumentService {
+  /**
+   * Start document processing workflow
+   */
+  async startProcessing(
+    userId: number,
+    contractUploadId: number,
+    dataUploadId: number
+  ): Promise<ProcessingResult> {
+    try {
+      // Get uploads to retrieve jobId
+      const contractUpload = await prisma.upload.findUnique({ 
+        where: { id: contractUploadId },
+        select: { jobId: true }
+      });
+
+      if (!contractUpload) {
+        throw new Error('Contract upload not found');
+      }
+
+      // Create analysis record with jobId
+      const analysisRecord = await prisma.analysisRecord.create({
+        data: {
+          userId,
+          jobId: contractUpload.jobId,
+          contractUploadId,
+          dataUploadId,
+          status: ANALYSIS_STATUS.PROCESSING,
+        },
+      });
+
+      // Start processing asynchronously
+      this.processDocuments(userId, contractUploadId, dataUploadId, analysisRecord.id, contractUpload.jobId)
+        .catch((error) => {
+          logger.error('Document processing failed:', error);
+        });
+
+      return {
+        success: true,
+        analysisRecordId: analysisRecord.id,
+      };
+    } catch (error: any) {
+      logger.error('Failed to start processing:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Process documents (async)
+   */
+  private async processDocuments(
+    userId: number,
+    contractUploadId: number,
+    dataUploadId: number,
+    analysisRecordId: number,
+    jobId: string
+  ): Promise<void> {
+    try {
+      // Get upload files
+      const [contractUpload, dataUpload] = await Promise.all([
+        prisma.upload.findUnique({ where: { id: contractUploadId } }),
+        prisma.upload.findUnique({ where: { id: dataUploadId } }),
+      ]);
+
+      if (!contractUpload || !dataUpload) {
+        throw new Error('Upload files not found');
+      }
+
+      // Step 1: Process contract document
+      logger.info(`Processing contract and data for jobId: ${jobId}`);
+      const contractResult = await muleSoftService.processContractDocument(
+        jobId,
+        userId,
+        contractUploadId
+      );
+
+      // Save contract analysis
+      const contractAnalysis = await prisma.contractAnalysis.create({
+        data: {
+          uploadId: contractUploadId,
+          jobId,
+          documentName: contractResult.document,
+          status: contractResult.status,
+          terms: contractResult.terms || [],
+          products: contractResult.products || [],
+          mulesoftResponse: contractResult,
+        },
+      });
+
+      // Update analysis record
+      await prisma.analysisRecord.update({
+        where: { id: analysisRecordId },
+        data: {
+          contractAnalysisId: contractAnalysis.id,
+        },
+      });
+
+      // Step 2: Analyze data with contract context
+      logger.info(`Running final analysis for jobId: ${jobId}`);
+      const dataResult = await muleSoftService.analyzeDataFile(
+        jobId,
+        userId,
+        contractAnalysis.id
+      );
+
+      // Save data analysis
+      const dataAnalysis = await prisma.dataAnalysis.create({
+        data: {
+          contractAnalysisId: contractAnalysis.id,
+          jobId,
+          analysisMarkdown: dataResult.analysis_markdown,
+          dataTable: dataResult.data_table || [],
+          mulesoftResponse: dataResult,
+        },
+      });
+
+      // Update analysis record as completed
+      await prisma.analysisRecord.update({
+        where: { id: analysisRecordId },
+        data: {
+          dataAnalysisId: dataAnalysis.id,
+          status: ANALYSIS_STATUS.COMPLETED,
+        },
+      });
+
+      // Send success notification
+      await notificationService.createNotification({
+        userId,
+        title: 'Document Processing Complete',
+        message: `Your analysis for ${contractUpload.filename} is ready`,
+        type: NOTIFICATION_TYPES.SUCCESS,
+        actionUrl: `/analysis/${analysisRecordId}`,
+        relatedRecordType: 'analysis_record',
+        relatedRecordId: analysisRecordId,
+      });
+
+      logger.info(`Processing completed for analysis record ${analysisRecordId}`);
+    } catch (error: any) {
+      logger.error('Document processing error:', error);
+
+      // Update analysis record as failed
+      await prisma.analysisRecord.update({
+        where: { id: analysisRecordId },
+        data: {
+          status: ANALYSIS_STATUS.FAILED,
+        },
+      });
+
+      // Send error notification
+      await notificationService.createNotification({
+        userId,
+        title: 'Processing Error',
+        message: `Failed to process documents. Please try again.`,
+        type: NOTIFICATION_TYPES.ERROR,
+        actionUrl: '/processing',
+        relatedRecordType: 'analysis_record',
+        relatedRecordId: analysisRecordId,
+      });
+    }
+  }
+
+  /**
+   * Get analysis record by ID
+   */
+  async getAnalysisById(analysisRecordId: number, userId?: number) {
+    const where: any = { id: analysisRecordId, isDeleted: false };
+    if (userId) {
+      where.userId = userId;
+    }
+
+    const analysis = await prisma.analysisRecord.findUnique({
+      where,
+      include: {
+        contractUpload: true,
+        dataUpload: true,
+        contractAnalysis: true,
+        dataAnalysis: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    return analysis;
+  }
+
+  /**
+   * Get user analysis history
+   */
+  async getUserAnalysisHistory(
+    userId: number,
+    page: number = 1,
+    limit: number = 20,
+    search?: string
+  ) {
+    const skip = (page - 1) * limit;
+
+    const where: any = { userId, isDeleted: false };
+    if (search) {
+      where.OR = [
+        { contractUpload: { filename: { contains: search, mode: 'insensitive' } } },
+        { dataUpload: { filename: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [analyses, total] = await Promise.all([
+      prisma.analysisRecord.findMany({
+        where,
+        include: {
+          contractUpload: {
+            select: {
+              filename: true,
+              createdAt: true,
+            },
+          },
+          dataUpload: {
+            select: {
+              filename: true,
+            },
+          },
+          contractAnalysis: {
+            select: {
+              terms: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.analysisRecord.count({ where }),
+    ]);
+
+    return {
+      analyses,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Delete analysis (admin - soft delete)
+   */
+  async deleteAnalysis(analysisRecordId: number, deletedBy: number): Promise<void> {
+    await prisma.analysisRecord.update({
+      where: { id: analysisRecordId },
+      data: {
+        isDeleted: true,
+        deletedBy,
+        deletedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Get analysis statistics
+   */
+  async getStatistics(userId?: number) {
+    const where: any = { isDeleted: false };
+    if (userId) {
+      where.userId = userId;
+    }
+
+    const [total, completed, processing, failed] = await Promise.all([
+      prisma.analysisRecord.count({ where }),
+      prisma.analysisRecord.count({
+        where: { ...where, status: ANALYSIS_STATUS.COMPLETED },
+      }),
+      prisma.analysisRecord.count({
+        where: { ...where, status: ANALYSIS_STATUS.PROCESSING },
+      }),
+      prisma.analysisRecord.count({
+        where: { ...where, status: ANALYSIS_STATUS.FAILED },
+      }),
+    ]);
+
+    return {
+      total,
+      completed,
+      processing,
+      failed,
+    };
+  }
+}
+
+export default new DocumentService();
+

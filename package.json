@@ -1,0 +1,30 @@
+{
+  "name": "document-processing-app",
+  "version": "1.0.0",
+  "description": "Document Processing Application - Combined Development",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install && cd ..",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd backend && npm run build && cd ../frontend && npm run build && cd ..",
+    "start": "cd backend && npm start",
+    "setup": "npm run install:all && cd backend && npm run setup:demo && cd ..",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:down": "docker-compose down",
+    "docker:dev": "docker-compose up --build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.17.0",
+    "prisma": "^6.17.0"
+  }
+}

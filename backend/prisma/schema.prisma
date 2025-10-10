@@ -1,0 +1,291 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  userRoles       UserRole[]
+  menuPermissions MenuPermission[]
+
+  @@map("roles")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique @db.VarChar(255)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  firstName    String?   @map("first_name") @db.VarChar(100)
+  lastName     String?   @map("last_name") @db.VarChar(100)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLogin    DateTime? @map("last_login")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  profile         UserProfile?
+  userRoles       UserRole[]
+  sessions        Session[]
+  activityLogs    ActivityLog[]
+  uploads         Upload[]
+  analysisRecords AnalysisRecord[]
+  notifications   Notification[]
+  apiLogs         ApiLog[]
+  deletedRecords  AnalysisRecord[] @relation("DeletedBy")
+
+  @@map("users")
+}
+
+model UserProfile {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique @map("user_id")
+  avatarBase64 String?  @map("avatar_base64") @db.Text
+  phone        String?  @db.VarChar(20)
+  bio          String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model UserRole {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  roleId    Int      @map("role_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  token     String   @db.VarChar(500)
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("sessions")
+}
+
+model ActivityLog {
+  id                Int      @id @default(autoincrement())
+  userId            Int?     @map("user_id")
+  jobId             String?  @map("job_id") @db.VarChar(100)
+  actionType        String   @map("action_type") @db.VarChar(100)
+  actionDescription String   @map("action_description") @db.Text
+  ipAddress         String?  @map("ip_address") @db.VarChar(45)
+  userAgent         String?  @map("user_agent") @db.Text
+  metadata          Json?
+  status            String   @default("success") @db.VarChar(20)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([jobId])
+  @@index([actionType])
+  @@index([createdAt(sort: Desc)])
+  @@map("activity_logs")
+}
+
+model MenuItem {
+  id         Int      @id @default(autoincrement())
+  parentId   Int?     @map("parent_id")
+  title      String   @db.VarChar(100)
+  icon       String?  @db.VarChar(50)
+  route      String?  @db.VarChar(255)
+  orderIndex Int      @default(0) @map("order_index")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  parent      MenuItem?        @relation("MenuHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    MenuItem[]       @relation("MenuHierarchy")
+  permissions MenuPermission[]
+
+  @@map("menu_items")
+}
+
+model MenuPermission {
+  id         Int      @id @default(autoincrement())
+  menuItemId Int      @map("menu_item_id")
+  roleId     Int      @map("role_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  role     Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, roleId])
+  @@map("menu_permissions")
+}
+
+model SystemSetting {
+  id           Int      @id @default(autoincrement())
+  settingKey   String   @unique @map("setting_key") @db.VarChar(100)
+  settingValue String?  @map("setting_value") @db.Text
+  description  String?  @db.Text
+  isSecret     Boolean  @default(false) @map("is_secret")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+model Upload {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @map("user_id")
+  jobId             String   @map("job_id") @db.VarChar(100)
+  filename          String   @db.VarChar(255)
+  fileType          String   @map("file_type") @db.VarChar(50)
+  fileSize          Int      @map("file_size")
+  mimeType          String?  @map("mime_type") @db.VarChar(100)
+  fileContentBase64 String   @map("file_content_base64") @db.Text
+  uploadType        String   @map("upload_type") @db.VarChar(20)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contractAnalysis ContractAnalysis[]
+  contractRecords  AnalysisRecord[]   @relation("ContractUpload")
+  dataRecords      AnalysisRecord[]   @relation("DataUpload")
+
+  @@index([userId])
+  @@index([jobId])
+  @@index([createdAt(sort: Desc)])
+  @@map("uploads")
+}
+
+model ContractAnalysis {
+  id               Int      @id @default(autoincrement())
+  uploadId         Int      @map("upload_id")
+  jobId            String   @map("job_id") @db.VarChar(100)
+  documentName     String   @map("document_name") @db.VarChar(255)
+  status           String   @db.VarChar(50)
+  terms            Json?
+  products         Json?
+  mulesoftResponse Json?    @map("mulesoft_response")
+  processedAt      DateTime @default(now()) @map("processed_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  upload          Upload           @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  dataAnalysis    DataAnalysis[]
+  analysisRecords AnalysisRecord[]
+
+  @@index([uploadId])
+  @@index([jobId])
+  @@map("contract_analysis")
+}
+
+model DataAnalysis {
+  id                  Int      @id @default(autoincrement())
+  contractAnalysisId  Int      @map("contract_analysis_id")
+  jobId               String   @map("job_id") @db.VarChar(100)
+  analysisMarkdown    String   @map("analysis_markdown") @db.Text
+  dataTable           Json     @map("data_table")
+  mulesoftResponse    Json?    @map("mulesoft_response")
+  processedAt         DateTime @default(now()) @map("processed_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  contractAnalysis ContractAnalysis @relation(fields: [contractAnalysisId], references: [id], onDelete: Cascade)
+  analysisRecords  AnalysisRecord[]
+
+  @@index([contractAnalysisId])
+  @@index([jobId])
+  @@map("data_analysis")
+}
+
+model AnalysisRecord {
+  id                  Int       @id @default(autoincrement())
+  userId              Int       @map("user_id")
+  jobId               String    @map("job_id") @db.VarChar(100)
+  contractUploadId    Int?      @map("contract_upload_id")
+  dataUploadId        Int?      @map("data_upload_id")
+  contractAnalysisId  Int?      @map("contract_analysis_id")
+  dataAnalysisId      Int?      @map("data_analysis_id")
+  status              String    @db.VarChar(50)
+  isDeleted           Boolean   @default(false) @map("is_deleted")
+  deletedBy           Int?      @map("deleted_by")
+  deletedAt           DateTime? @map("deleted_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contractUpload   Upload?           @relation("ContractUpload", fields: [contractUploadId], references: [id])
+  dataUpload       Upload?           @relation("DataUpload", fields: [dataUploadId], references: [id])
+  contractAnalysis ContractAnalysis? @relation(fields: [contractAnalysisId], references: [id])
+  dataAnalysis     DataAnalysis?     @relation(fields: [dataAnalysisId], references: [id])
+  deletedByUser    User?             @relation("DeletedBy", fields: [deletedBy], references: [id])
+
+  @@index([userId])
+  @@index([jobId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("analysis_records")
+}
+
+model ApiLog {
+  id                Int      @id @default(autoincrement())
+  userId            Int?     @map("user_id")
+  jobId             String?  @map("job_id") @db.VarChar(100)
+  requestMethod     String   @map("request_method") @db.VarChar(10)
+  requestUrl        String   @map("request_url") @db.Text
+  requestHeaders    Json?    @map("request_headers")
+  requestBody       Json?    @map("request_body")
+  responseStatus    Int?     @map("response_status")
+  responseBody      Json?    @map("response_body")
+  responseTimeMs    Int?     @map("response_time_ms")
+  errorMessage      String?  @map("error_message") @db.Text
+  relatedRecordType String?  @map("related_record_type") @db.VarChar(50)
+  relatedRecordId   Int?     @map("related_record_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([jobId])
+  @@index([createdAt(sort: Desc)])
+  @@index([responseStatus])
+  @@map("api_logs")
+}
+
+model Notification {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @map("user_id")
+  title             String   @db.VarChar(255)
+  message           String   @db.Text
+  type              String   @db.VarChar(50)
+  isRead            Boolean  @default(false) @map("is_read")
+  actionUrl         String?  @map("action_url") @db.VarChar(500)
+  relatedRecordType String?  @map("related_record_type") @db.VarChar(50)
+  relatedRecordId   Int?     @map("related_record_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
