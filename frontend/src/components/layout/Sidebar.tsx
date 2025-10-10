@@ -54,18 +54,40 @@ export const Sidebar: React.FC = () => {
       { id: 6, title: 'Settings', icon: 'settings', route: '/settings', orderIndex: 6, isActive: true, children: [] },
     ];
 
+    // Add Admin menu for admin users
+    const adminMenu = {
+      id: 100,
+      title: 'Admin',
+      icon: 'shield',
+      route: null,
+      orderIndex: 100,
+      isActive: true,
+      children: [
+        { id: 101, title: 'Logs', icon: 'file-text', route: '/admin/logs', orderIndex: 1, isActive: true, children: [] },
+        { id: 102, title: 'User Management', icon: 'user', route: '/admin/users', orderIndex: 2, isActive: true, children: [] },
+      ],
+    };
+
     const fetchMenu = async () => {
       try {
         const response = await api.get('/system/menu');
-        // If menu is empty, use default menu
-        if (response.data.menu && response.data.menu.length > 0) {
-          setMenuItems(response.data.menu);
-        } else {
-          setMenuItems(defaultMenu);
+        let menu = response.data.menu && response.data.menu.length > 0 ? response.data.menu : defaultMenu;
+        
+        // Add Admin menu if user is admin
+        const isAdmin = user?.roles?.some((r: string) => r.toLowerCase() === 'admin');
+        if (isAdmin) {
+          menu = [...menu, adminMenu as any];
         }
+        
+        setMenuItems(menu);
       } catch (error) {
         // Silently fall back to default menu
-        setMenuItems(defaultMenu);
+        let menu = defaultMenu;
+        const isAdmin = user?.roles?.some((r: string) => r.toLowerCase() === 'admin');
+        if (isAdmin) {
+          menu = [...menu, adminMenu as any];
+        }
+        setMenuItems(menu);
       }
     };
 

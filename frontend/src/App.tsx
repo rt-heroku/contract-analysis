@@ -12,6 +12,9 @@ import { Settings } from './pages/Settings';
 import { Prompts } from './pages/Prompts';
 import { History } from './pages/History';
 import { Profile } from './pages/Profile';
+import { Notifications } from './pages/Notifications';
+import { Logs } from './pages/admin/Logs';
+import { UserManagement } from './pages/admin/UserManagement';
 
 const App = () => {
   return (
@@ -31,11 +34,11 @@ const App = () => {
             <Route path="/history" element={<MainLayout><History /></MainLayout>} />
             <Route path="/analysis/:id" element={<MainLayout><AnalysisDetails /></MainLayout>} />
             <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
-            <Route path="/notifications" element={<MainLayout><div className="p-8">Notifications - Coming Soon</div></MainLayout>} />
+            <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
             
             {/* Admin Routes */}
-            <Route path="/admin/users" element={<MainLayout><div className="p-8">User Management - Coming Soon</div></MainLayout>} />
-            <Route path="/admin/logs" element={<MainLayout><div className="p-8">System Logs - Coming Soon</div></MainLayout>} />
+            <Route path="/admin/users" element={<MainLayout><UserManagement /></MainLayout>} />
+            <Route path="/admin/logs" element={<MainLayout><Logs /></MainLayout>} />
 
             {/* Default Route */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
