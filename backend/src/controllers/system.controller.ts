@@ -78,7 +78,7 @@ class SystemController {
     return rootItems;
   }
 
-  async getPublicSettings(req: AuthenticatedRequest, res: Response) {
+  async getPublicSettings(_req: AuthenticatedRequest, res: Response) {
     try {
       const settings = await prisma.systemSetting.findMany({
         where: { isSecret: false },

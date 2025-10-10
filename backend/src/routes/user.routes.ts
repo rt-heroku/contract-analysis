@@ -14,3 +14,4 @@ router.get('/activity', authenticate, userController.getActivityLogs);
 
 export default router;
 
+

@@ -197,7 +197,7 @@ class AdminController {
     }
   }
 
-  async getSystemSettings(req: AuthenticatedRequest, res: Response) {
+  async getSystemSettings(_req: AuthenticatedRequest, res: Response) {
     try {
       const settings = await prisma.systemSetting.findMany({
         where: { isSecret: false },

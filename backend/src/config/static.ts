@@ -24,3 +24,4 @@ export const setupStaticFiles = (app: Express) => {
   }
 };
 
+

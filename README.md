@@ -73,12 +73,14 @@ cp .env.example .env
 ```env
 DATABASE_URL=postgresql://user:password@localhost:5432/document_processing
 JWT_SECRET=your-super-secret-jwt-key
-MULESOFT_API_BASE_URL=https://your-mulesoft-api.com
+MULESOFT_API_BASE_URL=http://localhost:8081
 MULESOFT_API_USERNAME=your-username
 MULESOFT_API_PASSWORD=your-password
-PORT=5000
+PORT=5001
 CORS_ORIGIN=http://localhost:3000
 ```
+
+**Important:** See [MULESOFT_SETUP.md](./MULESOFT_SETUP.md) for detailed MuleSoft API integration configuration.
 
 5. Run database migrations:
 ```bash

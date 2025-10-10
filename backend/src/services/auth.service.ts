@@ -209,10 +209,8 @@ class AuthService {
    * Generate JWT token
    */
   generateToken(payload: JWTPayload, longExpiration: boolean = false): string {
-    const expiration = longExpiration ? JWT_REFRESH_EXPIRATION : JWT_EXPIRATION;
-    return jwt.sign(payload, config.jwtSecret, {
-      expiresIn: expiration,
-    });
+    const expiration = longExpiration ? config.jwtRefreshExpiration : config.jwtExpiration;
+    return jwt.sign(payload, config.jwtSecret, { expiresIn: expiration } as jwt.SignOptions);
   }
 
   /**

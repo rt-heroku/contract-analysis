@@ -32,3 +32,4 @@ function Header() {
 For **logos and brand assets**, use `/public/images/logos/`  
 For **component-specific images**, use `/src/assets/images/`
 
+

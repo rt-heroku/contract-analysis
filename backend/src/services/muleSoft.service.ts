@@ -1,5 +1,4 @@
 import axios, { AxiosRequestConfig } from 'axios';
-import FormData from 'form-data';
 import muleSoftConfig from '../config/muleSoft';
 import logger from '../utils/logger';
 import loggingService from './logging.service';
@@ -34,7 +33,6 @@ class MuleSoftService {
     }
 
     let response;
-    let error: any = null;
 
     try {
       logger.info(`Making MuleSoft API request to ${endpoint} with jobId: ${jobId}`);
@@ -62,7 +60,6 @@ class MuleSoftService {
 
       return response.data;
     } catch (err: any) {
-      error = err;
       const duration = Date.now() - startTime;
 
       logger.error('MuleSoft API request failed:', err.message);

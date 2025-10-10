@@ -4,7 +4,7 @@ import authService from '../services/auth.service';
 import prisma from '../config/database';
 import logger from '../utils/logger';
 
-export const authenticate = async (
+export const authenticateToken = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
@@ -55,11 +55,13 @@ export const authenticate = async (
   }
 };
 
+export const authenticate = authenticateToken;
+
 export const optionalAuthenticate = async (
   req: AuthenticatedRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 

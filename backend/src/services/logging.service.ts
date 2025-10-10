@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 import logger from '../utils/logger';
-import { ActivityLogData, ApiLogData, NotificationData } from '../types';
+import { ActivityLogData, ApiLogData } from '../types';
 
 class LoggingService {
   /**

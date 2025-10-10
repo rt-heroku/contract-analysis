@@ -19,3 +19,4 @@ router.delete('/:id', authenticate, uploadController.deleteUpload);
 
 export default router;
 
+

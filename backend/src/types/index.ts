@@ -1,5 +1,4 @@
 import { Request } from 'express';
-import { User } from '@prisma/client';
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -8,6 +7,10 @@ export interface AuthenticatedRequest extends Request {
     roles: string[];
   };
   ipAddress?: string;
+  session?: {
+    jobId?: string;
+    [key: string]: any;
+  };
 }
 
 export interface JWTPayload {
@@ -34,12 +37,14 @@ export interface MuleSoftContractResponse {
   status: string;
   terms: string[];
   products: string[];
+  [key: string]: any; // Index signature for Prisma JSON compatibility
 }
 
 export interface MuleSoftDataResponse {
   status: string;
   analysis_markdown: string;
   data_table: any[];
+  [key: string]: any; // Index signature for Prisma JSON compatibility
 }
 
 export interface ApiLogData {

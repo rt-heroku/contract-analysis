@@ -1,8 +1,8 @@
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import axios, { AxiosError } from 'axios';
 
 // In development, use relative path (Vite proxy will forward to backend)
 // In production, use VITE_API_URL if set, otherwise use relative path (same origin)
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || '';
 
 const api = axios.create({
   baseURL: API_BASE_URL ? `${API_BASE_URL}/api` : '/api',

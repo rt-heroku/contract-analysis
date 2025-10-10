@@ -1,5 +1,4 @@
 import prisma from '../config/database';
-import { UPLOAD_TYPES } from '../utils/constants';
 
 class FileService {
   /**

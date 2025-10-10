@@ -14,7 +14,7 @@ export const Processing: React.FC = () => {
   const navigate = useNavigate();
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [dataFile, setDataFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  // const [uploading, setUploading] = useState(false); // Unused for now
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
   const [processingStatus, setProcessingStatus] = useState('');

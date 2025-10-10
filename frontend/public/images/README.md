@@ -41,3 +41,4 @@ Use lowercase with hyphens:
 - ❌ `CompanyLogo.png`
 - ❌ `user_avatar_default.svg`
 
+

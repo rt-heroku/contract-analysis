@@ -12,3 +12,4 @@ router.delete('/:id', authenticate, analysisController.deleteAnalysis);
 
 export default router;
 
+

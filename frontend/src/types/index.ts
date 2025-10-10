@@ -85,6 +85,9 @@ export interface MenuItem {
   title: string;
   icon?: string;
   route?: string;
+  parentId?: number;
+  orderIndex?: number;
+  isActive?: boolean;
   children?: MenuItem[];
 }
 
@@ -111,4 +114,5 @@ export interface PaginatedResponse<T> {
     totalPages: number;
   };
 }
+
 

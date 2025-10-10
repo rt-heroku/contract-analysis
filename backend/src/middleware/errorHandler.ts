@@ -3,9 +3,9 @@ import logger from '../utils/logger';
 
 export const errorHandler = (
   error: Error,
-  req: Request,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   logger.error('Unhandled error:', error);
 
@@ -18,7 +18,7 @@ export const errorHandler = (
   });
 };
 
-export const notFound = (req: Request, res: Response, next: NextFunction) => {
+export const notFound = (_req: Request, res: Response, _next: NextFunction) => {
   res.status(404).json({ error: 'Route not found' });
 };
 

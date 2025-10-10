@@ -32,3 +32,4 @@ If you don't have the logo yet, you can:
 The logo is used in:
 - `frontend/src/components/layout/Sidebar.tsx` - Footer section
 
+

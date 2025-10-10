@@ -36,3 +36,4 @@ prisma.$on('warn' as never, (e: any) => {
 
 export default prisma;
 
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import html2pdf from 'html2pdf.js';
@@ -11,7 +11,6 @@ import {
   Download, 
   CheckCircle, 
   Clock, 
-  AlertCircle,
   ArrowLeft 
 } from 'lucide-react';
 
@@ -183,7 +182,7 @@ The distribution agreement demonstrates a balanced, compliant approach to promot
 };
 
 export const AnalysisDetails: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id: _id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'extraction' | 'analysis'>('extraction');
   const [analysisStatus, setAnalysisStatus] = useState<'processing' | 'ready'>('processing');
@@ -270,11 +269,11 @@ export const AnalysisDetails: React.FC = () => {
 
     // Configure PDF options
     const options = {
-      margin: [10, 10, 10, 10],
+      margin: [10, 10, 10, 10] as [number, number, number, number],
       filename: `Analysis_Report_${MOCK_EXTRACTION.document.replace('.pdf', '')}_${Date.now()}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
+      image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
     };
 
     // Generate and download PDF

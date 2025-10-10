@@ -162,3 +162,4 @@ class AnalysisController {
 
 export default new AnalysisController();
 
+
