@@ -14,8 +14,22 @@ interface Variable {
   displayName: string;
   description?: string;
   isRequired: boolean;
+  isFlowVariable: boolean;
   defaultValue?: string;
   variableType: string;
+}
+
+interface FlowVariable {
+  name: string;
+  type: string;
+}
+
+interface Flow {
+  name: string;
+  description: string;
+  url: string;
+  method: string;
+  vars: FlowVariable[];
 }
 
 interface Prompt {
@@ -26,6 +40,7 @@ interface Prompt {
   isActive: boolean;
   isDefault: boolean;
   category: string | null;
+  flowName: string | null;
   createdAt: string;
   updatedAt: string;
   creator: {
@@ -50,18 +65,25 @@ export const Prompts: React.FC = () => {
   // Check if user is admin
   const isAdmin = user?.roles?.some((role: string) => role.toLowerCase() === 'admin');
 
+  // Flow state
+  const [flows, setFlows] = useState<Flow[]>([]);
+  const [_selectedFlow, setSelectedFlow] = useState<Flow | null>(null);
+  const [newVariableName, setNewVariableName] = useState('');
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     content: '',
     category: '',
+    flowName: '',
     isActive: true,
   });
   const [variables, setVariables] = useState<Variable[]>([]);
 
   useEffect(() => {
     fetchPrompts();
+    fetchFlows();
   }, []);
 
   const fetchPrompts = async () => {
@@ -73,6 +95,73 @@ export const Prompts: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchFlows = async () => {
+    try {
+      const response = await api.get('/flows');
+      setFlows(response.data.flows || []);
+    } catch (error) {
+      console.error('Failed to fetch flows:', error);
+    }
+  };
+
+  const handleFlowSelect = (flowName: string) => {
+    const flow = flows.find(f => f.name === flowName);
+    setSelectedFlow(flow || null);
+    setFormData({ ...formData, flowName });
+
+    if (flow) {
+      // Add flow variables to the variables list (marked as flow variables)
+      const flowVars: Variable[] = flow.vars.map(v => ({
+        variableName: v.name,
+        displayName: v.name.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+        description: `Flow variable (${v.type})`,
+        isRequired: true,
+        isFlowVariable: true,
+        variableType: v.type,
+      }));
+      
+      // Keep user-created variables, replace flow variables
+      const userVars = variables.filter(v => !v.isFlowVariable);
+      setVariables([...flowVars, ...userVars]);
+    }
+  };
+
+  const handleAddVariable = () => {
+    if (!newVariableName.trim()) return;
+    
+    // Check if variable already exists
+    if (variables.some(v => v.variableName === newVariableName.trim())) {
+      alert('Variable already exists');
+      return;
+    }
+
+    const newVar: Variable = {
+      variableName: newVariableName.trim(),
+      displayName: newVariableName.trim().replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+      isRequired: false,
+      isFlowVariable: false,
+      variableType: 'text',
+    };
+
+    setVariables([...variables, newVar]);
+    setNewVariableName('');
+  };
+
+  const handleRemoveVariable = (variableName: string) => {
+    // Don't allow removing flow variables
+    const variable = variables.find(v => v.variableName === variableName);
+    if (variable?.isFlowVariable) {
+      alert('Cannot remove flow variables');
+      return;
+    }
+    setVariables(variables.filter(v => v.variableName !== variableName));
+  };
+
+  const handleVariableDragStart = (e: React.DragEvent, variableName: string) => {
+    e.dataTransfer.setData('text/plain', `{{${variableName}}}`);
+    e.dataTransfer.effectAllowed = 'copy';
   };
 
   const extractVariables = (content: string): string[] => {
@@ -94,19 +183,33 @@ export const Prompts: React.FC = () => {
     if (value !== undefined) {
       setFormData({ ...formData, content: value });
       
-      // Auto-detect variables
-      const detectedVars = extractVariables(value);
-      const newVariables = detectedVars.map(varName => {
-        // Check if variable already exists
-        const existing = variables.find(v => v.variableName === varName);
-        return existing || {
+      // Auto-detect variables from content
+      const detectedVarNames = extractVariables(value);
+      
+      // Keep all flow variables (they're mandatory regardless of content)
+      const flowVars = variables.filter(v => v.isFlowVariable);
+      
+      // Process detected variables
+      const contentVars: Variable[] = [];
+      detectedVarNames.forEach(varName => {
+        // Skip if it's already a flow variable
+        if (flowVars.some(v => v.variableName === varName)) {
+          return;
+        }
+        
+        // Check if it already exists as a custom variable
+        const existing = variables.find(v => v.variableName === varName && !v.isFlowVariable);
+        contentVars.push(existing || {
           variableName: varName,
           displayName: varName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
           isRequired: true,
+          isFlowVariable: false,
           variableType: 'text',
-        };
+        });
       });
-      setVariables(newVariables);
+      
+      // Combine flow variables with detected content variables
+      setVariables([...flowVars, ...contentVars]);
     }
   };
 
@@ -167,19 +270,31 @@ export const Prompts: React.FC = () => {
       description: '',
       content: '',
       category: '',
+      flowName: '',
       isActive: true,
     });
     setVariables([]);
+    setSelectedFlow(null);
     setShowForm(true);
   };
 
   const handleEdit = (prompt: Prompt) => {
     setEditingPrompt(prompt);
+    
+    // Find and set the flow if prompt has one
+    if (prompt.flowName) {
+      const flow = flows.find(f => f.name === prompt.flowName);
+      setSelectedFlow(flow || null);
+    } else {
+      setSelectedFlow(null);
+    }
+    
     setFormData({
       name: prompt.name,
       description: prompt.description || '',
       content: prompt.content,
       category: prompt.category || '',
+      flowName: prompt.flowName || '',
       isActive: prompt.isActive,
     });
     setVariables(prompt.variables);
@@ -197,6 +312,7 @@ export const Prompts: React.FC = () => {
           displayName: v.displayName,
           description: v.description || '',
           isRequired: v.isRequired,
+          isFlowVariable: v.isFlowVariable,
           defaultValue: v.defaultValue || '',
           variableType: v.variableType,
         })),
@@ -333,193 +449,197 @@ export const Prompts: React.FC = () => {
     return (
       <>
         {importModal}
-      <div className="h-screen flex flex-col max-w-7xl mx-auto p-6">
-        <div className="flex items-center justify-between mb-6 flex-shrink-0">
+      <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
+        {/* Compact Header */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-shrink-0 bg-white shadow-sm">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-gray-900">
               {editingPrompt ? 'Edit Prompt' : 'Create New Prompt'}
             </h1>
-            <p className="text-gray-600 mt-1">
-              Use <code className="bg-gray-100 px-2 py-1 rounded">{'{{variable_name}}'}</code> for placeholders
+            <p className="text-sm text-gray-600">
+              Use <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">{'{{variable_name}}'}</code> for placeholders
             </p>
           </div>
           <div className="flex gap-2">
             <Button
               onClick={handleImportClick}
               variant="outline"
+              size="sm"
+              className="text-sm py-1.5 px-3"
               title="Import from .md or .txt file"
             >
-              <UploadIcon className="w-4 h-4 mr-2" />
+              <UploadIcon className="w-3.5 h-3.5 mr-1.5" />
               Import
             </Button>
             <Button
               onClick={handleExport}
               variant="outline"
+              size="sm"
+              className="text-sm py-1.5 px-3"
               disabled={!formData.content}
               title="Export to .md file"
             >
-              <Download className="w-4 h-4 mr-2" />
+              <Download className="w-3.5 h-3.5 mr-1.5" />
               Export
             </Button>
             <Button
               onClick={() => setShowForm(false)}
               variant="outline"
+              size="sm"
+              className="text-sm py-1.5 px-3"
             >
-              <X className="w-4 h-4 mr-2" />
+              <X className="w-3.5 h-3.5 mr-1.5" />
               Cancel
             </Button>
             <Button
               onClick={handleSave}
               disabled={saving || !formData.name || !formData.content}
-              className="bg-primary-600 hover:bg-primary-700"
+              size="sm"
+              className="bg-primary-600 hover:bg-primary-700 text-sm py-1.5 px-3"
             >
-              <Save className="w-4 h-4 mr-2" />
+              <Save className="w-3.5 h-3.5 mr-1.5" />
               {saving ? 'Saving...' : 'Save Prompt'}
             </Button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-auto min-h-0 space-y-4">
-          <Card title="Prompt Details">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Prompt Name *
-                  </label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., Contract Analysis Prompt"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category
-                  </label>
-                  <Input
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    placeholder="e.g., Contract, Data Analysis"
-                  />
-                </div>
-              </div>
+        {/* Form Fields - Compact */}
+        <div className="px-6 py-3 border-b border-gray-200 flex-shrink-0 bg-white">
+          <div className="grid grid-cols-4 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Prompt Name *
+              </label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Contract Analysis"
+                className="text-sm bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <Input
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                placeholder="e.g., Analysis"
+                className="text-sm bg-white"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <Input
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Brief description"
+                className="text-sm bg-white"
+              />
+            </div>
+          </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            {/* Flow Selection */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Flow
+              </label>
+              <select
+                value={formData.flowName}
+                onChange={(e) => handleFlowSelect(e.target.value)}
+                className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">Select a flow...</option>
+                {flows.map((flow) => (
+                  <option key={flow.name} value={flow.name}>
+                    {flow.name} - {flow.description}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Variable Management */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Variables
+              </label>
+              <div className="flex items-center gap-2">
                 <Input
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Brief description of what this prompt does"
+                  value={newVariableName}
+                  onChange={(e) => setNewVariableName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddVariable()}
+                  placeholder="Add variable"
+                  className="flex-1 text-sm bg-white"
                 />
-              </div>
-
-              <div className="flex flex-col" style={{ height: 'calc(100vh - 500px)', minHeight: '400px' }}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Prompt Content * (Markdown)
-                </label>
-                <div data-color-mode="light" className="flex-1">
-                  <MDEditor
-                    value={formData.content}
-                    onChange={handleContentChange}
-                    height="100%"
-                    preview="edit"
-                  />
-                </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Variables detected: {variables.length > 0 ? variables.map(v => v.variableName).join(', ') : 'None'}
-                </p>
+                <Button
+                  onClick={handleAddVariable}
+                  variant="outline"
+                  size="sm"
+                  className="px-2"
+                  disabled={!newVariableName.trim()}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </Button>
               </div>
             </div>
-          </Card>
+          </div>
 
-          {variables.length > 0 && (
-            <Card title="Variables Configuration">
-            <div className="space-y-4">
-              {variables.map((variable, index) => (
-                <div key={index} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Variable Name
-                      </label>
-                      <Input
-                        value={variable.variableName}
-                        disabled
-                        className="bg-gray-100"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Display Name
-                      </label>
-                      <Input
-                        value={variable.displayName}
-                        onChange={(e) => {
-                          const newVars = [...variables];
-                          newVars[index].displayName = e.target.value;
-                          setVariables(newVars);
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Type
-                      </label>
-                      <select
-                        value={variable.variableType}
-                        onChange={(e) => {
-                          const newVars = [...variables];
-                          newVars[index].variableType = e.target.value;
-                          setVariables(newVars);
-                        }}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                      >
-                        <option value="text">Text</option>
-                        <option value="file">File</option>
-                        <option value="number">Number</option>
-                        <option value="json">JSON</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Description
-                      </label>
-                      <Input
-                        value={variable.description || ''}
-                        onChange={(e) => {
-                          const newVars = [...variables];
-                          newVars[index].description = e.target.value;
-                          setVariables(newVars);
-                        }}
-                        placeholder="Optional description"
-                      />
-                    </div>
-                    <div>
-                      <label className="flex items-center mt-8">
-                        <input
-                          type="checkbox"
-                          checked={variable.isRequired}
-                          onChange={(e) => {
-                            const newVars = [...variables];
-                            newVars[index].isRequired = e.target.checked;
-                            setVariables(newVars);
-                          }}
-                          className="mr-2"
-                        />
-                        <span className="text-sm font-medium text-gray-700">Required</span>
-                      </label>
-                    </div>
-                  </div>
+          {/* Variables List */}
+          <div className="mt-2 flex flex-wrap gap-1.5 min-h-[24px]">
+            {variables.length === 0 ? (
+              <p className="text-xs text-gray-500 italic">No variables. Add variables or select a flow.</p>
+            ) : (
+              variables.map((variable) => (
+                <div
+                  key={variable.variableName}
+                  draggable={true}
+                  onDragStart={(e) => handleVariableDragStart(e, variable.variableName)}
+                  title={variable.description || variable.displayName}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border cursor-move text-xs font-medium transition-colors ${
+                    variable.isFlowVariable
+                      ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                      : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span>{variable.variableName}</span>
+                  {!variable.isFlowVariable && (
+                    <button
+                      onClick={() => handleRemoveVariable(variable.variableName)}
+                      className="hover:text-red-600 transition-colors"
+                      title="Remove variable"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
-              ))}
-            </div>
-            </Card>
-          )}
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Markdown Editor - Takes Remaining Space */}
+        <div className="flex-1 flex flex-col min-h-0 px-6 py-3 bg-white border-b border-gray-200">
+          <label className="block text-xs font-medium text-gray-700 mb-2">
+            Prompt Content * (Markdown) - 💡 Drag variables above into editor
+          </label>
+          <div data-color-mode="light" className="flex-1 min-h-0 border border-gray-200 rounded-lg overflow-hidden">
+            <MDEditor
+              value={formData.content}
+              onChange={handleContentChange}
+              height="100%"
+              preview="edit"
+            />
+          </div>
+        </div>
+
+        {/* Fixed Bottom - Variables Detected */}
+        <div className="px-6 py-2 border-t border-gray-200 flex-shrink-0 bg-gray-50">
+          <p className="text-xs text-gray-600">
+            <span className="font-medium">Variables detected:</span> {variables.length > 0 ? variables.map(v => v.variableName).join(', ') : 'None'}
+          </p>
         </div>
       </div>
       </>
@@ -529,7 +649,7 @@ export const Prompts: React.FC = () => {
   return (
     <>
       {importModal}
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Prompt Library</h1>

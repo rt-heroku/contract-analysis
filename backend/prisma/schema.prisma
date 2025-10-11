@@ -299,6 +299,7 @@ model Prompt {
   isActive    Boolean   @default(true) @map("is_active")
   isDefault   Boolean   @default(false) @map("is_default")
   category    String?   @db.VarChar(100)
+  flowName    String?   @map("flow_name") @db.VarChar(100)
   createdBy   Int       @map("created_by")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -309,18 +310,20 @@ model Prompt {
   @@index([createdBy])
   @@index([isActive])
   @@index([isDefault])
+  @@index([flowName])
   @@map("prompts")
 }
 
 model PromptVariable {
-  id           Int     @id @default(autoincrement())
-  promptId     Int     @map("prompt_id")
-  variableName String  @map("variable_name") @db.VarChar(100)
-  displayName  String  @map("display_name") @db.VarChar(200)
-  description  String? @db.Text
-  isRequired   Boolean @default(false) @map("is_required")
-  defaultValue String? @map("default_value") @db.Text
-  variableType String  @default("text") @map("variable_type") @db.VarChar(50)
+  id             Int     @id @default(autoincrement())
+  promptId       Int     @map("prompt_id")
+  variableName   String  @map("variable_name") @db.VarChar(100)
+  displayName    String  @map("display_name") @db.VarChar(200)
+  description    String? @db.Text
+  isRequired     Boolean @default(false) @map("is_required")
+  isFlowVariable Boolean @default(false) @map("is_flow_variable")
+  defaultValue   String? @map("default_value") @db.Text
+  variableType   String  @default("text") @map("variable_type") @db.VarChar(50)
 
   prompt Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
 

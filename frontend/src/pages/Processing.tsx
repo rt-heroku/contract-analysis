@@ -53,7 +53,8 @@ export const Processing: React.FC = () => {
     const fetchPrompts = async () => {
       try {
         const response = await api.get('/prompts');
-        const activePrompts = response.data.filter((p: Prompt) => p.isActive);
+        const allPrompts = response.data.prompts || [];
+        const activePrompts = allPrompts.filter((p: Prompt) => p.isActive);
         setPrompts(activePrompts);
 
         // Auto-select default prompt or the only prompt

@@ -12,7 +12,7 @@ class AnalysisController {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const { contractUploadId, dataUploadId } = req.body;
+      const { contractUploadId, dataUploadId, prompt, variables } = req.body;
 
       if (!contractUploadId || !dataUploadId) {
         return res.status(400).json({
@@ -23,7 +23,9 @@ class AnalysisController {
       const result = await documentService.startProcessing(
         req.user.id,
         parseInt(contractUploadId),
-        parseInt(dataUploadId)
+        parseInt(dataUploadId),
+        prompt,
+        variables
       );
 
       if (!result.success) {

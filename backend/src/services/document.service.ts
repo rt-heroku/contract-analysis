@@ -12,7 +12,9 @@ class DocumentService {
   async startProcessing(
     userId: number,
     contractUploadId: number,
-    dataUploadId: number
+    dataUploadId: number,
+    prompt?: { id: number; name: string },
+    variables?: Record<string, any>
   ): Promise<ProcessingResult> {
     try {
       // Get uploads to retrieve jobId
@@ -37,7 +39,7 @@ class DocumentService {
       });
 
       // Start processing asynchronously
-      this.processDocuments(userId, contractUploadId, dataUploadId, analysisRecord.id, contractUpload.jobId)
+      this.processDocuments(userId, contractUploadId, dataUploadId, analysisRecord.id, contractUpload.jobId, prompt, variables)
         .catch((error) => {
           logger.error('Document processing failed:', error);
         });
@@ -63,7 +65,9 @@ class DocumentService {
     contractUploadId: number,
     dataUploadId: number,
     analysisRecordId: number,
-    jobId: string
+    jobId: string,
+    prompt?: { id: number; name: string },
+    variables?: Record<string, any>
   ): Promise<void> {
     try {
       // Get upload files
@@ -115,13 +119,18 @@ class DocumentService {
       // Step 2: Analyze data with contract context
       logger.info(`[Step 2/2] Running final analysis for jobId: ${jobId}`);
       logger.info(`Passing contract result to /analyze endpoint`);
+      if (prompt) {
+        logger.info(`Using prompt: ${prompt.name} (ID: ${prompt.id})`);
+      }
       let dataResult;
       try {
         dataResult = await muleSoftService.analyzeDataFile(
           jobId,
           userId,
           contractAnalysis.id,
-          contractResult
+          contractResult,
+          prompt,
+          variables
         );
         logger.info(`[Step 2/2] Analysis successful for jobId: ${jobId}`);
       } catch (error: any) {

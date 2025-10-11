@@ -111,7 +111,7 @@ class PromptController {
         return;
       }
 
-      const { name, description, content, category, variables } = req.body;
+      const { name, description, content, category, flowName, variables } = req.body;
 
       if (!name || !content) {
         res.status(400).json({ error: 'Name and content are required' });
@@ -128,12 +128,14 @@ class PromptController {
           description,
           content,
           category,
+          flowName,
           createdBy: req.user.id,
           variables: {
             create: variables || extractedVars.map((varName: string) => ({
               variableName: varName,
               displayName: varName.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
               isRequired: true,
+              isFlowVariable: false,
               variableType: 'text',
             })),
           },
@@ -168,7 +170,7 @@ class PromptController {
       }
 
       const { id } = req.params;
-      const { name, description, content, category, isActive, variables } = req.body;
+      const { name, description, content, category, flowName, isActive, variables } = req.body;
 
       // Check if prompt exists
       const existingPrompt = await prisma.prompt.findUnique({
@@ -187,6 +189,7 @@ class PromptController {
       if (description !== undefined) updateData.description = description;
       if (content !== undefined) updateData.content = content;
       if (category !== undefined) updateData.category = category;
+      if (flowName !== undefined) updateData.flowName = flowName;
       if (isActive !== undefined) updateData.isActive = isActive;
 
       // If content changed, update variables

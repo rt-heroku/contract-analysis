@@ -123,10 +123,48 @@ class MuleSoftService {
     jobId: string,
     userId?: number,
     analysisId?: number,
-    contractResult?: MuleSoftContractResponse
+    contractResult?: MuleSoftContractResponse,
+    prompt?: { id: number; name: string },
+    variables?: Record<string, any>
   ): Promise<MuleSoftDataResponse> {
     const config = await getMuleSoftConfig();
     const endpoint = config.endpoints.analyzeData;
+
+    // Build request body in new format
+    const requestBody: any = {
+      job_id: jobId,
+    };
+
+    // Add prompt if provided
+    if (prompt) {
+      requestBody.prompt = {
+        id: prompt.id,
+        name: prompt.name,
+      };
+    }
+
+    // Build variables array
+    const variablesArray: Array<{ name: string; value: any }> = [];
+    
+    // Add contract as a variable if provided
+    if (contractResult) {
+      variablesArray.push({
+        name: 'contract',
+        value: contractResult,
+      });
+    }
+
+    // Add additional variables if provided
+    if (variables) {
+      Object.entries(variables).forEach(([name, value]) => {
+        // Don't duplicate contract if already added
+        if (name !== 'contract' || !contractResult) {
+          variablesArray.push({ name, value });
+        }
+      });
+    }
+
+    requestBody.variables = variablesArray;
 
     return this.makeRequest<MuleSoftDataResponse>(
       endpoint,
@@ -135,7 +173,7 @@ class MuleSoftService {
       jobId,
       'contract_analysis',
       analysisId,
-      contractResult
+      requestBody
     );
   }
 
