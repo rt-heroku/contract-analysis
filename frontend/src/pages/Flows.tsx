@@ -304,7 +304,7 @@ export const Flows: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="absolute inset-0 -m-4 -mt-6 -mb-2 flex flex-col">
       {/* Top Bar */}
       <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4 flex-1">
