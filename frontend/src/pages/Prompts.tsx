@@ -449,9 +449,9 @@ export const Prompts: React.FC = () => {
     return (
       <>
         {importModal}
-      <div className="flex flex-col overflow-hidden" style={{ height: 'calc(100vh - 64px)' }}>
+      <div className="flex flex-col overflow-hidden bg-white rounded-lg shadow-sm" style={{ height: 'calc(100vh - 96px)' }}>
         {/* Compact Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-shrink-0 bg-white shadow-sm">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-shrink-0">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               {editingPrompt ? 'Edit Prompt' : 'Create New Prompt'}
@@ -504,7 +504,7 @@ export const Prompts: React.FC = () => {
         </div>
 
         {/* Form Fields - Compact */}
-        <div className="px-6 py-3 border-b border-gray-200 flex-shrink-0 bg-white">
+        <div className="px-6 py-3 border-b border-gray-200 flex-shrink-0">
           <div className="grid grid-cols-4 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -621,7 +621,7 @@ export const Prompts: React.FC = () => {
         </div>
 
         {/* Markdown Editor - Takes Remaining Space */}
-        <div className="flex-1 flex flex-col min-h-0 px-6 py-3 bg-white border-b border-gray-200">
+        <div className="flex-1 flex flex-col min-h-0 px-6 py-3 border-b border-gray-200">
           <label className="block text-xs font-medium text-gray-700 mb-2">
             Prompt Content * (Markdown) - 💡 Drag variables above into editor
           </label>

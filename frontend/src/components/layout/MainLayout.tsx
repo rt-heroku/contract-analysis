@@ -26,7 +26,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar />
         <main className="flex-1 overflow-y-auto">
-          <div className="container mx-auto px-6 py-8">
+          <div className="container mx-auto px-4 pt-6 pb-2">
             {children}
           </div>
         </main>

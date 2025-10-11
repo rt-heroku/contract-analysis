@@ -10,6 +10,7 @@ import settingsRoutes from './settings.routes';
 import promptRoutes from './prompt.routes';
 import dashboardRoutes from './dashboard.routes';
 import flowRoutes from './flow.routes';
+import flowEditorRoutes from './flowEditor.routes';
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.use('/settings', settingsRoutes);
 router.use('/prompts', promptRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/flows', flowRoutes);
+router.use('/flow-editor', flowEditorRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {

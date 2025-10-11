@@ -43,6 +43,7 @@ model User {
   apiLogs         ApiLog[]
   deletedRecords  AnalysisRecord[] @relation("DeletedBy")
   prompts         Prompt[]
+  flows           Flow[]
 
   @@map("users")
 }
@@ -329,5 +330,23 @@ model PromptVariable {
 
   @@index([promptId])
   @@map("prompt_variables")
+}
+
+model Flow {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(200)
+  description String?  @db.Text
+  flowData    String   @map("flow_data") @db.Text // JSON string of nodes and edges
+  isActive    Boolean  @default(true) @map("is_active")
+  category    String?  @db.VarChar(100)
+  createdBy   Int      @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  creator User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([createdBy])
+  @@index([isActive])
+  @@map("flows")
 }
 

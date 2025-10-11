@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Loading } from '@/components/common/Loading';
 import { Badge } from '@/components/common/Badge';
-import { FileText, Download, Eye, Search, Calendar } from 'lucide-react';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { AlertDialog } from '@/components/common/AlertDialog';
+import { FileText, Download, Eye, Search, Calendar, RefreshCw, Trash2 } from 'lucide-react';
 import { Input } from '@/components/common/Input';
 
 interface Upload {
+  id: number;
   filename: string;
   createdAt: string;
 }
@@ -19,6 +23,8 @@ interface Analysis {
   status: string;
   createdAt: string;
   updatedAt: string;
+  contractUploadId: number;
+  dataUploadId: number;
   contractUpload: Upload;
   dataUpload: Upload;
   contractAnalysis?: {
@@ -35,6 +41,7 @@ interface Pagination {
 
 export const History: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -45,6 +52,37 @@ export const History: React.FC = () => {
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [searchDebounce, setSearchDebounce] = useState('');
+  const [rerunningId, setRerunningId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  
+  // Dialog states
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+  
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+  
+  // Check if user is admin
+  const isAdmin = user?.roles?.some((r: string) => r.toLowerCase() === 'admin');
 
   // Debounce search
   useEffect(() => {
@@ -112,6 +150,70 @@ export const History: React.FC = () => {
     } catch (error) {
       console.error('Failed to download file:', error);
     }
+  };
+
+  const handleRerunAnalysis = async (analysis: Analysis) => {
+    try {
+      setRerunningId(analysis.id);
+      
+      // Start a new analysis with the same files
+      const response = await api.post('/analysis/start', {
+        contractUploadId: analysis.contractUploadId,
+        dataUploadId: analysis.dataUploadId,
+      });
+
+      if (response.data.analysisRecordId) {
+        // Navigate to the new analysis details page
+        navigate(`/analysis/${response.data.analysisRecordId}`);
+      }
+    } catch (error: any) {
+      console.error('Failed to rerun analysis:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Rerun Failed',
+        message: error.response?.data?.error || 'Failed to rerun analysis. Please try again.',
+        type: 'error',
+      });
+    } finally {
+      setRerunningId(null);
+    }
+  };
+
+  const handleDeleteAnalysis = (analysisId: number) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Analysis',
+      message: 'Are you sure you want to delete this analysis? All of your data will be permanently removed. This action cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          setDeletingId(analysisId);
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+          
+          await api.delete(`/analysis/${analysisId}`);
+          
+          // Refresh the list after deletion
+          fetchHistory();
+          
+          setAlertDialog({
+            isOpen: true,
+            title: 'Analysis Deleted',
+            message: 'The analysis has been successfully deleted.',
+            type: 'success',
+          });
+        } catch (error: any) {
+          console.error('Failed to delete analysis:', error);
+          setAlertDialog({
+            isOpen: true,
+            title: 'Deletion Failed',
+            message: error.response?.data?.error || 'Failed to delete analysis. Please try again.',
+            type: 'error',
+          });
+        } finally {
+          setDeletingId(null);
+        }
+      },
+    });
   };
 
   const handlePageChange = (newPage: number) => {
@@ -262,7 +364,7 @@ export const History: React.FC = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="ml-4">
+                <div className="ml-4 flex flex-col gap-2">
                   <Button
                     onClick={() => handleViewAnalysis(analysis.id)}
                     className="bg-primary-600 hover:bg-primary-700 flex items-center gap-2"
@@ -270,6 +372,24 @@ export const History: React.FC = () => {
                     <Eye className="w-4 h-4" />
                     View Details
                   </Button>
+                  <Button
+                    onClick={() => handleRerunAnalysis(analysis)}
+                    disabled={rerunningId === analysis.id}
+                    className="bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 disabled:bg-green-400 disabled:opacity-100 flex items-center gap-2"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${rerunningId === analysis.id ? 'animate-spin' : ''}`} />
+                    {rerunningId === analysis.id ? 'Re-running...' : 'Re-run Analysis'}
+                  </Button>
+                  {isAdmin && (
+                    <Button
+                      onClick={() => handleDeleteAnalysis(analysis.id)}
+                      disabled={deletingId === analysis.id}
+                      className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:bg-red-400 disabled:opacity-100 flex items-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {deletingId === analysis.id ? 'Deleting...' : 'Delete'}
+                    </Button>
+                  )}
                 </div>
               </div>
             </Card>
@@ -309,6 +429,27 @@ export const History: React.FC = () => {
           </div>
         </Card>
       )}
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        confirmText="Delete"
+        isLoading={deletingId !== null}
+      />
+
+      {/* Alert Dialog */}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+      />
     </div>
   );
 };
