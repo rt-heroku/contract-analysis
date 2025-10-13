@@ -152,6 +152,29 @@ class UploadController {
       res.status(400).json({ error: error.message });
     }
   }
+
+  async getUploadsByJobId(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { jobId } = req.params;
+
+      if (!jobId) {
+        return res.status(400).json({ error: 'Job ID is required' });
+      }
+
+      const uploads = await fileService.getUploadsByJobId(jobId, req.user.id);
+
+      // Remove base64 content from response
+      const uploadsWithoutContent = uploads.map(({ fileContentBase64, ...upload }) => upload);
+
+      res.json({ uploads: uploadsWithoutContent });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
 }
 
 export default new UploadController();

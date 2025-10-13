@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
@@ -7,7 +7,7 @@ import { Button } from '@/components/common/Button';
 import { Modal } from '@/components/common/Modal';
 import { Loading } from '@/components/common/Loading';
 import { Input } from '@/components/common/Input';
-import { FileText, Upload, X, CheckCircle, Search, AlertCircle } from 'lucide-react';
+import { FileText, Upload, X, CheckCircle, Search, AlertCircle, Trash2 } from 'lucide-react';
 import { validateFileType, validateFileSize } from '@/utils/validation';
 import { formatFileSize } from '@/utils/helpers';
 
@@ -32,10 +32,22 @@ interface Prompt {
   variables: PromptVariable[];
 }
 
+interface ExistingUpload {
+  id: number;
+  filename: string;
+  uploadType: 'contract' | 'data';
+  jobId: string;
+  createdAt: string;
+}
+
 export const Processing: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [dataFile, setDataFile] = useState<File | null>(null);
+  const [existingContractUpload, setExistingContractUpload] = useState<ExistingUpload | null>(null);
+  const [existingDataUpload, setExistingDataUpload] = useState<ExistingUpload | null>(null);
+  const [loadingExistingUploads, setLoadingExistingUploads] = useState(false);
   // const [uploading, setUploading] = useState(false); // Unused for now
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
@@ -78,6 +90,50 @@ export const Processing: React.FC = () => {
     };
     fetchPrompts();
   }, []);
+
+  // Load existing uploads if jobId is provided in URL
+  useEffect(() => {
+    const jobId = searchParams.get('jobId');
+    if (jobId) {
+      loadExistingUploads(jobId);
+    }
+  }, [searchParams]);
+
+  const loadExistingUploads = async (jobId: string) => {
+    try {
+      setLoadingExistingUploads(true);
+      const response = await api.get(`/uploads/by-job/${jobId}`);
+      const uploads = response.data.uploads || [];
+
+      // Find contract and data uploads
+      const contractUpload = uploads.find((u: ExistingUpload) => u.uploadType === 'contract');
+      const dataUpload = uploads.find((u: ExistingUpload) => u.uploadType === 'data');
+
+      if (contractUpload) {
+        setExistingContractUpload(contractUpload);
+      }
+      if (dataUpload) {
+        setExistingDataUpload(dataUpload);
+      }
+    } catch (error) {
+      console.error('Failed to load existing uploads:', error);
+    } finally {
+      setLoadingExistingUploads(false);
+    }
+  };
+
+  const handleRemoveExistingUpload = async (uploadId: number, type: 'contract' | 'data') => {
+    try {
+      await api.delete(`/uploads/${uploadId}`);
+      if (type === 'contract') {
+        setExistingContractUpload(null);
+      } else {
+        setExistingDataUpload(null);
+      }
+    } catch (error: any) {
+      setError(error.response?.data?.error || 'Failed to remove file');
+    }
+  };
 
   // Initialize variable values with defaults when prompt is selected
   useEffect(() => {
@@ -182,7 +238,11 @@ export const Processing: React.FC = () => {
   });
 
   const handleProcess = async () => {
-    if (!contractFile || !dataFile) {
+    // Check if we have either new files or existing uploads
+    const hasContract = contractFile || existingContractUpload;
+    const hasData = dataFile || existingDataUpload;
+
+    if (!hasContract || !hasData) {
       setError('Please upload both contract and data files');
       return;
     }
@@ -196,36 +256,59 @@ export const Processing: React.FC = () => {
     setError('');
 
     try {
-      // Upload contract file (generates jobId)
-      setProcessingStatus('Uploading contract...');
-      const contractFormData = new FormData();
-      contractFormData.append('file', contractFile);
-      contractFormData.append('uploadType', 'contract');
-      
-      const contractUploadRes = await api.post('/uploads', contractFormData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      let contractUploadId: number;
+      let dataUploadId: number;
+      let jobId: string;
 
-      // Get the jobId from the contract upload response
-      const jobId = contractUploadRes.data.upload.jobId;
+      // Upload contract file if new, otherwise use existing
+      if (contractFile) {
+        setProcessingStatus('Uploading contract...');
+        const contractFormData = new FormData();
+        contractFormData.append('file', contractFile);
+        contractFormData.append('uploadType', 'contract');
+        
+        // If we have an existing data upload, use its jobId
+        if (existingDataUpload) {
+          contractFormData.append('jobId', existingDataUpload.jobId);
+        }
+        
+        const contractUploadRes = await api.post('/uploads', contractFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        
+        contractUploadId = contractUploadRes.data.upload.id;
+        jobId = contractUploadRes.data.upload.jobId;
+      } else {
+        // Use existing contract upload
+        contractUploadId = existingContractUpload!.id;
+        jobId = existingContractUpload!.jobId;
+      }
+
       console.log('📝 Job ID for this session:', jobId);
 
-      // Upload data file WITH THE SAME jobId
-      setProcessingStatus('Uploading data file...');
-      const dataFormData = new FormData();
-      dataFormData.append('file', dataFile);
-      dataFormData.append('uploadType', 'data');
-      dataFormData.append('jobId', jobId); // ✅ Pass the same jobId
-      
-      const dataUploadRes = await api.post('/uploads', dataFormData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      // Upload data file if new, otherwise use existing
+      if (dataFile) {
+        setProcessingStatus('Uploading data file...');
+        const dataFormData = new FormData();
+        dataFormData.append('file', dataFile);
+        dataFormData.append('uploadType', 'data');
+        dataFormData.append('jobId', jobId); // ✅ Pass the same jobId
+        
+        const dataUploadRes = await api.post('/uploads', dataFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        
+        dataUploadId = dataUploadRes.data.upload.id;
+      } else {
+        // Use existing data upload
+        dataUploadId = existingDataUpload!.id;
+      }
 
       // Start processing
       setProcessingStatus('Starting document processing...');
       const processPayload: any = {
-        contractUploadId: contractUploadRes.data.upload.id,
-        dataUploadId: dataUploadRes.data.upload.id,
+        contractUploadId,
+        dataUploadId,
       };
 
       // Include prompt data if selected
@@ -264,94 +347,150 @@ export const Processing: React.FC = () => {
 
       {/* Contract Upload */}
       <Card title="Step 1: Upload Contract PDF">
-        <div
-          {...contractDropzone.getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-            contractDropzone.isDragActive
-              ? 'border-primary-500 bg-primary-50'
-              : 'border-gray-300 hover:border-primary-400'
-          }`}
-        >
-          <input {...contractDropzone.getInputProps()} />
-          {contractFile ? (
+        {existingContractUpload && !contractFile ? (
+          <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-blue-600" />
                 </div>
                 <div className="text-left">
-                  <p className="font-medium text-gray-900">{contractFile.name}</p>
-                  <p className="text-sm text-gray-500">{formatFileSize(contractFile.size)}</p>
+                  <p className="font-medium text-gray-900">{existingContractUpload.filename}</p>
+                  <p className="text-sm text-blue-600">Existing file from previous upload</p>
                 </div>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setContractFile(null);
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              <Button
+                onClick={() => handleRemoveExistingUpload(existingContractUpload.id, 'contract')}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
               >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
+                <Trash2 className="w-4 h-4" />
+                Remove
+              </Button>
             </div>
-          ) : (
-            <>
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-700 font-medium">
-                Drop your contract PDF here, or click to browse
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Supports PDF files up to 10MB
-              </p>
-            </>
-          )}
-        </div>
+            <p className="text-sm text-gray-600 mt-2">
+              This file will be used unless you upload a new one
+            </p>
+          </div>
+        ) : (
+          <div
+            {...contractDropzone.getRootProps()}
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+              contractDropzone.isDragActive
+                ? 'border-primary-500 bg-primary-50'
+                : 'border-gray-300 hover:border-primary-400'
+            }`}
+          >
+            <input {...contractDropzone.getInputProps()} />
+            {contractFile ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-gray-900">{contractFile.name}</p>
+                    <p className="text-sm text-gray-500">{formatFileSize(contractFile.size)}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setContractFile(null);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-700 font-medium">
+                  Drop your contract PDF here, or click to browse
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Supports PDF files up to 10MB
+                </p>
+              </>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Data Upload */}
       <Card title="Step 2: Upload Data File (Excel/CSV)">
-        <div
-          {...dataDropzone.getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-            dataDropzone.isDragActive
-              ? 'border-primary-500 bg-primary-50'
-              : 'border-gray-300 hover:border-primary-400'
-          }`}
-        >
-          <input {...dataDropzone.getInputProps()} />
-          {dataFile ? (
+        {existingDataUpload && !dataFile ? (
+          <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Upload className="w-6 h-6 text-blue-600" />
                 </div>
                 <div className="text-left">
-                  <p className="font-medium text-gray-900">{dataFile.name}</p>
-                  <p className="text-sm text-gray-500">{formatFileSize(dataFile.size)}</p>
+                  <p className="font-medium text-gray-900">{existingDataUpload.filename}</p>
+                  <p className="text-sm text-blue-600">Existing file from previous upload</p>
                 </div>
               </div>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDataFile(null);
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              <Button
+                onClick={() => handleRemoveExistingUpload(existingDataUpload.id, 'data')}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
               >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
+                <Trash2 className="w-4 h-4" />
+                Remove
+              </Button>
             </div>
-          ) : (
-            <>
-              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-700 font-medium">
-                Drop your data file here, or click to browse
-              </p>
-              <p className="text-sm text-gray-500 mt-2">
-                Supports Excel (.xlsx) and CSV files up to 50MB
-              </p>
-            </>
-          )}
-        </div>
+            <p className="text-sm text-gray-600 mt-2">
+              This file will be used unless you upload a new one
+            </p>
+          </div>
+        ) : (
+          <div
+            {...dataDropzone.getRootProps()}
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+              dataDropzone.isDragActive
+                ? 'border-primary-500 bg-primary-50'
+                : 'border-gray-300 hover:border-primary-400'
+            }`}
+          >
+            <input {...dataDropzone.getInputProps()} />
+            {dataFile ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-gray-900">{dataFile.name}</p>
+                    <p className="text-sm text-gray-500">{formatFileSize(dataFile.size)}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDataFile(null);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-700 font-medium">
+                  Drop your data file here, or click to browse
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Supports Excel (.xlsx) and CSV files up to 50MB
+                </p>
+              </>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Prompt Selection (Optional) */}
@@ -507,7 +646,7 @@ export const Processing: React.FC = () => {
       <div className="flex gap-4">
         <Button
           onClick={handleProcess}
-          disabled={!contractFile || !dataFile || processing}
+          disabled={(!contractFile && !existingContractUpload) || (!dataFile && !existingDataUpload) || processing}
           isLoading={processing}
           size="lg"
         >

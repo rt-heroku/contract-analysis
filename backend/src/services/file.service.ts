@@ -70,6 +70,21 @@ class FileService {
       where,
     });
   }
+
+  /**
+   * Get uploads by jobId
+   */
+  async getUploadsByJobId(jobId: string, userId?: number) {
+    const where: any = { jobId };
+    if (userId) {
+      where.userId = userId;
+    }
+
+    return prisma.upload.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+    });
+  }
 }
 
 export default new FileService();

@@ -15,6 +15,7 @@ const upload = multer({
 
 router.post('/', authenticate, upload.single('file'), uploadController.uploadFile);
 router.get('/', authenticate, uploadController.getUserUploads);
+router.get('/by-job/:jobId', authenticate, uploadController.getUploadsByJobId);
 router.delete('/:id', authenticate, uploadController.deleteUpload);
 
 export default router;
