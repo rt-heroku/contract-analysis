@@ -91,7 +91,7 @@ class DocumentService {
         );
         logger.info(`[Step 1/2] Contract processing successful for jobId: ${jobId}`);
       } catch (error: any) {
-        logger.error(`[Step 1/2] Contract processing FAILED for jobId: ${jobId}. Stopping analysis.`, error.message);
+        logger.error(`[Step 1/2] Contract processing FAILED for jobId: ${jobId}. Stopping analysis.`, { error: error.message });
         throw error; // Re-throw to outer catch block
       }
 
@@ -134,7 +134,7 @@ class DocumentService {
         );
         logger.info(`[Step 2/2] Analysis successful for jobId: ${jobId}`);
       } catch (error: any) {
-        logger.error(`[Step 2/2] Analysis FAILED for jobId: ${jobId}`, error.message);
+        logger.error(`[Step 2/2] Analysis FAILED for jobId: ${jobId}`, { error: error.message });
         throw error; // Re-throw to outer catch block
       }
       // Save data analysis

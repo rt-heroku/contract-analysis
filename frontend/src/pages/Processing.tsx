@@ -313,8 +313,11 @@ export const Processing: React.FC = () => {
 
       // Include prompt data if selected
       if (selectedPrompt) {
-        processPayload.promptId = selectedPrompt.id;
-        processPayload.promptVariables = variableValues;
+        processPayload.prompt = {
+          id: selectedPrompt.id,
+          name: selectedPrompt.name,
+        };
+        processPayload.variables = variableValues;
       }
 
       const processRes = await api.post('/analysis/start', processPayload);
