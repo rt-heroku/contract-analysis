@@ -8,8 +8,22 @@ const CACHE_DURATION = 60000; // 1 minute
 
 /**
  * Get a specific setting value from database with caching
+ * 
+ * IMPORTANT: This function only retrieves the DATABASE value.
+ * For configuration priority order, use this pattern in your code:
+ * 
+ * Priority Order:
+ * 1. Property file (not implemented yet)
+ * 2. Database (system_settings table) ← This function returns this
+ * 3. Environment variables (should override DB) ← Check process.env AFTER calling this
+ * 
+ * Example usage:
+ * ```typescript
+ * const dbValue = await getSetting('my_setting', null);
+ * const finalValue = process.env.MY_SETTING || dbValue || 'default';
+ * ```
  */
-export async function getSetting(key: string, defaultValue?: string): Promise<string | null> {
+export async function getSetting(key: string, defaultValue?: string | null): Promise<string | null> {
   try {
     // Check if cache is valid
     const now = Date.now();

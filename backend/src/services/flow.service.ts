@@ -25,7 +25,9 @@ class FlowService {
    */
   async getFlows(): Promise<Flow[]> {
     try {
-      const mulesoftUrl = await getSetting('mulesoft_api_base_url');
+      // Priority: ENV var > Database > config default
+      const dbUrl = await getSetting('mulesoft_api_base_url', null);
+      const mulesoftUrl = process.env.MULESOFT_API_BASE_URL || dbUrl;
       
       if (!mulesoftUrl) {
         throw new Error('MuleSoft API URL not configured');

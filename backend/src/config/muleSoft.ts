@@ -13,19 +13,31 @@ export interface MuleSoftConfig {
 }
 
 /**
- * Get MuleSoft configuration from database settings (with fallback to env vars)
+ * Get MuleSoft configuration with proper priority order:
+ * 1. Property file (not implemented yet - skip)
+ * 2. Database (system_settings table)
+ * 3. Environment variables (overrides DB if present)
  */
 export async function getMuleSoftConfig(): Promise<MuleSoftConfig> {
-  const baseUrl = await getSetting('mulesoft_api_base_url', config.mulesoftApiBaseUrl);
-  const username = await getSetting('mulesoft_api_username', config.mulesoftApiUsername);
-  const password = await getSetting('mulesoft_api_password', config.mulesoftApiPassword);
-  const timeoutStr = await getSetting('mulesoft_api_timeout', config.mulesoftApiTimeout.toString());
+  // Get from database first
+  const dbBaseUrl = await getSetting('mulesoft_api_base_url', null);
+  const dbUsername = await getSetting('mulesoft_api_username', null);
+  const dbPassword = await getSetting('mulesoft_api_password', null);
+  const dbTimeoutStr = await getSetting('mulesoft_api_timeout', null);
+
+  // Environment variables override database values
+  const baseUrl = process.env.MULESOFT_API_BASE_URL || dbBaseUrl || config.mulesoftApiBaseUrl;
+  const username = process.env.MULESOFT_API_USERNAME || dbUsername || config.mulesoftApiUsername;
+  const password = process.env.MULESOFT_API_PASSWORD || dbPassword || config.mulesoftApiPassword;
+  const timeout = process.env.MULESOFT_API_TIMEOUT 
+    ? parseInt(process.env.MULESOFT_API_TIMEOUT, 10)
+    : (dbTimeoutStr ? parseInt(dbTimeoutStr, 10) : config.mulesoftApiTimeout);
 
   return {
-    baseUrl: baseUrl || config.mulesoftApiBaseUrl,
-    username: username || config.mulesoftApiUsername,
-    password: password || config.mulesoftApiPassword,
-    timeout: parseInt(timeoutStr || config.mulesoftApiTimeout.toString(), 10),
+    baseUrl,
+    username,
+    password,
+    timeout,
     endpoints: {
       processDocument: '/process/document',
       analyzeData: '/analyze',
