@@ -13,6 +13,9 @@ interface Setting {
   settingValue: string | null;
   description: string | null;
   isSecret: boolean;
+  hasEnvOverride?: boolean;
+  envValue?: string | null;
+  effectiveValue?: string | null;
 }
 
 export const Settings: React.FC = () => {
@@ -100,14 +103,21 @@ export const Settings: React.FC = () => {
     try {
       setSaving(true);
 
-      // Update each setting
-      for (const setting of settings) {
+      // Update each setting, but skip those overridden by ENV variables
+      const settingsToUpdate = settings.filter(s => !s.hasEnvOverride);
+      
+      for (const setting of settingsToUpdate) {
         await api.put(`/settings/${setting.settingKey}`, {
           settingValue: setting.settingValue,
         });
       }
 
-      setMessage({ type: 'success', text: 'Settings saved successfully!' });
+      const skippedCount = settings.length - settingsToUpdate.length;
+      const message = skippedCount > 0 
+        ? `Settings saved successfully! (${skippedCount} ENV-overridden settings skipped)`
+        : 'Settings saved successfully!';
+      
+      setMessage({ type: 'success', text: message });
       setTimeout(() => setMessage(null), 3000);
     } catch (error: any) {
       setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to save settings' });
@@ -211,15 +221,25 @@ export const Settings: React.FC = () => {
           {appSettings.map(setting => (
             setting.settingKey !== 'app_logo_url' && (
               <div key={setting.id}>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   {setting.settingKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  {setting.hasEnvOverride && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                      ENV
+                    </span>
+                  )}
                 </label>
                 <Input
-                  value={setting.settingValue || ''}
+                  value={setting.hasEnvOverride ? (setting.effectiveValue || '') : (setting.settingValue || '')}
                   onChange={(e) => handleSettingChange(setting.settingKey, e.target.value)}
                   placeholder={setting.description || ''}
+                  disabled={setting.hasEnvOverride}
+                  className={setting.hasEnvOverride ? 'bg-gray-50 cursor-not-allowed' : ''}
                 />
-                {setting.description && (
+                {setting.hasEnvOverride && (
+                  <p className="text-sm text-green-600 mt-1">This setting is overridden by an environment variable and cannot be changed here.</p>
+                )}
+                {setting.description && !setting.hasEnvOverride && (
                   <p className="text-sm text-gray-500 mt-1">{setting.description}</p>
                 )}
               </div>
@@ -240,14 +260,24 @@ export const Settings: React.FC = () => {
                     <Shield className="w-4 h-4 text-yellow-600" />
                   </span>
                 )}
+                {setting.hasEnvOverride && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                    ENV
+                  </span>
+                )}
               </label>
               <Input
                 type={setting.isSecret ? 'password' : 'text'}
-                value={setting.settingValue || ''}
+                value={setting.hasEnvOverride ? (setting.effectiveValue || '') : (setting.settingValue || '')}
                 onChange={(e) => handleSettingChange(setting.settingKey, e.target.value)}
                 placeholder={setting.description || ''}
+                disabled={setting.hasEnvOverride}
+                className={setting.hasEnvOverride ? 'bg-gray-50 cursor-not-allowed' : ''}
               />
-              {setting.description && (
+              {setting.hasEnvOverride && (
+                <p className="text-sm text-green-600 mt-1">This setting is overridden by an environment variable and cannot be changed here.</p>
+              )}
+              {setting.description && !setting.hasEnvOverride && (
                 <p className="text-sm text-gray-500 mt-1">{setting.description}</p>
               )}
             </div>
@@ -268,14 +298,24 @@ export const Settings: React.FC = () => {
                       <Shield className="w-4 h-4 text-yellow-600" />
                     </span>
                   )}
+                  {setting.hasEnvOverride && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                      ENV
+                    </span>
+                  )}
                 </label>
                 <Input
                   type={setting.isSecret ? 'password' : 'text'}
-                  value={setting.settingValue || ''}
+                  value={setting.hasEnvOverride ? (setting.effectiveValue || '') : (setting.settingValue || '')}
                   onChange={(e) => handleSettingChange(setting.settingKey, e.target.value)}
                   placeholder={setting.description || ''}
+                  disabled={setting.hasEnvOverride}
+                  className={setting.hasEnvOverride ? 'bg-gray-50 cursor-not-allowed' : ''}
                 />
-                {setting.description && (
+                {setting.hasEnvOverride && (
+                  <p className="text-sm text-green-600 mt-1">This setting is overridden by an environment variable and cannot be changed here.</p>
+                )}
+                {setting.description && !setting.hasEnvOverride && (
                   <p className="text-sm text-gray-500 mt-1">{setting.description}</p>
                 )}
               </div>

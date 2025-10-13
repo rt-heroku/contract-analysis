@@ -65,6 +65,7 @@ class SettingsController {
 
   /**
    * Get all settings (admin only, includes secrets)
+   * Includes information about ENV variable overrides
    */
   async getAllSettings(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -85,8 +86,28 @@ class SettingsController {
         return;
       }
 
-      const settings = await prisma.systemSetting.findMany({
+      const dbSettings = await prisma.systemSetting.findMany({
         orderBy: { settingKey: 'asc' },
+      });
+
+      // Map settings and check for ENV variable overrides
+      const envMapping: Record<string, string> = {
+        'mulesoft_api_base_url': 'MULESOFT_API_BASE_URL',
+        'mulesoft_api_username': 'MULESOFT_API_USERNAME',
+        'mulesoft_api_password': 'MULESOFT_API_PASSWORD',
+        'mulesoft_api_timeout': 'MULESOFT_API_TIMEOUT',
+      };
+
+      const settings = dbSettings.map(setting => {
+        const envVarName = envMapping[setting.settingKey];
+        const envValue = envVarName ? process.env[envVarName] : undefined;
+        
+        return {
+          ...setting,
+          hasEnvOverride: !!envValue,
+          envValue: envValue || null,
+          effectiveValue: envValue || setting.settingValue,
+        };
       });
 
       res.json({ settings });
