@@ -251,10 +251,18 @@ export const AnalysisDetails: React.FC = () => {
 
           <div className="mt-6 flex gap-3">
             <Button 
-              onClick={() => navigate('/processing')} 
+              onClick={() => {
+                // Navigate to processing page with jobId to load existing uploads
+                const jobId = analysisData?.jobId;
+                if (jobId) {
+                  navigate(`/processing?jobId=${jobId}`);
+                } else {
+                  navigate('/processing');
+                }
+              }} 
               className="bg-primary-600 hover:bg-primary-700"
             >
-              Try Again
+              Retry with Same Files
             </Button>
             <Button 
               variant="secondary"
