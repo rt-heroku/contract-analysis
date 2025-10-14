@@ -5,7 +5,6 @@ import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Loading } from '@/components/common/Loading';
 import { ArrowRight, FileText, CheckCircle, AlertCircle } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 
 interface ContractAnalysis {
   id: number;
@@ -29,7 +28,7 @@ export const IDPResponse: React.FC = () => {
   const [pollingAttempts, setPollingAttempts] = useState(0);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let isMounted = true;
 
     const loadContractAnalysis = async () => {
