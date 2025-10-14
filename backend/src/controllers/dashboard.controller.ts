@@ -29,19 +29,28 @@ class DashboardController {
           where: { userId },
         }),
 
-        // Completed analyses
+        // Completed analyses (both 'completed' and 'IDP_COMPLETED')
         prisma.analysisRecord.count({
-          where: { userId, status: 'COMPLETED' },
+          where: { 
+            userId, 
+            status: { in: ['completed', 'COMPLETED'] }
+          },
         }),
 
-        // Processing analyses
+        // Processing analyses (includes 'processing' and 'IDP_COMPLETED')
         prisma.analysisRecord.count({
-          where: { userId, status: 'PROCESSING' },
+          where: { 
+            userId, 
+            status: { in: ['processing', 'PROCESSING', 'IDP_COMPLETED'] }
+          },
         }),
 
         // Failed analyses
         prisma.analysisRecord.count({
-          where: { userId, status: 'FAILED' },
+          where: { 
+            userId, 
+            status: { in: ['failed', 'FAILED'] }
+          },
         }),
 
         // Total uploads

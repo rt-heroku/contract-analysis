@@ -4,6 +4,7 @@ import documentService from '../services/document.service';
 import loggingService from '../services/logging.service';
 import { ACTION_TYPES } from '../utils/constants';
 import { getClientIp, getUserAgent } from '../utils/helpers';
+import prisma from '../config/database';
 
 class AnalysisController {
   async startProcessing(req: AuthenticatedRequest, res: Response) {
@@ -238,6 +239,41 @@ class AnalysisController {
       res.json({ statistics: stats });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  }
+
+  async getAnalysisByUpload(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const uploadId = parseInt(req.params.uploadId);
+      if (isNaN(uploadId)) {
+        return res.status(400).json({ error: 'Invalid upload ID' });
+      }
+
+      // Find the most recent analysis record for this upload
+      const analysisRecord = await prisma.analysisRecord.findFirst({
+        where: {
+          contractUploadId: uploadId,
+          userId: req.user.id, // Security: only get user's own analyses
+        },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          contractAnalysis: true,
+          dataAnalysis: true,
+        },
+      });
+
+      if (!analysisRecord) {
+        return res.status(404).json({ error: 'Analysis not found for this upload' });
+      }
+
+      res.json({ analysisRecord });
+    } catch (error: any) {
+      console.error('Error fetching analysis by upload:', error);
+      res.status(500).json({ error: error.message });
     }
   }
 }

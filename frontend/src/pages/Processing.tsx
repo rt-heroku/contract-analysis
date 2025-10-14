@@ -189,8 +189,42 @@ export const Processing: React.FC = () => {
     setShowLibraryModal(true);
   };
 
-  const handleSelectFromLibrary = () => {
+  const handleSelectFromLibrary = async () => {
     if (!selectedLibraryDoc) return;
+
+    // Check if this is a contract that was already IDP processed
+    if (librarySelectionType === 'contract' && selectedLibraryDoc.hasBeenProcessed) {
+      // Show confirmation dialog
+      const userConfirmed = window.confirm(
+        '📄 This document has already been processed by MuleSoft IDP.\n\n' +
+        'Would you like to:\n' +
+        '  ✅ Click "OK" to reuse the existing IDP processing (recommended)\n' +
+        '  ❌ Click "Cancel" to start a new IDP processing (~15 seconds)\n\n' +
+        'Note: Reusing the existing processing is faster and costs less.'
+      );
+      
+      if (!userConfirmed) {
+        // User wants to reprocess - proceed normally
+        console.log('User chose to reprocess the document');
+      } else {
+        // User wants to reuse - we'll navigate directly to the IDP response page
+        console.log('User chose to reuse existing IDP processing');
+        
+        // We need to find the analysis record for this document
+        try {
+          const response = await api.get(`/analysis/by-upload/${selectedLibraryDoc.id}`);
+          if (response.data && response.data.analysisRecord) {
+            // Navigate directly to IDP response page
+            setShowLibraryModal(false);
+            navigate(`/idp-response/${response.data.analysisRecord.id}`);
+            return;
+          }
+        } catch (error) {
+          console.error('Failed to fetch existing analysis:', error);
+          // Fall through to normal selection if we can't find the analysis
+        }
+      }
+    }
 
     // Convert document to ExistingUpload format
     const upload: ExistingUpload = {
