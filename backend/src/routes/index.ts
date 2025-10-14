@@ -11,6 +11,7 @@ import promptRoutes from './prompt.routes';
 import dashboardRoutes from './dashboard.routes';
 import flowRoutes from './flow.routes';
 import flowEditorRoutes from './flowEditor.routes';
+import documentsRoutes from './documents.routes';
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.use('/prompts', promptRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/flows', flowRoutes);
 router.use('/flow-editor', flowEditorRoutes);
+router.use('/documents', documentsRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {

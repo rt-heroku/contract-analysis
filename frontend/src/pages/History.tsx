@@ -61,7 +61,10 @@ export const History: React.FC = () => {
     title: string;
     message: string;
     onConfirm: () => void;
+    onCancel?: () => void;
     type?: 'danger' | 'warning' | 'info';
+    confirmText?: string;
+    cancelText?: string;
   }>({
     isOpen: false,
     title: '',
@@ -152,13 +155,49 @@ export const History: React.FC = () => {
     }
   };
 
-  const handleRerunAnalysis = async (analysis: Analysis) => {
+  const handleRerunAnalysis = async (analysis: Analysis, forceReprocess: boolean = false) => {
     try {
       setRerunningId(analysis.id);
       
       // Check if this analysis already has an IDP response (contract analysis)
-      if (analysis.contractAnalysis) {
-        // IDP response already exists! Navigate directly to it (no need to re-process)
+      if (analysis.contractAnalysis && !forceReprocess) {
+        // IDP response already exists! Ask user if they want to reprocess
+        setConfirmDialog({
+          isOpen: true,
+          title: 'IDP Already Processed',
+          message: 'This document has already been processed by MuleSoft IDP.\n\nClick "Skip & Continue" to go directly to the analysis page (Recommended), or click "Reprocess" to re-run the expensive IDP processing (~15 seconds).',
+          onConfirm: () => {
+            // User chose to reprocess - call API again
+            setConfirmDialog({ ...confirmDialog, isOpen: false });
+            handleRerunAnalysis(analysis, true);
+          },
+          onCancel: () => {
+            // User chose to skip - navigate directly to IDP response
+            setConfirmDialog({ ...confirmDialog, isOpen: false });
+            navigate(`/idp-response/${analysis.id}`);
+          },
+          confirmText: 'Reprocess',
+          cancelText: 'Skip & Continue',
+          type: 'warning',
+        });
+        setRerunningId(null);
+        return;
+      }
+      
+      if (analysis.contractAnalysis && forceReprocess) {
+        // User confirmed they want to reprocess - call the expensive API
+        console.log('User confirmed: Re-processing document with MuleSoft IDP');
+        const response = await api.post('/analysis/start', {
+          contractUploadId: analysis.contractUploadId,
+          dataUploadId: analysis.dataUploadId,
+        });
+
+        if (response.data.analysisRecordId) {
+          // Navigate to IDP Response page (Step 1 will complete)
+          navigate(`/idp-response/${response.data.analysisRecordId}`);
+        }
+      } else if (analysis.contractAnalysis) {
+        // IDP response already exists and user didn't force reprocess! Navigate directly to it
         console.log('IDP response already exists, skipping expensive MuleSoft call');
         navigate(`/idp-response/${analysis.id}`);
       } else {
@@ -446,12 +485,19 @@ export const History: React.FC = () => {
       {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onClose={() => {
+          if (confirmDialog.onCancel) {
+            confirmDialog.onCancel();
+          } else {
+            setConfirmDialog({ ...confirmDialog, isOpen: false });
+          }
+        }}
         onConfirm={confirmDialog.onConfirm}
         title={confirmDialog.title}
         message={confirmDialog.message}
         type={confirmDialog.type}
-        confirmText="Delete"
+        confirmText={confirmDialog.confirmText || 'Confirm'}
+        cancelText={confirmDialog.cancelText}
         isLoading={deletingId !== null}
       />
 

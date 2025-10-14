@@ -15,6 +15,7 @@ import { Flows } from './pages/Flows';
 import { History } from './pages/History';
 import { Profile } from './pages/Profile';
 import { Notifications } from './pages/Notifications';
+import { Documents } from './pages/Documents';
 import { Logs } from './pages/admin/Logs';
 import { UserManagement } from './pages/admin/UserManagement';
 
@@ -31,6 +32,7 @@ const App = () => {
             {/* Protected Routes */}
             <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
             <Route path="/processing" element={<MainLayout><Processing /></MainLayout>} />
+            <Route path="/documents" element={<MainLayout><Documents /></MainLayout>} />
             <Route path="/prompts" element={<MainLayout><Prompts /></MainLayout>} />
             <Route path="/flows" element={<MainLayout><Flows /></MainLayout>} />
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />

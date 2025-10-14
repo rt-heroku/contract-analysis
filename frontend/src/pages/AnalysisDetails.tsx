@@ -119,7 +119,7 @@ export const AnalysisDetails: React.FC = () => {
         <p style="color: #718096; font-size: 14px;">Generated: ${new Date().toLocaleDateString()}</p>
       </div>
 
-      <div style="margin-bottom: 40px; padding: 20px; background: #f7fafc; border-radius: 8px;">
+      <div style="margin-bottom: 40px; padding: 20px; background: #f7fafc; border-radius: 8px; page-break-after: always;">
         <h2 style="color: #2d3748; margin-bottom: 15px; border-bottom: 2px solid #4299e1; padding-bottom: 10px;">📄 Document Extraction</h2>
         <p><strong>Document:</strong> ${extraction.document}</p>
         <p><strong>Status:</strong> <span style="color: #48bb78;">${extraction.status}</span></p>
@@ -135,7 +135,7 @@ export const AnalysisDetails: React.FC = () => {
         </ul>
       </div>
 
-      <div style="margin-bottom: 40px; line-height: 1.8; color: #2d3748;">
+      <div style="margin-bottom: 40px; line-height: 1.8; color: #2d3748; page-break-before: always;">
         <h2 style="color: #2d3748; margin-bottom: 15px; border-bottom: 2px solid #4299e1; padding-bottom: 10px;">📊 Analysis Report</h2>
         <div style="
           font-size: 14px;

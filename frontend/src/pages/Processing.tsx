@@ -7,7 +7,7 @@ import { Button } from '@/components/common/Button';
 import { Modal } from '@/components/common/Modal';
 import { Loading } from '@/components/common/Loading';
 import { Input } from '@/components/common/Input';
-import { FileText, Upload, X, CheckCircle, Search, AlertCircle, Trash2 } from 'lucide-react';
+import { FileText, Upload, X, CheckCircle, Search, AlertCircle, Trash2, Folder, Table } from 'lucide-react';
 import { validateFileType, validateFileSize } from '@/utils/validation';
 import { formatFileSize } from '@/utils/helpers';
 
@@ -40,6 +40,17 @@ interface ExistingUpload {
   createdAt: string;
 }
 
+interface Document {
+  id: number;
+  filename: string;
+  originalFilename: string;
+  fileType: string;
+  fileSize: number;
+  jobId: string;
+  createdAt: string;
+  hasBeenProcessed: boolean;
+}
+
 export const Processing: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -52,6 +63,14 @@ export const Processing: React.FC = () => {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
   const [processingStatus, setProcessingStatus] = useState('');
+  
+  // Library selection
+  const [showLibraryModal, setShowLibraryModal] = useState(false);
+  const [librarySelectionType, setLibrarySelectionType] = useState<'contract' | 'data'>('contract');
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState('');
+  const [selectedLibraryDoc, setSelectedLibraryDoc] = useState<Document | null>(null);
 
   // Prompt selection
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -99,6 +118,14 @@ export const Processing: React.FC = () => {
     }
   }, [searchParams]);
 
+  // Pre-select contract if contractId is provided in URL (from Documents page)
+  useEffect(() => {
+    const contractId = searchParams.get('contractId');
+    if (contractId) {
+      loadDocumentById(parseInt(contractId));
+    }
+  }, [searchParams]);
+
   const loadExistingUploads = async (jobId: string) => {
     try {
       setLoadingExistingUploads(true);
@@ -122,6 +149,70 @@ export const Processing: React.FC = () => {
     }
   };
 
+  const loadDocumentById = async (documentId: number) => {
+    try {
+      const response = await api.get('/documents');
+      const docs = response.data.documents || [];
+      const doc = docs.find((d: Document) => d.id === documentId);
+      if (doc) {
+        // Convert document to ExistingUpload format
+        setExistingContractUpload({
+          id: doc.id,
+          filename: doc.originalFilename,
+          uploadType: 'contract',
+          jobId: doc.jobId,
+          createdAt: doc.createdAt,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load document:', error);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    try {
+      setLoadingDocuments(true);
+      const response = await api.get('/documents');
+      setDocuments(response.data.documents || []);
+    } catch (error) {
+      console.error('Failed to fetch documents:', error);
+    } finally {
+      setLoadingDocuments(false);
+    }
+  };
+
+  const handleOpenLibrary = (type: 'contract' | 'data') => {
+    setLibrarySelectionType(type);
+    setSelectedLibraryDoc(null);
+    setLibrarySearch('');
+    fetchDocuments();
+    setShowLibraryModal(true);
+  };
+
+  const handleSelectFromLibrary = () => {
+    if (!selectedLibraryDoc) return;
+
+    // Convert document to ExistingUpload format
+    const upload: ExistingUpload = {
+      id: selectedLibraryDoc.id,
+      filename: selectedLibraryDoc.originalFilename,
+      uploadType: librarySelectionType,
+      jobId: selectedLibraryDoc.jobId,
+      createdAt: selectedLibraryDoc.createdAt,
+    };
+
+    if (librarySelectionType === 'contract') {
+      setExistingContractUpload(upload);
+      setContractFile(null); // Clear new file selection
+    } else {
+      setExistingDataUpload(upload);
+      setDataFile(null); // Clear new file selection
+    }
+
+    setShowLibraryModal(false);
+    setSelectedLibraryDoc(null);
+  };
+
   const handleRemoveExistingUpload = async (uploadId: number, type: 'contract' | 'data') => {
     try {
       await api.delete(`/uploads/${uploadId}`);
@@ -133,6 +224,16 @@ export const Processing: React.FC = () => {
     } catch (error: any) {
       setError(error.response?.data?.error || 'Failed to remove file');
     }
+  };
+
+  const getFileIcon = (fileType: string) => {
+    if (fileType.includes('pdf')) {
+      return <FileText className="w-5 h-5 text-red-600" />;
+    }
+    if (fileType.includes('spreadsheet') || fileType.includes('csv') || fileType.includes('excel')) {
+      return <Table className="w-5 h-5 text-green-600" />;
+    }
+    return <FileText className="w-5 h-5 text-gray-600" />;
   };
 
   // Initialize variable values with defaults when prompt is selected
@@ -350,150 +451,202 @@ export const Processing: React.FC = () => {
 
       {/* Contract Upload */}
       <Card title="Step 1: Upload Contract PDF">
-        {existingContractUpload && !contractFile ? (
-          <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-blue-600" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium text-gray-900">{existingContractUpload.filename}</p>
-                  <p className="text-sm text-blue-600">Existing file from previous upload</p>
-                </div>
-              </div>
-              <Button
-                onClick={() => handleRemoveExistingUpload(existingContractUpload.id, 'contract')}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="w-4 h-4" />
-                Remove
-              </Button>
-            </div>
-            <p className="text-sm text-gray-600 mt-2">
-              This file will be used unless you upload a new one
-            </p>
-          </div>
-        ) : (
-          <div
-            {...contractDropzone.getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-              contractDropzone.isDragActive
-                ? 'border-primary-500 bg-primary-50'
-                : 'border-gray-300 hover:border-primary-400'
-            }`}
-          >
-            <input {...contractDropzone.getInputProps()} />
-            {contractFile ? (
+        <div className="space-y-4">
+          {existingContractUpload && !contractFile ? (
+            <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <FileText className="w-6 h-6 text-blue-600" />
                   </div>
                   <div className="text-left">
-                    <p className="font-medium text-gray-900">{contractFile.name}</p>
-                    <p className="text-sm text-gray-500">{formatFileSize(contractFile.size)}</p>
+                    <p className="font-medium text-gray-900">{existingContractUpload.filename}</p>
+                    <p className="text-sm text-blue-600">Selected from library</p>
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setContractFile(null);
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                <Button
+                  onClick={() => handleRemoveExistingUpload(existingContractUpload.id, 'contract')}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
                 >
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
+                  <Trash2 className="w-4 h-4" />
+                  Remove
+                </Button>
               </div>
-            ) : (
-              <>
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-700 font-medium">
-                  Drop your contract PDF here, or click to browse
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Supports PDF files up to 10MB
-                </p>
-              </>
-            )}
-          </div>
-        )}
+              <p className="text-sm text-gray-600 mt-2">
+                This file will be used unless you upload a new one
+              </p>
+            </div>
+          ) : (
+            <div
+              {...contractDropzone.getRootProps()}
+              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                contractDropzone.isDragActive
+                  ? 'border-primary-500 bg-primary-50'
+                  : 'border-gray-300 hover:border-primary-400'
+              }`}
+            >
+              <input {...contractDropzone.getInputProps()} />
+              {contractFile ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-gray-900">{contractFile.name}</p>
+                      <p className="text-sm text-gray-500">{formatFileSize(contractFile.size)}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setContractFile(null);
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-700 font-medium">
+                    Drop your contract PDF here, or click to browse
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Supports PDF files up to 10MB
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+          
+          {/* OR Divider */}
+          {!existingContractUpload && !contractFile && (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">OR</span>
+                </div>
+              </div>
+              
+              {/* Select from Library Button */}
+              <Button
+                onClick={() => handleOpenLibrary('contract')}
+                variant="outline"
+                className="w-full flex items-center justify-center gap-2"
+              >
+                <Folder className="w-4 h-4" />
+                Select from Documents Library
+              </Button>
+            </>
+          )}
+        </div>
       </Card>
 
       {/* Data Upload */}
       <Card title="Step 2: Upload Data File (Excel/CSV)">
-        {existingDataUpload && !dataFile ? (
-          <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Upload className="w-6 h-6 text-blue-600" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium text-gray-900">{existingDataUpload.filename}</p>
-                  <p className="text-sm text-blue-600">Existing file from previous upload</p>
-                </div>
-              </div>
-              <Button
-                onClick={() => handleRemoveExistingUpload(existingDataUpload.id, 'data')}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="w-4 h-4" />
-                Remove
-              </Button>
-            </div>
-            <p className="text-sm text-gray-600 mt-2">
-              This file will be used unless you upload a new one
-            </p>
-          </div>
-        ) : (
-          <div
-            {...dataDropzone.getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-              dataDropzone.isDragActive
-                ? 'border-primary-500 bg-primary-50'
-                : 'border-gray-300 hover:border-primary-400'
-            }`}
-          >
-            <input {...dataDropzone.getInputProps()} />
-            {dataFile ? (
+        <div className="space-y-4">
+          {existingDataUpload && !dataFile ? (
+            <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-blue-600" />
                   </div>
                   <div className="text-left">
-                    <p className="font-medium text-gray-900">{dataFile.name}</p>
-                    <p className="text-sm text-gray-500">{formatFileSize(dataFile.size)}</p>
+                    <p className="font-medium text-gray-900">{existingDataUpload.filename}</p>
+                    <p className="text-sm text-blue-600">Selected from library</p>
                   </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDataFile(null);
-                  }}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                <Button
+                  onClick={() => handleRemoveExistingUpload(existingDataUpload.id, 'data')}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
                 >
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
+                  <Trash2 className="w-4 h-4" />
+                  Remove
+                </Button>
               </div>
-            ) : (
-              <>
-                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-700 font-medium">
-                  Drop your data file here, or click to browse
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Supports Excel (.xlsx) and CSV files up to 50MB
-                </p>
-              </>
-            )}
-          </div>
-        )}
+              <p className="text-sm text-gray-600 mt-2">
+                This file will be used unless you upload a new one
+              </p>
+            </div>
+          ) : (
+            <div
+              {...dataDropzone.getRootProps()}
+              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                dataDropzone.isDragActive
+                  ? 'border-primary-500 bg-primary-50'
+                  : 'border-gray-300 hover:border-primary-400'
+              }`}
+            >
+              <input {...dataDropzone.getInputProps()} />
+              {dataFile ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium text-gray-900">{dataFile.name}</p>
+                      <p className="text-sm text-gray-500">{formatFileSize(dataFile.size)}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDataFile(null);
+                    }}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-700 font-medium">
+                    Drop your data file here, or click to browse
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Supports Excel (.xlsx) and CSV files up to 50MB
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+          
+          {/* OR Divider */}
+          {!existingDataUpload && !dataFile && (
+            <>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">OR</span>
+                </div>
+              </div>
+              
+              {/* Select from Library Button */}
+              <Button
+                onClick={() => handleOpenLibrary('data')}
+                variant="outline"
+                className="w-full flex items-center justify-center gap-2"
+              >
+                <Folder className="w-4 h-4" />
+                Select from Documents Library
+              </Button>
+            </>
+          )}
+        </div>
       </Card>
 
       {/* Prompt Selection (Optional) */}
@@ -685,6 +838,109 @@ export const Processing: React.FC = () => {
           <p className="text-gray-500 text-sm mt-2">
             This may take a few moments...
           </p>
+        </div>
+      </Modal>
+
+      {/* Library Selection Modal */}
+      <Modal
+        isOpen={showLibraryModal}
+        onClose={() => setShowLibraryModal(false)}
+        title={`Select ${librarySelectionType === 'contract' ? 'Contract' : 'Data'} File`}
+        size="xl"
+      >
+        <div className="space-y-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search documents..."
+              value={librarySearch}
+              onChange={(e) => setLibrarySearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Documents List */}
+          {loadingDocuments ? (
+            <div className="flex items-center justify-center py-12">
+              <Loading size="lg" />
+            </div>
+          ) : (
+            <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+              {documents
+                .filter(doc => {
+                  const matchesSearch = doc.originalFilename.toLowerCase().includes(librarySearch.toLowerCase());
+                  const matchesType = 
+                    (librarySelectionType === 'contract' && doc.fileType.includes('pdf')) ||
+                    (librarySelectionType === 'data' && (doc.fileType.includes('spreadsheet') || doc.fileType.includes('csv') || doc.fileType.includes('excel')));
+                  return matchesSearch && matchesType;
+                })
+                .map((doc) => (
+                  <div
+                    key={doc.id}
+                    onClick={() => setSelectedLibraryDoc(doc)}
+                    className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${
+                      selectedLibraryDoc?.id === doc.id ? 'bg-primary-50 border-primary-300' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex-shrink-0">
+                        {getFileIcon(doc.fileType)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {doc.originalFilename}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                          <span>{formatFileSize(doc.fileSize)}</span>
+                          <span>•</span>
+                          <span>{new Date(doc.createdAt).toLocaleDateString()}</span>
+                          {doc.hasBeenProcessed && (
+                            <>
+                              <span>•</span>
+                              <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full font-medium">
+                                Processed
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {selectedLibraryDoc?.id === doc.id && (
+                        <CheckCircle className="w-5 h-5 text-primary-600 flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              {documents.filter(doc => {
+                const matchesSearch = doc.originalFilename.toLowerCase().includes(librarySearch.toLowerCase());
+                const matchesType = 
+                  (librarySelectionType === 'contract' && doc.fileType.includes('pdf')) ||
+                  (librarySelectionType === 'data' && (doc.fileType.includes('spreadsheet') || doc.fileType.includes('csv') || doc.fileType.includes('excel')));
+                return matchesSearch && matchesType;
+              }).length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  <p>No {librarySelectionType === 'contract' ? 'PDF' : 'data'} files found.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setShowLibraryModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSelectFromLibrary}
+              disabled={!selectedLibraryDoc}
+            >
+              Select File
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>
