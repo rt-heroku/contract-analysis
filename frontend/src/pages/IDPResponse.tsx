@@ -32,62 +32,86 @@ export const IDPResponse: React.FC = () => {
     let timeoutId: NodeJS.Timeout | null = null;
     let isMounted = true;
 
-    const pollContractAnalysis = async () => {
-      const maxAttempts = 30; // 30 attempts * 2 seconds = 60 seconds max
-      let attempts = 0;
-
-      const poll = async () => {
-        if (!isMounted) return; // Stop polling if component unmounted
-
-        try {
-          setPollingAttempts(attempts + 1);
-          const response = await api.get(`/analysis/${analysisRecordId}/contract`);
-          
-          if (response.data.contractAnalysis) {
-            // Success! Contract analysis is ready
-            if (isMounted) {
-              setContractAnalysis(response.data.contractAnalysis);
-              setLoading(false);
-              setError('');
-            }
-          } else {
-            // Still processing, try again
-            attempts++;
-            if (attempts < maxAttempts && isMounted) {
-              timeoutId = setTimeout(poll, 2000); // Poll every 2 seconds
-            } else if (isMounted) {
-              setError('Timeout: Contract processing is taking longer than expected. Please try again.');
-              setLoading(false);
-            }
+    const loadContractAnalysis = async () => {
+      // First, try to load immediately (in case data already exists)
+      try {
+        const response = await api.get(`/analysis/${analysisRecordId}/contract`);
+        
+        if (response.data.contractAnalysis) {
+          // Data already exists! Load it immediately (no polling needed)
+          console.log('IDP response already exists, loading immediately');
+          if (isMounted) {
+            setContractAnalysis(response.data.contractAnalysis);
+            setLoading(false);
+            setError('');
           }
-        } catch (err: any) {
-          const errorMessage = err.response?.data?.error || '';
-          
-          // If it's still processing (404 or "not yet available"), keep polling
-          if (errorMessage.includes('not yet available') || errorMessage.includes('Please wait')) {
-            attempts++;
-            if (attempts < maxAttempts && isMounted) {
-              timeoutId = setTimeout(poll, 2000); // Poll every 2 seconds
-            } else if (isMounted) {
-              setError('Timeout: Contract processing is taking longer than expected. Please try again.');
-              setLoading(false);
-            }
-          } else {
-            // Real error, stop polling
-            console.error('Failed to fetch contract analysis:', err);
-            if (isMounted) {
-              setError(errorMessage || 'Failed to load IDP response');
-              setLoading(false);
-            }
-          }
+          return; // Exit early, no need to poll
         }
+      } catch (err: any) {
+        // If data doesn't exist yet, we'll start polling below
+        console.log('IDP response not ready yet, starting polling...');
+      }
+
+      // Data doesn't exist yet, start polling
+      const pollContractAnalysis = async () => {
+        const maxAttempts = 30; // 30 attempts * 2 seconds = 60 seconds max
+        let attempts = 0;
+
+        const poll = async () => {
+          if (!isMounted) return; // Stop polling if component unmounted
+
+          try {
+            setPollingAttempts(attempts + 1);
+            const response = await api.get(`/analysis/${analysisRecordId}/contract`);
+            
+            if (response.data.contractAnalysis) {
+              // Success! Contract analysis is ready
+              if (isMounted) {
+                setContractAnalysis(response.data.contractAnalysis);
+                setLoading(false);
+                setError('');
+              }
+            } else {
+              // Still processing, try again
+              attempts++;
+              if (attempts < maxAttempts && isMounted) {
+                timeoutId = setTimeout(poll, 2000); // Poll every 2 seconds
+              } else if (isMounted) {
+                setError('Timeout: Contract processing is taking longer than expected. Please try again.');
+                setLoading(false);
+              }
+            }
+          } catch (err: any) {
+            const errorMessage = err.response?.data?.error || '';
+            
+            // If it's still processing (404 or "not yet available"), keep polling
+            if (errorMessage.includes('not yet available') || errorMessage.includes('Please wait')) {
+              attempts++;
+              if (attempts < maxAttempts && isMounted) {
+                timeoutId = setTimeout(poll, 2000); // Poll every 2 seconds
+              } else if (isMounted) {
+                setError('Timeout: Contract processing is taking longer than expected. Please try again.');
+                setLoading(false);
+              }
+            } else {
+              // Real error, stop polling
+              console.error('Failed to fetch contract analysis:', err);
+              if (isMounted) {
+                setError(errorMessage || 'Failed to load IDP response');
+                setLoading(false);
+              }
+            }
+          }
+        };
+
+        poll();
       };
 
-      poll();
+      pollContractAnalysis();
     };
 
     if (analysisRecordId) {
-      pollContractAnalysis();
+      loadContractAnalysis();
     }
 
     // Cleanup function

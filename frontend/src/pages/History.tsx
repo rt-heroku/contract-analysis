@@ -156,15 +156,23 @@ export const History: React.FC = () => {
     try {
       setRerunningId(analysis.id);
       
-      // Start a new analysis with the same files (Step 1 only)
-      const response = await api.post('/analysis/start', {
-        contractUploadId: analysis.contractUploadId,
-        dataUploadId: analysis.dataUploadId,
-      });
+      // Check if this analysis already has an IDP response (contract analysis)
+      if (analysis.contractAnalysis) {
+        // IDP response already exists! Navigate directly to it (no need to re-process)
+        console.log('IDP response already exists, skipping expensive MuleSoft call');
+        navigate(`/idp-response/${analysis.id}`);
+      } else {
+        // No IDP response yet, need to process the document
+        console.log('No IDP response found, calling MuleSoft to process document');
+        const response = await api.post('/analysis/start', {
+          contractUploadId: analysis.contractUploadId,
+          dataUploadId: analysis.dataUploadId,
+        });
 
-      if (response.data.analysisRecordId) {
-        // Navigate to IDP Response page (Step 1 complete)
-        navigate(`/idp-response/${response.data.analysisRecordId}`);
+        if (response.data.analysisRecordId) {
+          // Navigate to IDP Response page (Step 1 will complete)
+          navigate(`/idp-response/${response.data.analysisRecordId}`);
+        }
       }
     } catch (error: any) {
       console.error('Failed to rerun analysis:', error);
