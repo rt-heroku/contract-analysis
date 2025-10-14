@@ -5,7 +5,7 @@ import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
-import { Plus, Edit, Trash2, Eye, EyeOff, Search, Save, X, Download, Upload as UploadIcon, Star } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff, Search, Save, X, Download, Upload as UploadIcon, Star, Copy } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 interface Variable {
@@ -301,6 +301,38 @@ export const Prompts: React.FC = () => {
     setShowForm(true);
   };
 
+  const handleDuplicate = (prompt: Prompt) => {
+    setEditingPrompt(null); // Not editing, creating a new one
+    
+    // Find and set the flow if prompt has one
+    if (prompt.flowName) {
+      const flow = flows.find(f => f.name === prompt.flowName);
+      setSelectedFlow(flow || null);
+    } else {
+      setSelectedFlow(null);
+    }
+    
+    setFormData({
+      name: `Copy - ${prompt.name}`,
+      description: prompt.description || '',
+      content: prompt.content,
+      category: prompt.category || '',
+      flowName: prompt.flowName || '',
+      isActive: prompt.isActive,
+    });
+    // Remove IDs from variables so they're treated as new
+    setVariables(prompt.variables.map(v => ({
+      variableName: v.variableName,
+      displayName: v.displayName,
+      description: v.description,
+      isRequired: v.isRequired,
+      isFlowVariable: v.isFlowVariable,
+      defaultValue: v.defaultValue,
+      variableType: v.variableType,
+    })));
+    setShowForm(true);
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -482,6 +514,18 @@ export const Prompts: React.FC = () => {
               <Download className="w-3.5 h-3.5 mr-1.5" />
               Export
             </Button>
+            {editingPrompt && (
+              <Button
+                onClick={() => handleDuplicate(editingPrompt)}
+                variant="outline"
+                size="sm"
+                className="text-sm py-1.5 px-3"
+                title="Duplicate this prompt"
+              >
+                <Copy className="w-3.5 h-3.5 mr-1.5" />
+                Duplicate
+              </Button>
+            )}
             <Button
               onClick={() => setShowForm(false)}
               variant="outline"
@@ -724,6 +768,14 @@ export const Prompts: React.FC = () => {
                 >
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
+                </Button>
+                <Button
+                  onClick={() => handleDuplicate(prompt)}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Duplicate
                 </Button>
                 <Button
                   onClick={() => handleToggleActive(prompt)}
