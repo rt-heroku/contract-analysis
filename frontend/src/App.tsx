@@ -8,6 +8,7 @@ import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { Processing } from './pages/Processing';
 import { AnalysisDetails } from './pages/AnalysisDetails';
+import { IDPResponse } from './pages/IDPResponse';
 import { Settings } from './pages/Settings';
 import { Prompts } from './pages/Prompts';
 import { Flows } from './pages/Flows';
@@ -34,6 +35,7 @@ const App = () => {
             <Route path="/flows" element={<MainLayout><Flows /></MainLayout>} />
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
             <Route path="/history" element={<MainLayout><History /></MainLayout>} />
+            <Route path="/idp-response/:analysisRecordId" element={<MainLayout><IDPResponse /></MainLayout>} />
             <Route path="/analysis/:id" element={<MainLayout><AnalysisDetails /></MainLayout>} />
             <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
             <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
