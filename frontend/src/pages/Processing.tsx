@@ -277,12 +277,26 @@ export const Processing: React.FC = () => {
       await api.delete(`/uploads/${uploadId}`);
       if (type === 'contract') {
         setExistingContractUpload(null);
+        setContractFile(null); // Also clear any dropped file
       } else {
         setExistingDataUpload(null);
+        setDataFile(null); // Also clear any dropped file
       }
     } catch (error: any) {
       setError(error.response?.data?.error || 'Failed to remove file');
     }
+  };
+
+  const handleRemoveContractFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setContractFile(null);
+    setExistingContractUpload(null);
+  };
+
+  const handleRemoveDataFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDataFile(null);
+    setExistingDataUpload(null);
   };
 
   const getFileIcon = (fileType: string) => {
@@ -355,6 +369,8 @@ export const Processing: React.FC = () => {
       }
 
       setContractFile(file);
+      // Clear any existing upload reference when a new file is dropped
+      setExistingContractUpload(null);
       setError('');
     }
   };
@@ -375,6 +391,8 @@ export const Processing: React.FC = () => {
       }
 
       setDataFile(file);
+      // Clear any existing upload reference when a new file is dropped
+      setExistingDataUpload(null);
       setError('');
     }
   };
@@ -559,11 +577,9 @@ export const Processing: React.FC = () => {
                     </div>
                   </div>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setContractFile(null);
-                    }}
+                    onClick={handleRemoveContractFile}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Remove file"
                   >
                     <X className="w-5 h-5 text-gray-500" />
                   </button>
@@ -659,11 +675,9 @@ export const Processing: React.FC = () => {
                     </div>
                   </div>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDataFile(null);
-                    }}
+                    onClick={handleRemoveDataFile}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Remove file"
                   >
                     <X className="w-5 h-5 text-gray-500" />
                   </button>
