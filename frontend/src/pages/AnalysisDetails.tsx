@@ -57,9 +57,10 @@ export const AnalysisDetails: React.FC = () => {
         if (data.dataAnalysis) {
           setAnalysisResult({
             status: data.status,
-            analysisMarkdown: data.dataAnalysis.analysisMarkdown || '',
+            analysisMarkdown: data.dataAnalysis.analysisMarkdown || data.dataAnalysis.mulesoftResponse?.analysis_markdown || '',
             dataTable: data.dataAnalysis.dataTable || [],
-            jsonData: data.dataAnalysis.mulesoftResponse?.jsonData || null
+            jsonData: data.dataAnalysis.mulesoftResponse?.jsonData || null,
+            mulesoftResponse: data.dataAnalysis.mulesoftResponse || null
           });
         }
 
@@ -654,26 +655,27 @@ export const AnalysisDetails: React.FC = () => {
       {activeTab === 'markdown' && (
         <div className="space-y-6">
           <Card title="Markdown Source">
-            {analysisResult?.analysis_markdown ? (
+            {analysisResult?.analysisMarkdown ? (
               <div className="space-y-4">
-                <div className="markdown-content prose max-w-none">
+                <h3 className="text-xl font-semibold mb-4">Rendered Markdown</h3>
+                <div className="markdown-content prose max-w-none bg-white p-6 rounded-lg border border-gray-200">
                   <ReactMarkdown>
-                    {analysisResult.analysis_markdown.replace(/\\n/g, '\n')}
+                    {analysisResult.analysisMarkdown.replace(/\\n/g, '\n')}
                   </ReactMarkdown>
                 </div>
-                <div className="border-t pt-4">
-                  <h3 className="text-lg font-semibold mb-2">Raw Markdown Code:</h3>
-                  <pre className="bg-gray-50 p-4 rounded-lg text-sm overflow-x-auto">
-                    <code className="text-gray-800">
-                      {analysisResult.analysis_markdown}
+                <div className="border-t pt-6 mt-6">
+                  <h3 className="text-xl font-semibold mb-4">Raw Markdown Code</h3>
+                  <pre className="bg-gray-900 text-gray-100 p-6 rounded-lg text-sm overflow-x-auto">
+                    <code>
+                      {analysisResult.analysisMarkdown}
                     </code>
                   </pre>
                 </div>
               </div>
             ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No markdown content available.</p>
-                <p className="text-sm text-gray-400 mt-2">
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg mb-2">No markdown content available.</p>
+                <p className="text-sm text-gray-400">
                   The MuleSoft response did not include markdown. Check the JSON Response tab for the full data.
                 </p>
               </div>
