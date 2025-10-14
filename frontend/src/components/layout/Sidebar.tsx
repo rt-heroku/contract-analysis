@@ -168,7 +168,7 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-gray-200 space-y-3">
         <div className="flex items-center justify-center gap-2">
           <span className="text-xs text-gray-500">Powered by</span>
           <img 
@@ -181,6 +181,16 @@ export const Sidebar: React.FC = () => {
             }}
           />
           <span className="text-xs text-gray-500 font-medium">MuleSoft</span>
+        </div>
+        <div className="text-center border-t border-gray-100 pt-3">
+          <p className="text-xs text-gray-400">Designed by</p>
+          <p className="text-xs text-gray-500 font-medium">Rodrigo Torres</p>
+          <a 
+            href="mailto:rodrigo.torres@salesforce.com" 
+            className="text-xs text-gray-400 hover:text-primary-600 transition-colors"
+          >
+            rodrigo.torres@salesforce.com
+          </a>
         </div>
       </div>
     </aside>
