@@ -20,7 +20,7 @@ import {
 export const AnalysisDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'extraction' | 'analysis' | 'json'>('extraction');
+  const [activeTab, setActiveTab] = useState<'extraction' | 'analysis' | 'json' | 'markdown'>('extraction');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showMarkdown, setShowMarkdown] = useState(false);
@@ -372,6 +372,19 @@ export const AnalysisDetails: React.FC = () => {
               JSON Response
             </div>
           </button>
+          <button
+            onClick={() => setActiveTab('markdown')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              activeTab === 'markdown'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Markdown
+            </div>
+          </button>
         </nav>
       </div>
 
@@ -469,91 +482,70 @@ export const AnalysisDetails: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Validation Summary Grid */}
-                      {displayAnalysis.jsonData.validation_summary && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                          <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                            <p className="text-green-600 text-sm font-medium">Matched Products</p>
-                            <p className="text-3xl font-bold text-green-900 mt-1">
-                              {displayAnalysis.jsonData.validation_summary.matched_products?.length || 0}
-                            </p>
-                          </div>
-                          <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
-                            <p className="text-red-600 text-sm font-medium">Missing Products</p>
-                            <p className="text-3xl font-bold text-red-900 mt-1">
-                              {displayAnalysis.jsonData.validation_summary.missing_products?.length || 0}
-                            </p>
-                          </div>
-                          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
-                            <p className="text-yellow-600 text-sm font-medium">Quantity Issues</p>
-                            <p className="text-3xl font-bold text-yellow-900 mt-1">
-                              {displayAnalysis.jsonData.validation_summary.quantity_discrepancies?.length || 0}
-                            </p>
-                          </div>
-                          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-                            <p className="text-purple-600 text-sm font-medium">Pricing Issues</p>
-                            <p className="text-3xl font-bold text-purple-900 mt-1">
-                              {displayAnalysis.jsonData.validation_summary.pricing_issues?.length || 0}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Contract Terms */}
-                      {displayAnalysis.jsonData.contract_summary?.terms && (
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-3">📋 Contract Terms</h3>
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <ul className="space-y-2">
-                              {displayAnalysis.jsonData.contract_summary.terms.map((term: string, index: number) => (
-                                <li key={index} className="flex items-start gap-2">
-                                  <span className="text-blue-600 mt-1">•</span>
-                                  <span className="text-gray-700">{term}</span>
-                                </li>
-                              ))}
-                            </ul>
+                      {/* Contract Summary */}
+                      {displayAnalysis.jsonData.contract_summary && (
+                        <div className="bg-white p-6 rounded-lg border border-gray-200">
+                          <h3 className="text-lg font-semibold mb-4">Contract Summary</h3>
+                          <div className="space-y-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-500">Document</p>
+                              <p className="text-gray-900">{displayAnalysis.jsonData.contract_summary.document}</p>
+                            </div>
+                            {displayAnalysis.jsonData.contract_summary.terms && (
+                              <div>
+                                <p className="text-sm font-medium text-gray-500 mb-2">Terms</p>
+                                <ul className="list-disc list-inside space-y-1">
+                                  {displayAnalysis.jsonData.contract_summary.terms.map((term: string, idx: number) => (
+                                    <li key={idx} className="text-gray-700">{term}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {displayAnalysis.jsonData.contract_summary.promo_funding && (
+                              <div>
+                                <p className="text-sm font-medium text-gray-500">Promotional Funding</p>
+                                <p className="text-gray-900">
+                                  Distributor: {(displayAnalysis.jsonData.contract_summary.promo_funding.distributor_pct * 100).toFixed(0)}% | 
+                                  Retailer: {(displayAnalysis.jsonData.contract_summary.promo_funding.retailer_pct * 100).toFixed(0)}%
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
 
-                      {/* Quantity Discrepancies Table */}
-                      {displayAnalysis.jsonData.validation_summary?.quantity_discrepancies?.length > 0 && (
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-3">⚠️ Quantity Discrepancies</h3>
+                      {/* Line Items Analysis Table */}
+                      {displayAnalysis.jsonData.line_items_analysis && displayAnalysis.jsonData.line_items_analysis.length > 0 && (
+                        <div className="bg-white p-6 rounded-lg border border-gray-200">
+                          <h3 className="text-lg font-semibold mb-4">Line Items Analysis</h3>
                           <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
-                              <thead className="bg-red-50">
+                              <thead className="bg-gray-50">
                                 <tr>
-                                  <th className="px-6 py-3 text-left text-xs font-medium text-red-600 uppercase tracking-wider">
-                                    Product
-                                  </th>
-                                  <th className="px-6 py-3 text-left text-xs font-medium text-red-600 uppercase tracking-wider">
-                                    Expected
-                                  </th>
-                                  <th className="px-6 py-3 text-left text-xs font-medium text-red-600 uppercase tracking-wider">
-                                    Actual
-                                  </th>
-                                  <th className="px-6 py-3 text-left text-xs font-medium text-red-600 uppercase tracking-wider">
-                                    Difference
-                                  </th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Units Sold</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Unit Price</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Discount</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Disc</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flags</th>
                                 </tr>
                               </thead>
                               <tbody className="bg-white divide-y divide-gray-200">
-                                {displayAnalysis.jsonData.validation_summary.quantity_discrepancies.map((item: any, index: number) => (
-                                  <tr key={index} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 text-sm text-gray-900">
-                                      {item.product}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                                      {item.expected}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                                      {item.actual}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm">
-                                      <Badge variant="error">
-                                        +{item.actual - item.expected}
-                                      </Badge>
+                                {displayAnalysis.jsonData.line_items_analysis.map((item: any, idx: number) => (
+                                  <tr key={idx} className={item.flags && item.flags.length > 0 ? 'bg-red-50' : ''}>
+                                    <td className="px-4 py-3 text-sm text-gray-900">{item.product_name}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-900">{item.items_sold_with_multiplier}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-900">${item.unit_price_paid}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-900">${item.discount_value_per_unit} ({(item.discount_percent * 100).toFixed(1)}%)</td>
+                                    <td className="px-4 py-3 text-sm text-gray-900">${item.discount_value_total}</td>
+                                    <td className="px-4 py-3 text-sm">
+                                      {item.flags && item.flags.length > 0 ? (
+                                        <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
+                                          {item.flags.join(', ')}
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">OK</span>
+                                      )}
                                     </td>
                                   </tr>
                                 ))}
@@ -563,40 +555,51 @@ export const AnalysisDetails: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Anomalies */}
-                      {displayAnalysis.jsonData.anomalies_detected?.length > 0 && (
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-3">🔍 Anomalies Detected</h3>
-                          <div className="space-y-3">
-                            {displayAnalysis.jsonData.anomalies_detected.map((anomaly: any, index: number) => (
-                              <div key={index} className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                                <h4 className="font-semibold text-yellow-900 mb-2">{anomaly.issue}</h4>
-                                <p className="text-sm text-yellow-800 mb-1"><strong>Explanation:</strong> {anomaly.explanation}</p>
-                                <p className="text-sm text-yellow-800"><strong>Possible Cause:</strong> {anomaly.possible_cause}</p>
-                              </div>
-                            ))}
+                      {/* Totals Summary */}
+                      {displayAnalysis.jsonData.totals_summary && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                            <p className="text-blue-600 text-sm font-medium">Total Items Sold</p>
+                            <p className="text-3xl font-bold text-blue-900 mt-1">
+                              {displayAnalysis.jsonData.totals_summary.grand_items_sold_with_multiplier || 0}
+                            </p>
+                          </div>
+                          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+                            <p className="text-purple-600 text-sm font-medium">Total Discount</p>
+                            <p className="text-3xl font-bold text-purple-900 mt-1">
+                              ${displayAnalysis.jsonData.totals_summary.grand_discount_value || 0}
+                            </p>
+                          </div>
+                          <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                            <p className="text-green-600 text-sm font-medium">Distributor Owes</p>
+                            <p className="text-3xl font-bold text-green-900 mt-1">
+                              ${displayAnalysis.jsonData.totals_summary.grand_distributor_owes_retailer || 0}
+                            </p>
+                          </div>
+                          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
+                            <p className="text-yellow-600 text-sm font-medium">Retailer Funded</p>
+                            <p className="text-3xl font-bold text-yellow-900 mt-1">
+                              ${displayAnalysis.jsonData.totals_summary.grand_retailer_funded_amount || 0}
+                            </p>
                           </div>
                         </div>
                       )}
 
                       {/* Recommendations */}
-                      {displayAnalysis.jsonData.recommendations?.length > 0 && (
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-3">💡 Recommendations</h3>
-                          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                            <ol className="space-y-2 list-decimal list-inside">
-                              {displayAnalysis.jsonData.recommendations.map((rec: string, index: number) => (
-                                <li key={index} className="text-blue-900">{rec}</li>
-                              ))}
-                            </ol>
-                          </div>
+                      {displayAnalysis.jsonData.recommendations && displayAnalysis.jsonData.recommendations.length > 0 && (
+                        <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
+                          <h3 className="text-lg font-semibold text-yellow-900 mb-3">💡 Recommendations</h3>
+                          <ol className="space-y-2 list-decimal list-inside">
+                            {displayAnalysis.jsonData.recommendations.map((rec: string, index: number) => (
+                              <li key={index} className="text-yellow-900">{rec}</li>
+                            ))}
+                          </ol>
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500">
-                      <p className="mb-2">Detailed analysis summary not available.</p>
-                      <p className="text-sm">The markdown report below contains the full analysis.</p>
+                      <p className="mb-2">No analysis data available.</p>
                     </div>
                   )
                 ) : (
@@ -608,25 +611,27 @@ export const AnalysisDetails: React.FC = () => {
                 )}
               </Card>
 
-              {/* Full Markdown Report Section - Always Visible */}
-              <Card 
-                title="📄 Full Analysis Report"
-                actions={
-                  <Button
-                    onClick={handleExportPDF}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export to PDF
-                  </Button>
-                }
-              >
-                <div className="markdown-content prose max-w-none">
-                  <ReactMarkdown>
-                    {(displayAnalysis.markdownReport || '').replace(/\\n/g, '\n')}
-                  </ReactMarkdown>
-                </div>
-              </Card>
+              {/* Full Markdown Report Section - Only if markdown exists */}
+              {displayAnalysis.markdownReport && (
+                <Card 
+                  title="📄 Full Analysis Report"
+                  actions={
+                    <Button
+                      onClick={handleExportPDF}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      Export to PDF
+                    </Button>
+                  }
+                >
+                  <div className="markdown-content prose max-w-none">
+                    <ReactMarkdown>
+                      {(displayAnalysis.markdownReport || '').replace(/\\n/g, '\n')}
+                    </ReactMarkdown>
+                  </div>
+                </Card>
+              )}
             </>
           )}
         </div>
@@ -641,6 +646,38 @@ export const AnalysisDetails: React.FC = () => {
                 {JSON.stringify(analysisResult, null, 2)}
               </code>
             </pre>
+          </Card>
+        </div>
+      )}
+
+      {/* Markdown Tab */}
+      {activeTab === 'markdown' && (
+        <div className="space-y-6">
+          <Card title="Markdown Source">
+            {analysisResult?.analysis_markdown ? (
+              <div className="space-y-4">
+                <div className="markdown-content prose max-w-none">
+                  <ReactMarkdown>
+                    {analysisResult.analysis_markdown.replace(/\\n/g, '\n')}
+                  </ReactMarkdown>
+                </div>
+                <div className="border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-2">Raw Markdown Code:</h3>
+                  <pre className="bg-gray-50 p-4 rounded-lg text-sm overflow-x-auto">
+                    <code className="text-gray-800">
+                      {analysisResult.analysis_markdown}
+                    </code>
+                  </pre>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No markdown content available.</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  The MuleSoft response did not include markdown. Check the JSON Response tab for the full data.
+                </p>
+              </div>
+            )}
           </Card>
         </div>
       )}
