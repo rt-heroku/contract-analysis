@@ -25,6 +25,7 @@ export const AnalysisDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showMarkdown, setShowMarkdown] = useState(false);
+  const [markdownView, setMarkdownView] = useState<'preview' | 'code'>('preview');
   
   // Real data from API
   const [analysisData, setAnalysisData] = useState<any>(null);
@@ -665,33 +666,56 @@ export const AnalysisDetails: React.FC = () => {
       {/* Markdown Tab */}
       {activeTab === 'markdown' && (
         <div className="space-y-6">
-          <Card title="Markdown Source">
+          <Card 
+            title="Analysis Report"
+            actions={
+              <div className="flex gap-2">
+                <Button
+                  variant={markdownView === 'preview' ? 'primary' : 'secondary'}
+                  size="sm"
+                  onClick={() => setMarkdownView('preview')}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Preview
+                </Button>
+                <Button
+                  variant={markdownView === 'code' ? 'primary' : 'secondary'}
+                  size="sm"
+                  onClick={() => setMarkdownView('code')}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  Code
+                </Button>
+              </div>
+            }
+          >
             {analysisResult?.analysisMarkdown ? (
-              <div className="space-y-4">
-                <h3 className="text-xl font-semibold mb-4">Rendered Markdown</h3>
-                <div className="markdown-content prose prose-slate max-w-none bg-white p-6 rounded-lg border border-gray-200 
-                              prose-headings:text-gray-900 prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
-                              prose-p:text-gray-700 prose-strong:text-gray-900
-                              prose-table:border-collapse prose-table:w-full prose-table:text-sm
-                              prose-thead:bg-gradient-to-r prose-thead:from-blue-500 prose-thead:to-indigo-600
-                              prose-th:text-white prose-th:font-semibold prose-th:p-3 prose-th:text-left prose-th:border prose-th:border-blue-400
-                              prose-td:p-3 prose-td:border prose-td:border-gray-300
-                              prose-tr:even:bg-gray-50 prose-tr:hover:bg-blue-50 prose-tr:transition-colors
-                              prose-ul:list-disc prose-ul:pl-5 prose-li:text-gray-700
-                              prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {analysisResult.analysisMarkdown.replace(/\\n/g, '\n')}
-                  </ReactMarkdown>
-                </div>
-                <div className="border-t pt-6 mt-6">
-                  <h3 className="text-xl font-semibold mb-4">Raw Markdown Code</h3>
+              <>
+                {markdownView === 'preview' ? (
+                  <div className="markdown-content prose prose-slate max-w-none bg-white p-6 rounded-lg border border-gray-200 
+                                prose-headings:text-gray-900 prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl
+                                prose-p:text-gray-700 prose-strong:text-gray-900
+                                prose-table:border-collapse prose-table:w-full prose-table:text-sm
+                                prose-thead:bg-gradient-to-r prose-thead:from-blue-500 prose-thead:to-indigo-600
+                                prose-th:text-white prose-th:font-semibold prose-th:p-3 prose-th:text-left prose-th:border prose-th:border-blue-400
+                                prose-td:p-3 prose-td:border prose-td:border-gray-300
+                                prose-tr:even:bg-gray-50 prose-tr:hover:bg-blue-50 prose-tr:transition-colors
+                                prose-ul:list-disc prose-ul:pl-5 prose-li:text-gray-700
+                                prose-code:bg-gray-100 prose-code:px-2 prose-code:py-1 prose-code:rounded">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {analysisResult.analysisMarkdown.replace(/\\n/g, '\n')}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
                   <pre className="bg-gray-900 text-gray-100 p-6 rounded-lg text-sm overflow-x-auto">
                     <code>
                       {analysisResult.analysisMarkdown}
                     </code>
                   </pre>
-                </div>
-              </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-12">
                 <p className="text-gray-500 text-lg mb-2">No markdown content available.</p>
