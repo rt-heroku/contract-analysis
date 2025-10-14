@@ -20,7 +20,7 @@ import {
 export const AnalysisDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'extraction' | 'analysis'>('extraction');
+  const [activeTab, setActiveTab] = useState<'extraction' | 'analysis' | 'json'>('extraction');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showMarkdown, setShowMarkdown] = useState(false);
@@ -359,6 +359,19 @@ export const AnalysisDetails: React.FC = () => {
               Final Analysis
             </div>
           </button>
+          <button
+            onClick={() => setActiveTab('json')}
+            className={`px-4 py-3 font-medium border-b-2 transition-colors ${
+              activeTab === 'json'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              JSON Response
+            </div>
+          </button>
         </nav>
       </div>
 
@@ -588,7 +601,9 @@ export const AnalysisDetails: React.FC = () => {
                   )
                 ) : (
                   <div className="markdown-content prose max-w-none">
-                    <ReactMarkdown>{displayAnalysis.analysisMarkdown || displayAnalysis.markdownReport}</ReactMarkdown>
+                    <ReactMarkdown>
+                      {((displayAnalysis.analysisMarkdown || displayAnalysis.markdownReport) || '').replace(/\\n/g, '\n')}
+                    </ReactMarkdown>
                   </div>
                 )}
               </Card>
@@ -607,11 +622,26 @@ export const AnalysisDetails: React.FC = () => {
                 }
               >
                 <div className="markdown-content prose max-w-none">
-                  <ReactMarkdown>{displayAnalysis.markdownReport}</ReactMarkdown>
+                  <ReactMarkdown>
+                    {(displayAnalysis.markdownReport || '').replace(/\\n/g, '\n')}
+                  </ReactMarkdown>
                 </div>
               </Card>
             </>
           )}
+        </div>
+      )}
+
+      {/* JSON Response Tab */}
+      {activeTab === 'json' && (
+        <div className="space-y-6">
+          <Card title="MuleSoft Response (JSON)">
+            <pre className="bg-gray-50 p-4 rounded-lg text-sm overflow-x-auto">
+              <code className="text-gray-800">
+                {JSON.stringify(analysisResult, null, 2)}
+              </code>
+            </pre>
+          </Card>
         </div>
       )}
     </div>
