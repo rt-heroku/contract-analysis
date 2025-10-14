@@ -119,13 +119,15 @@ class DashboardController {
             count: item._count.id,
           })),
         },
-        recentAnalyses: recentAnalyses.map(analysis => ({
-          id: analysis.id,
-          status: analysis.status,
-          contractFile: analysis.contractUpload?.filename || 'N/A',
-          dataFile: analysis.dataUpload?.filename || 'N/A',
-          createdAt: analysis.createdAt,
-        })),
+        recentAnalyses: recentAnalyses
+          .filter(analysis => analysis.contractUpload !== null) // Only show analyses with existing uploads
+          .map(analysis => ({
+            id: analysis.id,
+            status: analysis.status,
+            contractFile: analysis.contractUpload?.filename || 'Unknown Document',
+            dataFile: analysis.dataUpload?.filename || 'Unknown File',
+            createdAt: analysis.createdAt,
+          })),
         activityChart: Object.entries(activityByDate).map(([date, count]) => ({
           date,
           count,
