@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { MenuItem } from '@/types';
 import { 
   Home, User, FileText, History, CreditCard, 
-  Shield, Settings, ChevronDown, ChevronRight 
+  Shield, Settings, ChevronDown, ChevronRight, Folder, GitBranch
 } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 
@@ -18,6 +18,8 @@ const iconMap: any = {
   'credit-card': CreditCard,
   shield: Shield,
   settings: Settings,
+  folder: Folder,
+  'git-branch': GitBranch,
 };
 
 export const Sidebar: React.FC = () => {
@@ -45,49 +47,28 @@ export const Sidebar: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Default menu as fallback (basic items only - admin items come from database)
     const defaultMenu = [
       { id: 1, title: 'Dashboard', icon: 'home', route: '/dashboard', orderIndex: 1, isActive: true, children: [] },
       { id: 2, title: 'Processing', icon: 'file-text', route: '/processing', orderIndex: 2, isActive: true, children: [] },
       { id: 3, title: 'Prompts', icon: 'file-text', route: '/prompts', orderIndex: 3, isActive: true, children: [] },
-      { id: 4, title: 'History', icon: 'history', route: '/history', orderIndex: 4, isActive: true, children: [] },
-      { id: 5, title: 'Profile', icon: 'user', route: '/profile', orderIndex: 5, isActive: true, children: [] },
-      { id: 6, title: 'Settings', icon: 'settings', route: '/settings', orderIndex: 6, isActive: true, children: [] },
+      { id: 4, title: 'History', icon: 'history', route: '/history', orderIndex: 5, isActive: true, children: [] },
+      { id: 5, title: 'Profile', icon: 'user', route: '/profile', orderIndex: 6, isActive: true, children: [] },
     ];
-
-    // Add Admin menu for admin users
-    const adminMenu = {
-      id: 100,
-      title: 'Admin',
-      icon: 'shield',
-      route: null,
-      orderIndex: 100,
-      isActive: true,
-      children: [
-        { id: 101, title: 'Logs', icon: 'file-text', route: '/admin/logs', orderIndex: 1, isActive: true, children: [] },
-        { id: 102, title: 'User Management', icon: 'user', route: '/admin/users', orderIndex: 2, isActive: true, children: [] },
-      ],
-    };
 
     const fetchMenu = async () => {
       try {
         const response = await api.get('/system/menu');
-        let menu = response.data.menu && response.data.menu.length > 0 ? response.data.menu : defaultMenu;
+        console.log('📋 Menu API Response:', response.data);
         
-        // Add Admin menu if user is admin
-        const isAdmin = user?.roles?.some((r: string) => r.toLowerCase() === 'admin');
-        if (isAdmin) {
-          menu = [...menu, adminMenu as any];
-        }
-        
+        const menu = response.data.menu && response.data.menu.length > 0 ? response.data.menu : defaultMenu;
+        console.log('📋 Menu to display:', menu);
+        console.log('📋 Final menu items:', menu);
         setMenuItems(menu);
       } catch (error) {
+        console.error('❌ Error fetching menu:', error);
         // Silently fall back to default menu
-        let menu = defaultMenu;
-        const isAdmin = user?.roles?.some((r: string) => r.toLowerCase() === 'admin');
-        if (isAdmin) {
-          menu = [...menu, adminMenu as any];
-        }
-        setMenuItems(menu);
+        setMenuItems(defaultMenu);
       }
     };
 
