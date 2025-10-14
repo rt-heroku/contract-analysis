@@ -534,24 +534,29 @@ export const AnalysisDetails: React.FC = () => {
                                 </tr>
                               </thead>
                               <tbody className="bg-white divide-y divide-gray-200">
-                                {displayAnalysis.jsonData.line_items_analysis.map((item: any, idx: number) => (
-                                  <tr key={idx} className={item.flags && item.flags.length > 0 ? 'bg-red-50' : ''}>
-                                    <td className="px-4 py-3 text-sm text-gray-900">{item.product_name}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-900">{item.items_sold_with_multiplier}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-900">${item.unit_price_paid}</td>
-                                    <td className="px-4 py-3 text-sm text-gray-900">${item.discount_value_per_unit} ({(item.discount_percent * 100).toFixed(1)}%)</td>
-                                    <td className="px-4 py-3 text-sm text-gray-900">${item.discount_value_total}</td>
-                                    <td className="px-4 py-3 text-sm">
-                                      {item.flags && item.flags.length > 0 ? (
-                                        <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full">
-                                          {item.flags.join(', ')}
-                                        </span>
-                                      ) : (
-                                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">OK</span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
+                                {displayAnalysis.jsonData.line_items_analysis.map((item: any, idx: number) => {
+                                  const isCompliant = item.compliance?.limit_enforced && item.compliance?.approved_mechanic_used;
+                                  return (
+                                    <tr key={idx} className={!isCompliant ? 'bg-red-50' : ''}>
+                                      <td className="px-4 py-3 text-sm text-gray-900">{item.product_name}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">{item.quantity_sold || item.items_sold_with_multiplier || 0}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">${(item.regular_price_per_unit || item.unit_price_paid || 0).toFixed(2)}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">
+                                        ${(item.discount_per_unit || item.discount_value_per_unit || 0).toFixed(2)} ({((item.discount_percent || 0) * 100).toFixed(0)}%)
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">${(item.discount_total || item.discount_value_total || 0).toFixed(2)}</td>
+                                      <td className="px-4 py-3 text-sm">
+                                        {isCompliant ? (
+                                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">OK</span>
+                                        ) : (
+                                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                                            Review
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
@@ -560,29 +565,23 @@ export const AnalysisDetails: React.FC = () => {
 
                       {/* Totals Summary */}
                       {displayAnalysis.jsonData.totals_summary && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                            <p className="text-blue-600 text-sm font-medium">Total Items Sold</p>
-                            <p className="text-3xl font-bold text-blue-900 mt-1">
-                              {displayAnalysis.jsonData.totals_summary.grand_items_sold_with_multiplier || 0}
-                            </p>
-                          </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
                             <p className="text-purple-600 text-sm font-medium">Total Discount</p>
                             <p className="text-3xl font-bold text-purple-900 mt-1">
-                              ${displayAnalysis.jsonData.totals_summary.grand_discount_value || 0}
+                              ${(displayAnalysis.jsonData.totals_summary.total_discount_value || displayAnalysis.jsonData.totals_summary.grand_discount_value || 0).toFixed(2)}
                             </p>
                           </div>
                           <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                            <p className="text-green-600 text-sm font-medium">Distributor Owes</p>
+                            <p className="text-green-600 text-sm font-medium">Distributor Owes Retailer</p>
                             <p className="text-3xl font-bold text-green-900 mt-1">
-                              ${displayAnalysis.jsonData.totals_summary.grand_distributor_owes_retailer || 0}
+                              ${(displayAnalysis.jsonData.totals_summary.total_distributor_owes_retailer || displayAnalysis.jsonData.totals_summary.grand_distributor_owes_retailer || 0).toFixed(2)}
                             </p>
                           </div>
                           <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
                             <p className="text-yellow-600 text-sm font-medium">Retailer Funded</p>
                             <p className="text-3xl font-bold text-yellow-900 mt-1">
-                              ${displayAnalysis.jsonData.totals_summary.grand_retailer_funded_amount || 0}
+                              ${(displayAnalysis.jsonData.totals_summary.total_retailer_funded || displayAnalysis.jsonData.totals_summary.grand_retailer_funded_amount || 0).toFixed(2)}
                             </p>
                           </div>
                         </div>
