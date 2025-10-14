@@ -385,7 +385,7 @@ export const AnalysisDetails: React.FC = () => {
           >
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              Markdown
+              Full Report
             </div>
           </button>
         </nav>
