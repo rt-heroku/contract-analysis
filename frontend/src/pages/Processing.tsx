@@ -47,7 +47,7 @@ export const Processing: React.FC = () => {
   const [dataFile, setDataFile] = useState<File | null>(null);
   const [existingContractUpload, setExistingContractUpload] = useState<ExistingUpload | null>(null);
   const [existingDataUpload, setExistingDataUpload] = useState<ExistingUpload | null>(null);
-  // const [loadingExistingUploads, setLoadingExistingUploads] = useState(false); // Unused for now
+  const [_loadingExistingUploads, setLoadingExistingUploads] = useState(false);
   // const [uploading, setUploading] = useState(false); // Unused for now
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
