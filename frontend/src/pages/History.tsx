@@ -156,15 +156,15 @@ export const History: React.FC = () => {
     try {
       setRerunningId(analysis.id);
       
-      // Start a new analysis with the same files
+      // Start a new analysis with the same files (Step 1 only)
       const response = await api.post('/analysis/start', {
         contractUploadId: analysis.contractUploadId,
         dataUploadId: analysis.dataUploadId,
       });
 
       if (response.data.analysisRecordId) {
-        // Navigate to the new analysis details page
-        navigate(`/analysis/${response.data.analysisRecordId}`);
+        // Navigate to IDP Response page (Step 1 complete)
+        navigate(`/idp-response/${response.data.analysisRecordId}`);
       }
     } catch (error: any) {
       console.error('Failed to rerun analysis:', error);

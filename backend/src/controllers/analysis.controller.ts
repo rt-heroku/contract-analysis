@@ -147,6 +147,47 @@ class AnalysisController {
     }
   }
 
+  async runAnalysis(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const analysisRecordId = parseInt(req.params.id);
+      const { prompt, variables } = req.body;
+
+      const result = await documentService.runAnalysis(
+        req.user.id,
+        analysisRecordId,
+        prompt,
+        variables
+      );
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      // Log activity
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: ACTION_TYPES.PROCESSING.START,
+        actionDescription: 'Started Step 2 - Analysis',
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+        metadata: {
+          analysisRecordId,
+        },
+      });
+
+      res.status(202).json({
+        message: 'Analysis started',
+        analysisRecordId: result.analysisRecordId,
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   async getStatistics(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {

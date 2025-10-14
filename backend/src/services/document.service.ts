@@ -7,7 +7,7 @@ import { ProcessingResult } from '../types';
 
 class DocumentService {
   /**
-   * Start document processing workflow
+   * Start document processing workflow - STEP 1 ONLY (IDP processing)
    */
   async startProcessing(
     userId: number,
@@ -38,10 +38,10 @@ class DocumentService {
         },
       });
 
-      // Start processing asynchronously
-      this.processDocuments(userId, contractUploadId, dataUploadId, analysisRecord.id, contractUpload.jobId, prompt, variables)
+      // Start ONLY Step 1 (contract processing) asynchronously
+      this.processContractOnly(userId, contractUploadId, analysisRecord.id, contractUpload.jobId)
         .catch((error) => {
-          logger.error('Document processing failed:', error);
+          logger.error('Contract document processing failed:', error);
         });
 
       return {
@@ -216,6 +216,274 @@ class DocumentService {
         message: errorMessage,
         type: NOTIFICATION_TYPES.ERROR,
         actionUrl: '/processing',
+        relatedRecordType: 'analysis_record',
+        relatedRecordId: analysisRecordId,
+      });
+    }
+  }
+
+  /**
+   * STEP 1: Process contract document only (IDP processing)
+   */
+  private async processContractOnly(
+    userId: number,
+    contractUploadId: number,
+    analysisRecordId: number,
+    jobId: string
+  ): Promise<void> {
+    try {
+      // Get contract upload file
+      const contractUpload = await prisma.upload.findUnique({ 
+        where: { id: contractUploadId } 
+      });
+
+      if (!contractUpload) {
+        throw new Error('Contract upload file not found');
+      }
+
+      // Step 1: Process contract document via MuleSoft IDP
+      logger.info(`[Step 1/2] Processing contract document for jobId: ${jobId}`);
+      let contractResult;
+      try {
+        contractResult = await muleSoftService.processContractDocument(
+          jobId,
+          userId,
+          contractUploadId
+        );
+        logger.info(`[Step 1/2] Contract processing successful for jobId: ${jobId}`);
+      } catch (error: any) {
+        logger.error(`[Step 1/2] Contract processing FAILED for jobId: ${jobId}`, { error: error.message });
+        throw error;
+      }
+
+      // Save contract analysis
+      const contractAnalysis = await prisma.contractAnalysis.create({
+        data: {
+          uploadId: contractUploadId,
+          jobId,
+          documentName: contractResult.document,
+          status: contractResult.status,
+          terms: contractResult.terms || [],
+          products: contractResult.products || [],
+          mulesoftResponse: contractResult,
+        },
+      });
+
+      // Update analysis record with contract analysis ID and mark as IDP_COMPLETED
+      await prisma.analysisRecord.update({
+        where: { id: analysisRecordId },
+        data: {
+          contractAnalysisId: contractAnalysis.id,
+          status: 'IDP_COMPLETED', // Intermediate status - IDP done, analysis pending
+        },
+      });
+
+      // Send notification that Step 1 is complete
+      await notificationService.createNotification({
+        userId,
+        title: 'Document Processing Complete',
+        message: 'IDP has extracted data from your contract. Ready for analysis.',
+        type: NOTIFICATION_TYPES.SUCCESS,
+        actionUrl: `/idp-response/${analysisRecordId}`,
+        relatedRecordType: 'analysis_record',
+        relatedRecordId: analysisRecordId,
+      });
+
+    } catch (error: any) {
+      logger.error('Contract processing error:', error);
+
+      let errorMessage = 'Failed to process contract document';
+      let errorDetails = error.message;
+
+      if (error.message?.includes('MuleSoft API Error')) {
+        errorMessage = 'MuleSoft IDP service is currently unavailable.';
+        
+        if (error.message.includes('ECONNREFUSED')) {
+          errorDetails = 'Connection refused - MuleSoft service is not running';
+        } else if (error.message.includes('timeout')) {
+          errorDetails = 'Request timeout - MuleSoft service took too long';
+        }
+      }
+
+      // Update analysis record as failed
+      await prisma.analysisRecord.update({
+        where: { id: analysisRecordId },
+        data: {
+          status: ANALYSIS_STATUS.FAILED,
+          errorMessage: errorDetails,
+        },
+      });
+
+      // Send error notification
+      await notificationService.createNotification({
+        userId,
+        title: 'Document Processing Failed',
+        message: errorMessage,
+        type: NOTIFICATION_TYPES.ERROR,
+        actionUrl: '/processing',
+        relatedRecordType: 'analysis_record',
+        relatedRecordId: analysisRecordId,
+      });
+    }
+  }
+
+  /**
+   * STEP 2: Run analysis with contract context
+   */
+  async runAnalysis(
+    userId: number,
+    analysisRecordId: number,
+    prompt?: { id: number; name: string },
+    variables?: Record<string, any>
+  ): Promise<ProcessingResult> {
+    try {
+      // Get the analysis record
+      const analysisRecord = await prisma.analysisRecord.findUnique({
+        where: { id: analysisRecordId },
+        include: {
+          contractAnalysis: true,
+        },
+      });
+
+      if (!analysisRecord) {
+        throw new Error('Analysis record not found');
+      }
+
+      if (!analysisRecord.contractAnalysis) {
+        throw new Error('Contract analysis not found. Please run Step 1 first.');
+      }
+
+      // Update status to processing
+      await prisma.analysisRecord.update({
+        where: { id: analysisRecordId },
+        data: { status: ANALYSIS_STATUS.PROCESSING },
+      });
+
+      // Run analysis asynchronously
+      this.performAnalysis(
+        userId,
+        analysisRecordId,
+        analysisRecord.contractAnalysisId!,
+        analysisRecord.jobId,
+        analysisRecord.contractAnalysis.mulesoftResponse,
+        prompt,
+        variables
+      ).catch((error) => {
+        logger.error('Analysis failed:', error);
+      });
+
+      return {
+        success: true,
+        analysisRecordId,
+      };
+    } catch (error: any) {
+      logger.error('Failed to start analysis:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Perform the actual analysis (Step 2 processing)
+   */
+  private async performAnalysis(
+    userId: number,
+    analysisRecordId: number,
+    contractAnalysisId: number,
+    jobId: string,
+    contractResult: any,
+    prompt?: { id: number; name: string },
+    variables?: Record<string, any>
+  ): Promise<void> {
+    try {
+      // Step 2: Analyze data with contract context
+      logger.info(`[Step 2/2] Running final analysis for jobId: ${jobId}`);
+      logger.info(`Passing contract result to /analyze endpoint`);
+      if (prompt) {
+        logger.info(`Using prompt: ${prompt.name} (ID: ${prompt.id})`);
+      }
+
+      let dataResult;
+      try {
+        dataResult = await muleSoftService.analyzeDataFile(
+          jobId,
+          userId,
+          contractAnalysisId,
+          contractResult,
+          prompt,
+          variables
+        );
+        logger.info(`[Step 2/2] Analysis successful for jobId: ${jobId}`);
+      } catch (error: any) {
+        logger.error(`[Step 2/2] Analysis FAILED for jobId: ${jobId}`, { error: error.message });
+        throw error;
+      }
+
+      // Save data analysis
+      const dataAnalysis = await prisma.dataAnalysis.create({
+        data: {
+          contractAnalysisId,
+          jobId,
+          analysisMarkdown: dataResult.analysis_markdown,
+          dataTable: dataResult.data_table || [],
+          mulesoftResponse: dataResult,
+        },
+      });
+
+      // Update analysis record as completed
+      await prisma.analysisRecord.update({
+        where: { id: analysisRecordId },
+        data: {
+          status: ANALYSIS_STATUS.COMPLETED,
+          dataAnalysisId: dataAnalysis.id,
+        },
+      });
+
+      // Send success notification
+      await notificationService.createNotification({
+        userId,
+        title: 'Analysis Complete',
+        message: 'Your document analysis has been completed successfully',
+        type: NOTIFICATION_TYPES.SUCCESS,
+        actionUrl: `/analysis/${analysisRecordId}`,
+        relatedRecordType: 'analysis_record',
+        relatedRecordId: analysisRecordId,
+      });
+
+    } catch (error: any) {
+      logger.error('Analysis error:', error);
+
+      let errorMessage = 'Failed to complete analysis';
+      let errorDetails = error.message;
+
+      if (error.message?.includes('MuleSoft API Error')) {
+        errorMessage = 'MuleSoft analysis service is currently unavailable.';
+        
+        if (error.message.includes('ECONNREFUSED')) {
+          errorDetails = 'Connection refused - MuleSoft service is not running';
+        } else if (error.message.includes('timeout')) {
+          errorDetails = 'Request timeout - Analysis took too long';
+        }
+      }
+
+      // Update analysis record as failed
+      await prisma.analysisRecord.update({
+        where: { id: analysisRecordId },
+        data: {
+          status: ANALYSIS_STATUS.FAILED,
+          errorMessage: errorDetails,
+        },
+      });
+
+      // Send error notification
+      await notificationService.createNotification({
+        userId,
+        title: 'Analysis Failed',
+        message: errorMessage,
+        type: NOTIFICATION_TYPES.ERROR,
+        actionUrl: `/idp-response/${analysisRecordId}`,
         relatedRecordType: 'analysis_record',
         relatedRecordId: analysisRecordId,
       });

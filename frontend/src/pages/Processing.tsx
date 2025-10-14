@@ -322,9 +322,9 @@ export const Processing: React.FC = () => {
 
       const processRes = await api.post('/analysis/start', processPayload);
 
-      // Navigate to analysis page
+      // Navigate to IDP Response page (Step 1 complete)
       setTimeout(() => {
-        navigate(`/analysis/${processRes.data.analysisRecordId}`);
+        navigate(`/idp-response/${processRes.data.analysisRecordId}`);
       }, 1000);
 
     } catch (err: any) {
