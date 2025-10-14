@@ -339,52 +339,56 @@ export const History: React.FC = () => {
                   {/* Files Section */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     {/* Contract File */}
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-blue-900 flex items-center gap-2">
-                          <FileText className="w-4 h-4" />
-                          Contract Document
-                        </h3>
+                    {analysis.contractUpload && (
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            Contract Document
+                          </h3>
+                        </div>
+                        <p className="text-sm text-blue-800 break-all mb-2">
+                          {analysis.contractUpload.filename}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownloadFile(analysis.id, 'contract')}
+                            className="flex items-center gap-1"
+                          >
+                            <Download className="w-3 h-3" />
+                            Download
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-sm text-blue-800 break-all mb-2">
-                        {analysis.contractUpload.filename}
-                      </p>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDownloadFile(analysis.id, 'contract')}
-                          className="flex items-center gap-1"
-                        >
-                          <Download className="w-3 h-3" />
-                          Download
-                        </Button>
-                      </div>
-                    </div>
+                    )}
 
                     {/* Data File */}
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-green-900 flex items-center gap-2">
-                          <FileText className="w-4 h-4" />
-                          Data File
-                        </h3>
+                    {analysis.dataUpload && (
+                      <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold text-green-900 flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            Data File
+                          </h3>
+                        </div>
+                        <p className="text-sm text-green-800 break-all mb-2">
+                          {analysis.dataUpload.filename}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownloadFile(analysis.id, 'data')}
+                            className="flex items-center gap-1"
+                          >
+                            <Download className="w-3 h-3" />
+                            Download
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-sm text-green-800 break-all mb-2">
-                        {analysis.dataUpload.filename}
-                      </p>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDownloadFile(analysis.id, 'data')}
-                          className="flex items-center gap-1"
-                        >
-                          <Download className="w-3 h-3" />
-                          Download
-                        </Button>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Terms Preview (if available) */}
