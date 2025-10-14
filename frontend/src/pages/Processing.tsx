@@ -7,6 +7,7 @@ import { Button } from '@/components/common/Button';
 import { Modal } from '@/components/common/Modal';
 import { Loading } from '@/components/common/Loading';
 import { Input } from '@/components/common/Input';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { FileText, Upload, X, CheckCircle, Search, AlertCircle, Trash2, Folder, Table } from 'lucide-react';
 import { validateFileType, validateFileSize } from '@/utils/validation';
 import { formatFileSize } from '@/utils/helpers';
@@ -78,6 +79,22 @@ export const Processing: React.FC = () => {
   const [promptSearch, setPromptSearch] = useState('');
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
+
+  // Dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    type?: 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // Fetch available prompts
   useEffect(() => {
@@ -194,37 +211,44 @@ export const Processing: React.FC = () => {
 
     // Check if this is a contract that was already IDP processed
     if (librarySelectionType === 'contract' && selectedLibraryDoc.hasBeenProcessed) {
-      // Show confirmation dialog
-      const userConfirmed = window.confirm(
-        '📄 This document has already been processed by MuleSoft IDP.\n\n' +
-        'Would you like to:\n' +
-        '  ✅ Click "OK" to reuse the existing IDP processing (recommended)\n' +
-        '  ❌ Click "Cancel" to start a new IDP processing (~15 seconds)\n\n' +
-        'Note: Reusing the existing processing is faster and costs less.'
-      );
-      
-      if (!userConfirmed) {
-        // User wants to reprocess - proceed normally
-        console.log('User chose to reprocess the document');
-      } else {
-        // User wants to reuse - we'll navigate directly to the IDP response page
-        console.log('User chose to reuse existing IDP processing');
-        
-        // We need to find the analysis record for this document
-        try {
-          const response = await api.get(`/analysis/by-upload/${selectedLibraryDoc.id}`);
-          if (response.data && response.data.analysisRecord) {
-            // Navigate directly to IDP response page
-            setShowLibraryModal(false);
-            navigate(`/idp-response/${response.data.analysisRecord.id}`);
-            return;
+      // Show styled confirmation dialog
+      setConfirmDialog({
+        isOpen: true,
+        title: 'IDP Already Processed',
+        message: 'This document has already been processed by MuleSoft IDP. Would you like to reuse the existing processing (faster and costs less) or start a new processing (~15 seconds)?',
+        type: 'info',
+        confirmText: 'Reuse Existing',
+        cancelText: 'Reprocess',
+        onConfirm: async () => {
+          // User wants to reuse - navigate directly to the IDP response page
+          console.log('User chose to reuse existing IDP processing');
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+          
+          // We need to find the analysis record for this document
+          try {
+            const response = await api.get(`/analysis/by-upload/${selectedLibraryDoc.id}`);
+            if (response.data && response.data.analysisRecord) {
+              // Navigate directly to IDP response page
+              setShowLibraryModal(false);
+              navigate(`/idp-response/${response.data.analysisRecord.id}`);
+              return;
+            }
+          } catch (error) {
+            console.error('Failed to fetch existing analysis:', error);
+            // Fall through to normal selection if we can't find the analysis
+            proceedWithSelection();
           }
-        } catch (error) {
-          console.error('Failed to fetch existing analysis:', error);
-          // Fall through to normal selection if we can't find the analysis
-        }
-      }
+        },
+      });
+      return; // Wait for user decision
     }
+
+    // Proceed with normal selection
+    proceedWithSelection();
+  };
+
+  const proceedWithSelection = () => {
+    if (!selectedLibraryDoc) return;
 
     // Convert document to ExistingUpload format
     const upload: ExistingUpload = {
@@ -245,6 +269,7 @@ export const Processing: React.FC = () => {
 
     setShowLibraryModal(false);
     setSelectedLibraryDoc(null);
+    setConfirmDialog({ ...confirmDialog, isOpen: false });
   };
 
   const handleRemoveExistingUpload = async (uploadId: number, type: 'contract' | 'data') => {
@@ -977,6 +1002,22 @@ export const Processing: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => {
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+          // If user clicks cancel (close), proceed with reprocessing
+          proceedWithSelection();
+        }}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+      />
     </div>
   );
 };
