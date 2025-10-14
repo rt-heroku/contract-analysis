@@ -9,6 +9,7 @@ router.post('/start', authenticate, analysisController.startProcessing);
 router.post('/:id/analyze', authenticate, analysisController.runAnalysis);
 router.get('/', authenticate, analysisController.getAnalysisHistory);
 router.get('/statistics', authenticate, analysisController.getStatistics);
+router.get('/:id/contract', authenticate, analysisController.getContractAnalysis);
 router.get('/:id', authenticate, analysisController.getAnalysis);
 router.delete('/:id', authenticate, requireAdmin, analysisController.deleteAnalysis);
 

@@ -90,6 +90,45 @@ class AnalysisController {
     }
   }
 
+  async getContractAnalysis(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const analysisRecordId = parseInt(req.params.id);
+
+      // Check if user has admin role
+      const isAdmin = req.user.roles.includes('admin');
+
+      const analysis = await documentService.getAnalysisById(
+        analysisRecordId,
+        isAdmin ? undefined : req.user.id
+      );
+
+      if (!analysis) {
+        return res.status(404).json({ error: 'Analysis record not found' });
+      }
+
+      if (!analysis.contractAnalysis) {
+        return res.status(404).json({ error: 'Contract analysis not yet available. Please wait for Step 1 to complete.' });
+      }
+
+      // Log activity
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: ACTION_TYPES.ANALYSIS.VIEW,
+        actionDescription: `Viewed IDP response for analysis #${analysisRecordId}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.json({ contractAnalysis: analysis.contractAnalysis });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
   async getAnalysisHistory(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {
