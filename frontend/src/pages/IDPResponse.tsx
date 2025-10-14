@@ -26,25 +26,78 @@ export const IDPResponse: React.FC = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [contractAnalysis, setContractAnalysis] = useState<ContractAnalysis | null>(null);
   const [error, setError] = useState('');
+  const [pollingAttempts, setPollingAttempts] = useState(0);
 
   useEffect(() => {
-    if (analysisRecordId) {
-      fetchContractAnalysis();
-    }
-  }, [analysisRecordId]);
+    let timeoutId: NodeJS.Timeout | null = null;
+    let isMounted = true;
 
-  const fetchContractAnalysis = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get(`/analysis/${analysisRecordId}/contract`);
-      setContractAnalysis(response.data.contractAnalysis);
-    } catch (err: any) {
-      console.error('Failed to fetch contract analysis:', err);
-      setError(err.response?.data?.error || 'Failed to load IDP response');
-    } finally {
-      setLoading(false);
+    const pollContractAnalysis = async () => {
+      const maxAttempts = 30; // 30 attempts * 2 seconds = 60 seconds max
+      let attempts = 0;
+
+      const poll = async () => {
+        if (!isMounted) return; // Stop polling if component unmounted
+
+        try {
+          setPollingAttempts(attempts + 1);
+          const response = await api.get(`/analysis/${analysisRecordId}/contract`);
+          
+          if (response.data.contractAnalysis) {
+            // Success! Contract analysis is ready
+            if (isMounted) {
+              setContractAnalysis(response.data.contractAnalysis);
+              setLoading(false);
+              setError('');
+            }
+          } else {
+            // Still processing, try again
+            attempts++;
+            if (attempts < maxAttempts && isMounted) {
+              timeoutId = setTimeout(poll, 2000); // Poll every 2 seconds
+            } else if (isMounted) {
+              setError('Timeout: Contract processing is taking longer than expected. Please try again.');
+              setLoading(false);
+            }
+          }
+        } catch (err: any) {
+          const errorMessage = err.response?.data?.error || '';
+          
+          // If it's still processing (404 or "not yet available"), keep polling
+          if (errorMessage.includes('not yet available') || errorMessage.includes('Please wait')) {
+            attempts++;
+            if (attempts < maxAttempts && isMounted) {
+              timeoutId = setTimeout(poll, 2000); // Poll every 2 seconds
+            } else if (isMounted) {
+              setError('Timeout: Contract processing is taking longer than expected. Please try again.');
+              setLoading(false);
+            }
+          } else {
+            // Real error, stop polling
+            console.error('Failed to fetch contract analysis:', err);
+            if (isMounted) {
+              setError(errorMessage || 'Failed to load IDP response');
+              setLoading(false);
+            }
+          }
+        }
+      };
+
+      poll();
+    };
+
+    if (analysisRecordId) {
+      pollContractAnalysis();
     }
-  };
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [analysisRecordId]);
 
   const handleAnalyze = async () => {
     try {
@@ -66,7 +119,25 @@ export const IDPResponse: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loading size="lg" text="Loading IDP Response..." />
+        <div className="text-center space-y-4 max-w-md">
+          <Loading size="lg" />
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Processing Document with MuleSoft IDP
+            </h3>
+            <p className="text-gray-600 mb-2">
+              Extracting terms, products, and key information from your contract...
+            </p>
+            <p className="text-sm text-gray-500">
+              This usually takes 10-15 seconds
+            </p>
+            {pollingAttempts > 0 && (
+              <p className="text-xs text-gray-400 mt-2">
+                Checking... (attempt {pollingAttempts}/30)
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
