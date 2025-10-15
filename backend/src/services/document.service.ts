@@ -100,7 +100,7 @@ class DocumentService {
         data: {
           uploadId: contractUploadId,
           jobId,
-          documentName: contractResult.document,
+          documentName: contractResult.documentName || contractResult.document || 'Unknown Document',
           status: contractResult.status,
           terms: contractResult.terms || [],
           products: contractResult.products || [],
@@ -261,7 +261,7 @@ class DocumentService {
         data: {
           uploadId: contractUploadId,
           jobId,
-          documentName: contractResult.document,
+          documentName: contractResult.documentName || contractResult.document || 'Unknown Document',
           status: contractResult.status,
           terms: contractResult.terms || [],
           products: contractResult.products || [],
