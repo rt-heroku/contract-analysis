@@ -558,11 +558,27 @@ export const AnalysisDetails: React.FC = () => {
                               <tbody className="bg-white divide-y divide-gray-200">
                                 {displayAnalysis.jsonData.line_items_analysis.map((item: any, idx: number) => {
                                   const isCompliant = item.compliance?.limit_enforced && item.compliance?.approved_mechanic_used;
+                                  
+                                  // Handle product_name which might be a string or an object
+                                  const productName = typeof item.product_name === 'object' && item.product_name !== null
+                                    ? item.product_name.name || 'Unknown Product'
+                                    : item.product_name || 'Unknown Product';
+                                  
+                                  // Handle quantity which might be nested in an object
+                                  const quantity = typeof item.quantity_sold === 'object' && item.quantity_sold !== null
+                                    ? item.quantity_sold.units_sold || 0
+                                    : (item.quantity_sold || item.items_sold_with_multiplier || 0);
+                                  
+                                  // Handle price which might be nested in an object
+                                  const unitPrice = typeof item.regular_price_per_unit === 'object' && item.regular_price_per_unit !== null
+                                    ? item.regular_price_per_unit.ref_price || 0
+                                    : (item.regular_price_per_unit || item.unit_price_paid || 0);
+                                  
                                   return (
                                     <tr key={idx} className={!isCompliant ? 'bg-red-50' : ''}>
-                                      <td className="px-4 py-3 text-sm text-gray-900">{item.product_name}</td>
-                                      <td className="px-4 py-3 text-sm text-gray-900">{item.quantity_sold || item.items_sold_with_multiplier || 0}</td>
-                                      <td className="px-4 py-3 text-sm text-gray-900">${(item.regular_price_per_unit || item.unit_price_paid || 0).toFixed(2)}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">{productName}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">{quantity}</td>
+                                      <td className="px-4 py-3 text-sm text-gray-900">${Number(unitPrice).toFixed(2)}</td>
                                       <td className="px-4 py-3 text-sm text-gray-900">
                                         ${(item.discount_per_unit || item.discount_value_per_unit || 0).toFixed(2)} ({((item.discount_percent || 0) * 100).toFixed(0)}%)
                                       </td>
