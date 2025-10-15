@@ -452,10 +452,10 @@ export const AnalysisDetails: React.FC = () => {
                       ? product.name || 'Unknown Product'
                       : product || 'Unknown Product';
                     const unitsSold = typeof product === 'object' && product !== null
-                      ? product.units_sold || 'N/A'
+                      ? (product.units_sold || product['units sold (ref)'] || 'N/A')
                       : 'N/A';
                     const refPrice = typeof product === 'object' && product !== null
-                      ? (product.ref_price ? `$${Number(product.ref_price).toFixed(2)}` : 'N/A')
+                      ? (product.ref_price || product['ref. price'] || 'N/A')
                       : 'N/A';
                     
                     return (
@@ -470,7 +470,7 @@ export const AnalysisDetails: React.FC = () => {
                           {unitsSold}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
-                          {refPrice}
+                          {refPrice !== 'N/A' && !isNaN(Number(refPrice)) ? `$${Number(refPrice).toFixed(2)}` : refPrice}
                         </td>
                       </tr>
                     );

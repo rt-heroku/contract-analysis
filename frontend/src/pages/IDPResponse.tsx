@@ -500,19 +500,32 @@ export const IDPResponse: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {contractAnalysis.mulesoftResponse.products.map((product: any, index: number) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {typeof product === 'string' ? product : product.name}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
-                          {typeof product === 'object' ? (product.units_sold || product['units sold (ref)'] || 'N/A') : 'N/A'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
-                          {typeof product === 'object' ? (product.ref_price || product['ref. price'] || 'N/A') : 'N/A'}
-                        </td>
-                      </tr>
-                    ))}
+                    {contractAnalysis.mulesoftResponse.products.map((product: any, index: number) => {
+                      // Handle product which might be a string or an object
+                      const productName = typeof product === 'object' && product !== null
+                        ? product.name || 'Unknown Product'
+                        : product || 'Unknown Product';
+                      const unitsSold = typeof product === 'object' && product !== null
+                        ? (product.units_sold || product['units sold (ref)'] || 'N/A')
+                        : 'N/A';
+                      const refPrice = typeof product === 'object' && product !== null
+                        ? (product.ref_price || product['ref. price'] || 'N/A')
+                        : 'N/A';
+                      
+                      return (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {productName}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            {unitsSold}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            {refPrice !== 'N/A' && !isNaN(Number(refPrice)) ? `$${Number(refPrice).toFixed(2)}` : refPrice}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
