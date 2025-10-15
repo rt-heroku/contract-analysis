@@ -39,8 +39,15 @@ export const AnalysisDetails: React.FC = () => {
 
     const fetchAnalysis = async () => {
       try {
+        console.log('📊 Fetching analysis data for ID:', id);
         const response = await api.get(`/analysis/${id}`);
         const data = response.data.analysis;
+        
+        console.log('📊 Analysis data received:', {
+          status: data.status,
+          hasContractAnalysis: !!data.contractAnalysis,
+          hasDataAnalysis: !!data.dataAnalysis
+        });
         
         setAnalysisData(data);
         setAnalysisStatus(data.status);
@@ -66,10 +73,19 @@ export const AnalysisDetails: React.FC = () => {
           });
         }
 
-        // Stop polling if completed or failed
-        if (data.status === 'completed' || data.status === 'failed') {
+        // Stop polling if completed or failed (case-insensitive)
+        const statusLower = data.status?.toLowerCase();
+        const isCompleted = statusLower === 'completed' || statusLower === 'failed' || statusLower === 'idp_completed';
+        
+        // Also stop if we have both extraction and analysis data
+        const hasData = data.contractAnalysis && data.dataAnalysis;
+        
+        if (isCompleted || hasData) {
+          console.log('✅ Analysis complete, stopping polling. Status:', data.status, 'HasData:', hasData);
           if (pollInterval) clearInterval(pollInterval);
           setLoading(false);
+        } else {
+          console.log('⏳ Analysis still processing...', data.status);
         }
 
       } catch (err: any) {
@@ -85,7 +101,8 @@ export const AnalysisDetails: React.FC = () => {
 
     // Poll every 5 seconds while processing
     pollInterval = setInterval(() => {
-      if (analysisStatus === 'processing') {
+      const statusLower = analysisStatus?.toLowerCase();
+      if (statusLower === 'processing' || statusLower === 'idp_completed') {
         fetchAnalysis();
       } else {
         clearInterval(pollInterval);
