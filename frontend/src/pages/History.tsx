@@ -392,24 +392,33 @@ export const History: React.FC = () => {
                   </div>
 
                   {/* Terms Preview (if available) */}
-                  {analysis.contractAnalysis?.terms && analysis.contractAnalysis.terms.length > 0 && (
+                  {analysis.contractAnalysis?.terms && (
                     <div className="mt-4 pt-4 border-t border-gray-200">
                       <p className="text-sm font-medium text-gray-700 mb-2">Key Terms:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {analysis.contractAnalysis.terms.slice(0, 5).map((term, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                          >
-                            {term}
-                          </span>
-                        ))}
-                        {analysis.contractAnalysis.terms.length > 5 && (
-                          <span className="px-2 py-1 text-gray-500 text-xs">
-                            +{analysis.contractAnalysis.terms.length - 5} more
-                          </span>
-                        )}
-                      </div>
+                      {/* Handle terms as array */}
+                      {Array.isArray(analysis.contractAnalysis.terms) && analysis.contractAnalysis.terms.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {analysis.contractAnalysis.terms.slice(0, 5).map((term, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+                            >
+                              {term}
+                            </span>
+                          ))}
+                          {analysis.contractAnalysis.terms.length > 5 && (
+                            <span className="px-2 py-1 text-gray-500 text-xs">
+                              +{analysis.contractAnalysis.terms.length - 5} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {/* Handle terms as string */}
+                      {typeof analysis.contractAnalysis.terms === 'string' && (
+                        <p className="text-xs text-gray-600 line-clamp-2">
+                          {analysis.contractAnalysis.terms}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

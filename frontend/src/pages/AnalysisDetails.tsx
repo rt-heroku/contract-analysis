@@ -50,8 +50,8 @@ export const AnalysisDetails: React.FC = () => {
           setExtraction({
             document: data.contractAnalysis.documentName || 'Document',
             status: data.contractAnalysis.status || 'PROCESSING',
-            terms: data.contractAnalysis.terms || [],
-            products: data.contractAnalysis.products || []
+            terms: Array.isArray(data.contractAnalysis.terms) ? data.contractAnalysis.terms : (data.contractAnalysis.terms ? [data.contractAnalysis.terms] : []),
+            products: Array.isArray(data.contractAnalysis.products) ? data.contractAnalysis.products : []
           });
         }
 
@@ -497,11 +497,16 @@ export const AnalysisDetails: React.FC = () => {
                             {displayAnalysis.jsonData.contract_summary.terms && (
                               <div>
                                 <p className="text-sm font-medium text-gray-500 mb-2">Terms</p>
-                                <ul className="list-disc list-inside space-y-1">
-                                  {displayAnalysis.jsonData.contract_summary.terms.map((term: string, idx: number) => (
-                                    <li key={idx} className="text-gray-700">{term}</li>
-                                  ))}
-                                </ul>
+                                {Array.isArray(displayAnalysis.jsonData.contract_summary.terms) && (
+                                  <ul className="list-disc list-inside space-y-1">
+                                    {displayAnalysis.jsonData.contract_summary.terms.map((term: string, idx: number) => (
+                                      <li key={idx} className="text-gray-700">{term}</li>
+                                    ))}
+                                  </ul>
+                                )}
+                                {typeof displayAnalysis.jsonData.contract_summary.terms === 'string' && (
+                                  <p className="text-gray-700">{displayAnalysis.jsonData.contract_summary.terms}</p>
+                                )}
                               </div>
                             )}
                             {displayAnalysis.jsonData.contract_summary.promo_funding && (
