@@ -4,7 +4,19 @@ import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Loading } from '@/components/common/Loading';
-import { ArrowRight, FileText, CheckCircle, AlertCircle } from 'lucide-react';
+import { 
+  ArrowRight, 
+  FileText, 
+  CheckCircle, 
+  AlertCircle, 
+  Building, 
+  MapPin, 
+  Phone, 
+  Calendar,
+  ShieldCheck,
+  Package,
+  Users
+} from 'lucide-react';
 
 interface ContractAnalysis {
   id: number;
@@ -216,40 +228,168 @@ export const IDPResponse: React.FC = () => {
       {/* IDP Response Details */}
       {contractAnalysis && (
         <>
+          {/* Document Information */}
           <Card title="Document Information">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <p className="text-sm text-gray-600">Document Name</p>
-                <p className="font-medium text-gray-900">{contractAnalysis.documentName}</p>
+                <p className="text-sm text-gray-600 mb-1">Document Name</p>
+                <p className="font-medium text-gray-900">{contractAnalysis.mulesoftResponse?.documentName || contractAnalysis.documentName}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Status</p>
+                <p className="text-sm text-gray-600 mb-1">Document ID</p>
+                <p className="font-mono text-xs text-gray-700">{contractAnalysis.mulesoftResponse?.id || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Processing Status</p>
                 <div className="flex items-center gap-2">
-                  {contractAnalysis.status === 'success' ? (
+                  {(contractAnalysis.mulesoftResponse?.status || contractAnalysis.status)?.toLowerCase().includes('success') ? (
                     <>
                       <CheckCircle className="w-4 h-4 text-green-600" />
                       <span className="font-medium text-green-600">Success</span>
                     </>
-                  ) : (
+                  ) : (contractAnalysis.mulesoftResponse?.status || contractAnalysis.status)?.includes('VALIDATION') ? (
                     <>
                       <AlertCircle className="w-4 h-4 text-yellow-600" />
-                      <span className="font-medium text-yellow-600">{contractAnalysis.status}</span>
+                      <span className="font-medium text-yellow-600 text-xs">{contractAnalysis.mulesoftResponse?.status || contractAnalysis.status}</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium text-blue-600 text-xs">{contractAnalysis.mulesoftResponse?.status || contractAnalysis.status}</span>
                     </>
                   )}
                 </div>
               </div>
             </div>
+
+            {/* Document Summary */}
+            {contractAnalysis.mulesoftResponse?.documentSummary && !contractAnalysis.mulesoftResponse.documentSummary.startsWith('NOT PARSED:') && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-medium text-blue-900 mb-2">Document Summary</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{contractAnalysis.mulesoftResponse.documentSummary}</p>
+              </div>
+            )}
           </Card>
 
+          {/* Parties Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Distributor */}
+            {contractAnalysis.mulesoftResponse?.distributor?.distributor && (
+              <Card title={
+                <div className="flex items-center gap-2">
+                  <Building className="w-5 h-5 text-primary-600" />
+                  <span>Distributor</span>
+                </div>
+              }>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {contractAnalysis.mulesoftResponse.distributor.distributor.name}
+                    </p>
+                  </div>
+                  {contractAnalysis.mulesoftResponse.distributor.distributor.address && (
+                    <div className="flex items-start gap-2 text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p>{contractAnalysis.mulesoftResponse.distributor.distributor.address.address}</p>
+                        <p>
+                          {contractAnalysis.mulesoftResponse.distributor.distributor.address.city}, {contractAnalysis.mulesoftResponse.distributor.distributor.address.state} {contractAnalysis.mulesoftResponse.distributor.distributor.address.zipcode}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {contractAnalysis.mulesoftResponse.distributor.distributor.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Phone className="w-4 h-4" />
+                      <span>{contractAnalysis.mulesoftResponse.distributor.distributor.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* Retailer */}
+            {contractAnalysis.mulesoftResponse?.retailer?.retailer && (
+              <Card title={
+                <div className="flex items-center gap-2">
+                  <Building className="w-5 h-5 text-green-600" />
+                  <span>Retailer</span>
+                </div>
+              }>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {contractAnalysis.mulesoftResponse.retailer.retailer.name}
+                    </p>
+                  </div>
+                  {contractAnalysis.mulesoftResponse.retailer.retailer.address && (
+                    <div className="flex items-start gap-2 text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p>{contractAnalysis.mulesoftResponse.retailer.retailer.address.address}</p>
+                        <p>
+                          {contractAnalysis.mulesoftResponse.retailer.retailer.address.city}, {contractAnalysis.mulesoftResponse.retailer.retailer.address.state} {contractAnalysis.mulesoftResponse.retailer.retailer.address.zipcode}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {contractAnalysis.mulesoftResponse.retailer.retailer.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Phone className="w-4 h-4" />
+                      <span>{contractAnalysis.mulesoftResponse.retailer.retailer.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+          </div>
+
+          {/* Agreement Dates */}
+          {contractAnalysis.mulesoftResponse?.createdDates && (
+            <Card title={
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-purple-600" />
+                <span>Agreement Information</span>
+              </div>
+            }>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Agreement Date</p>
+                  <p className="font-medium text-gray-900">{contractAnalysis.mulesoftResponse.createdDates.agreedDate || 'N/A'}</p>
+                </div>
+                {contractAnalysis.mulesoftResponse.createdDates.parties && contractAnalysis.mulesoftResponse.createdDates.parties.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Parties</p>
+                    <div className="space-y-1">
+                      {contractAnalysis.mulesoftResponse.createdDates.parties.map((party: string, idx: number) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Users className="w-3 h-3 text-gray-500" />
+                          <span className="text-sm text-gray-800">{party}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
           {/* Contract Terms */}
-          {contractAnalysis.terms && contractAnalysis.terms.length > 0 && (
-            <Card title="Extracted Terms">
+          {contractAnalysis.mulesoftResponse?.terms && contractAnalysis.mulesoftResponse.terms.length > 0 && (
+            <Card title={
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+                <span>Contract Terms</span>
+              </div>
+            }>
               <div className="space-y-3">
-                {contractAnalysis.terms.map((term, index) => (
+                {contractAnalysis.mulesoftResponse.terms.map((term: string, index: number) => (
                   <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="flex items-start gap-2">
-                      <FileText className="w-4 h-4 text-blue-600 mt-1 flex-shrink-0" />
-                      <p className="text-sm text-gray-800">{term}</p>
+                      <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-bold text-blue-700">{index + 1}</span>
+                      </div>
+                      <p className="text-sm text-gray-800 flex-1">{term}</p>
                     </div>
                   </div>
                 ))}
@@ -257,25 +397,115 @@ export const IDPResponse: React.FC = () => {
             </Card>
           )}
 
-          {/* Products */}
-          {contractAnalysis.products && contractAnalysis.products.length > 0 && (
-            <Card title="Extracted Products">
+          {/* Purpose */}
+          {contractAnalysis.mulesoftResponse?.purpose && !contractAnalysis.mulesoftResponse.purpose.startsWith('NOT PARSED:') && (
+            <Card title="Agreement Purpose">
+              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <p className="text-sm text-gray-700 leading-relaxed">{contractAnalysis.mulesoftResponse.purpose}</p>
+              </div>
+            </Card>
+          )}
+
+          {/* Promotional Math */}
+          {contractAnalysis.mulesoftResponse?.promotionalMath && !contractAnalysis.mulesoftResponse.promotionalMath.startsWith('NOT PARSED:') && (
+            <Card title="Promotional Mathematics">
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-gray-700 leading-relaxed">{contractAnalysis.mulesoftResponse.promotionalMath}</p>
+              </div>
+            </Card>
+          )}
+
+          {/* Display Requirements */}
+          {contractAnalysis.mulesoftResponse?.display && !contractAnalysis.mulesoftResponse.display.startsWith('NOT PARSED:') && (
+            <Card title="Display Requirements">
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-gray-700 leading-relaxed">{contractAnalysis.mulesoftResponse.display}</p>
+              </div>
+            </Card>
+          )}
+
+          {/* Termination */}
+          {contractAnalysis.mulesoftResponse?.termination && !contractAnalysis.mulesoftResponse.termination.startsWith('NOT PARSED:') && (
+            <Card title="Termination Clause">
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-gray-700 leading-relaxed">{contractAnalysis.mulesoftResponse.termination}</p>
+              </div>
+            </Card>
+          )}
+
+          {/* Compliance */}
+          {contractAnalysis.mulesoftResponse?.compliance && contractAnalysis.mulesoftResponse.compliance.length > 0 && (
+            <Card title={
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-green-600" />
+                <span>Compliance Requirements</span>
+              </div>
+            }>
               <div className="space-y-2">
-                {contractAnalysis.products.map((product, index) => (
-                  <div key={index} className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-gray-800">{product}</p>
+                {contractAnalysis.mulesoftResponse.compliance.map((item: string, index: number) => (
+                  <div key={index} className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-gray-800">{item}</p>
                   </div>
                 ))}
               </div>
             </Card>
           )}
 
-          {/* Full Response (JSON) */}
+          {/* Products */}
+          {contractAnalysis.mulesoftResponse?.products && contractAnalysis.mulesoftResponse.products.length > 0 && (
+            <Card title={
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-orange-600" />
+                <span>Products ({contractAnalysis.mulesoftResponse.products.length})</span>
+              </div>
+            }>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Product Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Units Sold (Ref)
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ref. Price
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {contractAnalysis.mulesoftResponse.products.map((product: any, index: number) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {typeof product === 'string' ? product : product.name}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {typeof product === 'object' ? (product['units sold (ref)'] || 'N/A') : 'N/A'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {typeof product === 'object' ? (product['ref. price'] || 'N/A') : 'N/A'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {/* Full Response (JSON) - Collapsible */}
           {contractAnalysis.mulesoftResponse && (
-            <Card title="Full MuleSoft IDP Response">
-              <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-xs">
-                {JSON.stringify(contractAnalysis.mulesoftResponse, null, 2)}
-              </pre>
+            <Card title="Full MuleSoft IDP Response (Raw JSON)">
+              <details className="cursor-pointer">
+                <summary className="text-sm font-medium text-gray-700 hover:text-gray-900 py-2">
+                  Click to expand raw JSON response
+                </summary>
+                <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-xs mt-2 border border-gray-200">
+                  {JSON.stringify(contractAnalysis.mulesoftResponse, null, 2)}
+                </pre>
+              </details>
             </Card>
           )}
 
