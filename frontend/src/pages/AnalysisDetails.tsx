@@ -437,19 +437,44 @@ export const AnalysisDetails: React.FC = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Product Name
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Units Sold
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ref. Price
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {displayExtraction.products.map((product: string, index: number) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {index + 1}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {product}
-                      </td>
-                    </tr>
-                  ))}
+                  {displayExtraction.products.map((product: any, index: number) => {
+                    // Handle product which might be a string or an object
+                    const productName = typeof product === 'object' && product !== null
+                      ? product.name || 'Unknown Product'
+                      : product || 'Unknown Product';
+                    const unitsSold = typeof product === 'object' && product !== null
+                      ? product.units_sold || 'N/A'
+                      : 'N/A';
+                    const refPrice = typeof product === 'object' && product !== null
+                      ? (product.ref_price ? `$${Number(product.ref_price).toFixed(2)}` : 'N/A')
+                      : 'N/A';
+                    
+                    return (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {index + 1}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {productName}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-700">
+                          {unitsSold}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-700">
+                          {refPrice}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
