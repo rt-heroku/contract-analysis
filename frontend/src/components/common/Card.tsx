@@ -23,7 +23,7 @@ export const Card: React.FC<CardProps> = ({
   return (
     <div className={cn('bg-white rounded-lg shadow-sm border border-gray-200', className)}>
       {(title || actionElement) && (
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-3 border-b border-gray-200">
           <div>
             {title && <h3 className="text-lg font-semibold text-gray-900">{title}</h3>}
             {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
@@ -31,7 +31,7 @@ export const Card: React.FC<CardProps> = ({
           {actionElement && <div>{actionElement}</div>}
         </div>
       )}
-      <div className="p-6">{children}</div>
+      <div className="p-3">{children}</div>
     </div>
   );
 };
