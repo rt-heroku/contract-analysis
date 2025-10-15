@@ -264,7 +264,7 @@ export const IDPResponse: React.FC = () => {
 
             {/* Document Summary */}
             {contractAnalysis.mulesoftResponse?.documentSummary && (
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm font-medium text-blue-900 mb-2">Document Summary</p>
                 <p className="text-sm text-gray-700 leading-relaxed">
                   {contractAnalysis.mulesoftResponse.documentSummary.replace(/^NOT PARSED:\s*/i, '')}
@@ -404,7 +404,7 @@ export const IDPResponse: React.FC = () => {
               )}
               {/* Handle terms as string */}
               {typeof contractAnalysis.mulesoftResponse.terms === 'string' && (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
                     {contractAnalysis.mulesoftResponse.terms}
                   </p>
@@ -416,7 +416,7 @@ export const IDPResponse: React.FC = () => {
           {/* Purpose */}
           {contractAnalysis.mulesoftResponse?.purpose && (
             <Card title="Agreement Purpose">
-              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
                 <p className="text-sm text-gray-700 leading-relaxed">
                   {contractAnalysis.mulesoftResponse.purpose.replace(/^NOT PARSED:\s*/i, '')}
                 </p>
@@ -427,7 +427,7 @@ export const IDPResponse: React.FC = () => {
           {/* Promotional Math */}
           {contractAnalysis.mulesoftResponse?.promotionalMath && (
             <Card title="Promotional Mathematics">
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-sm text-gray-700 leading-relaxed">
                   {contractAnalysis.mulesoftResponse.promotionalMath.replace(/^NOT PARSED:\s*/i, '')}
                 </p>
@@ -438,7 +438,7 @@ export const IDPResponse: React.FC = () => {
           {/* Display Requirements */}
           {contractAnalysis.mulesoftResponse?.display && (
             <Card title="Display Requirements">
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-gray-700 leading-relaxed">
                   {contractAnalysis.mulesoftResponse.display.replace(/^NOT PARSED:\s*/i, '')}
                 </p>
@@ -449,7 +449,7 @@ export const IDPResponse: React.FC = () => {
           {/* Termination */}
           {contractAnalysis.mulesoftResponse?.termination && (
             <Card title="Termination Clause">
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-gray-700 leading-relaxed">
                   {contractAnalysis.mulesoftResponse.termination.replace(/^NOT PARSED:\s*/i, '')}
                 </p>
