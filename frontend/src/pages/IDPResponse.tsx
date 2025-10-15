@@ -263,10 +263,12 @@ export const IDPResponse: React.FC = () => {
             </div>
 
             {/* Document Summary */}
-            {contractAnalysis.mulesoftResponse?.documentSummary && !contractAnalysis.mulesoftResponse.documentSummary.startsWith('NOT PARSED:') && (
+            {contractAnalysis.mulesoftResponse?.documentSummary && (
               <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm font-medium text-blue-900 mb-2">Document Summary</p>
-                <p className="text-sm text-gray-700 leading-relaxed">{contractAnalysis.mulesoftResponse.documentSummary}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {contractAnalysis.mulesoftResponse.documentSummary.replace(/^NOT PARSED:\s*/i, '')}
+                </p>
               </div>
             )}
           </Card>
@@ -355,7 +357,10 @@ export const IDPResponse: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Agreement Date</p>
-                  <p className="font-medium text-gray-900">{contractAnalysis.mulesoftResponse.createdDates.agreedDate || 'N/A'}</p>
+                  <p className="font-medium text-gray-900">
+                    {contractAnalysis.mulesoftResponse.createdDates.agreedDate || 
+                     contractAnalysis.mulesoftResponse.createdDates.agreed_date || 'N/A'}
+                  </p>
                 </div>
                 {contractAnalysis.mulesoftResponse.createdDates.parties && Array.isArray(contractAnalysis.mulesoftResponse.createdDates.parties) && contractAnalysis.mulesoftResponse.createdDates.parties.length > 0 && (
                   <div>
@@ -375,60 +380,79 @@ export const IDPResponse: React.FC = () => {
           )}
 
           {/* Contract Terms */}
-          {contractAnalysis.mulesoftResponse?.terms && Array.isArray(contractAnalysis.mulesoftResponse.terms) && contractAnalysis.mulesoftResponse.terms.length > 0 && (
+          {contractAnalysis.mulesoftResponse?.terms && (
             <Card title={
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-600" />
                 <span>Contract Terms</span>
               </div>
             }>
-              <div className="space-y-3">
-                {contractAnalysis.mulesoftResponse.terms.map((term: string, index: number) => (
-                  <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-xs font-bold text-blue-700">{index + 1}</span>
+              {/* Handle terms as array */}
+              {Array.isArray(contractAnalysis.mulesoftResponse.terms) && contractAnalysis.mulesoftResponse.terms.length > 0 && (
+                <div className="space-y-3">
+                  {contractAnalysis.mulesoftResponse.terms.map((term: string, index: number) => (
+                    <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-bold text-blue-700">{index + 1}</span>
+                        </div>
+                        <p className="text-sm text-gray-800 flex-1">{term}</p>
                       </div>
-                      <p className="text-sm text-gray-800 flex-1">{term}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
+              {/* Handle terms as string */}
+              {typeof contractAnalysis.mulesoftResponse.terms === 'string' && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                    {contractAnalysis.mulesoftResponse.terms}
+                  </p>
+                </div>
+              )}
             </Card>
           )}
 
           {/* Purpose */}
-          {contractAnalysis.mulesoftResponse?.purpose && !contractAnalysis.mulesoftResponse.purpose.startsWith('NOT PARSED:') && (
+          {contractAnalysis.mulesoftResponse?.purpose && (
             <Card title="Agreement Purpose">
               <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                <p className="text-sm text-gray-700 leading-relaxed">{contractAnalysis.mulesoftResponse.purpose}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {contractAnalysis.mulesoftResponse.purpose.replace(/^NOT PARSED:\s*/i, '')}
+                </p>
               </div>
             </Card>
           )}
 
           {/* Promotional Math */}
-          {contractAnalysis.mulesoftResponse?.promotionalMath && !contractAnalysis.mulesoftResponse.promotionalMath.startsWith('NOT PARSED:') && (
+          {contractAnalysis.mulesoftResponse?.promotionalMath && (
             <Card title="Promotional Mathematics">
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-gray-700 leading-relaxed">{contractAnalysis.mulesoftResponse.promotionalMath}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {contractAnalysis.mulesoftResponse.promotionalMath.replace(/^NOT PARSED:\s*/i, '')}
+                </p>
               </div>
             </Card>
           )}
 
           {/* Display Requirements */}
-          {contractAnalysis.mulesoftResponse?.display && !contractAnalysis.mulesoftResponse.display.startsWith('NOT PARSED:') && (
+          {contractAnalysis.mulesoftResponse?.display && (
             <Card title="Display Requirements">
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-gray-700 leading-relaxed">{contractAnalysis.mulesoftResponse.display}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {contractAnalysis.mulesoftResponse.display.replace(/^NOT PARSED:\s*/i, '')}
+                </p>
               </div>
             </Card>
           )}
 
           {/* Termination */}
-          {contractAnalysis.mulesoftResponse?.termination && !contractAnalysis.mulesoftResponse.termination.startsWith('NOT PARSED:') && (
+          {contractAnalysis.mulesoftResponse?.termination && (
             <Card title="Termination Clause">
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-gray-700 leading-relaxed">{contractAnalysis.mulesoftResponse.termination}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {contractAnalysis.mulesoftResponse.termination.replace(/^NOT PARSED:\s*/i, '')}
+                </p>
               </div>
             </Card>
           )}
@@ -482,10 +506,10 @@ export const IDPResponse: React.FC = () => {
                           {typeof product === 'string' ? product : product.name}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
-                          {typeof product === 'object' ? (product['units sold (ref)'] || 'N/A') : 'N/A'}
+                          {typeof product === 'object' ? (product.units_sold || product['units sold (ref)'] || 'N/A') : 'N/A'}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
-                          {typeof product === 'object' ? (product['ref. price'] || 'N/A') : 'N/A'}
+                          {typeof product === 'object' ? (product.ref_price || product['ref. price'] || 'N/A') : 'N/A'}
                         </td>
                       </tr>
                     ))}
