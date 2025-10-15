@@ -230,7 +230,7 @@ export const IDPResponse: React.FC = () => {
         <>
           {/* Document Information */}
           <Card title="Document Information">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Document Name</p>
                 <p className="font-medium text-gray-900">{contractAnalysis.mulesoftResponse?.documentName || contractAnalysis.documentName}</p>
@@ -274,7 +274,7 @@ export const IDPResponse: React.FC = () => {
           </Card>
 
           {/* Parties Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Distributor */}
             {contractAnalysis.mulesoftResponse?.distributor?.distributor && (
               <Card title={
@@ -354,7 +354,7 @@ export const IDPResponse: React.FC = () => {
                 <span>Agreement Information</span>
               </div>
             }>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Agreement Date</p>
                   <p className="font-medium text-gray-900">
