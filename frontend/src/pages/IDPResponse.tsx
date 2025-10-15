@@ -357,7 +357,7 @@ export const IDPResponse: React.FC = () => {
                   <p className="text-sm text-gray-600 mb-1">Agreement Date</p>
                   <p className="font-medium text-gray-900">{contractAnalysis.mulesoftResponse.createdDates.agreedDate || 'N/A'}</p>
                 </div>
-                {contractAnalysis.mulesoftResponse.createdDates.parties && contractAnalysis.mulesoftResponse.createdDates.parties.length > 0 && (
+                {contractAnalysis.mulesoftResponse.createdDates.parties && Array.isArray(contractAnalysis.mulesoftResponse.createdDates.parties) && contractAnalysis.mulesoftResponse.createdDates.parties.length > 0 && (
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Parties</p>
                     <div className="space-y-1">
@@ -375,7 +375,7 @@ export const IDPResponse: React.FC = () => {
           )}
 
           {/* Contract Terms */}
-          {contractAnalysis.mulesoftResponse?.terms && contractAnalysis.mulesoftResponse.terms.length > 0 && (
+          {contractAnalysis.mulesoftResponse?.terms && Array.isArray(contractAnalysis.mulesoftResponse.terms) && contractAnalysis.mulesoftResponse.terms.length > 0 && (
             <Card title={
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-600" />
@@ -434,7 +434,7 @@ export const IDPResponse: React.FC = () => {
           )}
 
           {/* Compliance */}
-          {contractAnalysis.mulesoftResponse?.compliance && contractAnalysis.mulesoftResponse.compliance.length > 0 && (
+          {contractAnalysis.mulesoftResponse?.compliance && Array.isArray(contractAnalysis.mulesoftResponse.compliance) && contractAnalysis.mulesoftResponse.compliance.length > 0 && (
             <Card title={
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-green-600" />
@@ -453,7 +453,7 @@ export const IDPResponse: React.FC = () => {
           )}
 
           {/* Products */}
-          {contractAnalysis.mulesoftResponse?.products && contractAnalysis.mulesoftResponse.products.length > 0 && (
+          {contractAnalysis.mulesoftResponse?.products && Array.isArray(contractAnalysis.mulesoftResponse.products) && contractAnalysis.mulesoftResponse.products.length > 0 && (
             <Card title={
               <div className="flex items-center gap-2">
                 <Package className="w-5 h-5 text-orange-600" />
