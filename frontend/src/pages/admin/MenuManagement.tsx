@@ -11,7 +11,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Modal } from '@/components/common/Modal';
 import { 
   Menu, Plus, Edit, Trash2, Save, X, GripVertical, 
-  ExternalLink, ChevronRight, ChevronDown, FolderPlus
+  ExternalLink, ChevronRight, ChevronDown, FolderPlus, RefreshCw, RotateCcw
 } from 'lucide-react';
 
 interface MenuItem {
@@ -332,6 +332,36 @@ export const MenuManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    await fetchData();
+    setAlertDialog({
+      isOpen: true,
+      title: 'Refreshed',
+      message: 'Menu data reloaded from server',
+      type: 'success',
+    });
+  };
+
+  const handleReset = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Reset Menu Management',
+      message: 'This will reload all menu data from the server. Any unsaved changes will be lost. Continue?',
+      onConfirm: async () => {
+        await fetchData();
+        setShowForm(false);
+        setEditingItem(null);
+        setConfirmDialog({ ...confirmDialog, isOpen: false });
+        setAlertDialog({
+          isOpen: true,
+          title: 'Reset Complete',
+          message: 'Menu data has been reset',
+          type: 'success',
+        });
+      },
+    });
   };
 
   const buildRoleMenuTree = () => {
@@ -689,14 +719,33 @@ export const MenuManagement: React.FC = () => {
               Menu Management
             </h1>
             <p className="text-gray-600 mt-1">Drag menu items to assign them to roles</p>
+            <p className="text-xs text-gray-500 mt-1">Tip: Drop on items to create submenus, or drop in empty space to add at root level</p>
           </div>
-          <Button
-            onClick={() => setShowForm(true)}
-            className="bg-primary-600 hover:bg-primary-700 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Menu Item
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleReset}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset
+            </Button>
+            <Button
+              onClick={handleRefresh}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </Button>
+            <Button
+              onClick={() => setShowForm(true)}
+              className="bg-primary-600 hover:bg-primary-700 flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Menu Item
+            </Button>
+          </div>
         </div>
 
         {/* Create/Edit Form */}
@@ -791,10 +840,10 @@ export const MenuManagement: React.FC = () => {
         )}
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 300px)' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 320px)' }}>
           {/* Left Column - All Menu Items */}
-          <Card title="Available Menu Items" className="flex flex-col h-full">
-            <div className="space-y-2 flex-1 overflow-y-auto">
+          <Card title="Available Menu Items" className="flex flex-col overflow-hidden">
+            <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 400px)' }}>
               {getUnassignedMenus().length === 0 ? (
                 <p className="text-center text-gray-500 py-8">
                   All menu items are assigned to the selected role
@@ -816,11 +865,11 @@ export const MenuManagement: React.FC = () => {
 
           {/* Right Column - Role Menu Tree */}
           <Card 
-            className="flex flex-col h-full"
+            className="flex flex-col overflow-hidden"
             title={
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">
-                  Select Role
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                  Select Role:
                 </label>
                 <select
                   value={selectedRole?.id || ''}
@@ -828,7 +877,7 @@ export const MenuManagement: React.FC = () => {
                     const role = roles.find((r) => r.id === parseInt(e.target.value));
                     setSelectedRole(role || null);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   {roles.map((role) => (
                     <option key={role.id} value={role.id}>
@@ -839,11 +888,7 @@ export const MenuManagement: React.FC = () => {
               </div>
             }
           >
-            <div className="flex flex-col flex-1 mt-4">
-              <p className="text-sm text-gray-600 mb-4">
-                Drag items from the left to build the menu tree. Drop on items to create submenus.
-              </p>
-              <div className="flex-1 overflow-y-auto">
+            <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 400px)' }}>
                 <RootDropZone onDrop={handleRootDrop}>
                   {roleMenus.length === 0 ? (
                     <div className="text-center py-12">
@@ -873,7 +918,6 @@ export const MenuManagement: React.FC = () => {
                   )}
                 </RootDropZone>
               </div>
-            </div>
           </Card>
         </div>
 
