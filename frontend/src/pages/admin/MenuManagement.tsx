@@ -132,6 +132,14 @@ const TreeMenuItem: React.FC<{
   const [isOver, setIsOver] = useState(false);
   const [dropPosition, setDropPosition] = useState<'on' | 'before' | 'after' | null>(null);
 
+  const [{ isDragging }, drag] = useDrag({
+    type: 'MENU_ITEM',
+    item: { id: item.id, title: item.title, isNew: false },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
+
   const [{ canDrop }, drop] = useDrop({
     accept: 'MENU_ITEM',
     hover: (draggedItem: any, monitor) => {
@@ -164,12 +172,18 @@ const TreeMenuItem: React.FC<{
     }),
   });
 
+  // Combine drag and drop refs
+  const combinedRef = (node: any) => {
+    drag(node);
+    drop(node);
+  };
+
   return (
     <div className="relative">
       <div
         id={`tree-item-${item.id}`}
-        ref={drop}
-        className={`group relative ${level > 0 ? 'ml-6' : ''}`}
+        ref={combinedRef}
+        className={`group relative ${level > 0 ? 'ml-6' : ''} ${isDragging ? 'opacity-50' : ''}`}
         onMouseEnter={() => setIsOver(true)}
         onMouseLeave={() => {
           setIsOver(false);
@@ -185,13 +199,14 @@ const TreeMenuItem: React.FC<{
         )}
         
         <div
-          className={`p-2 border rounded flex items-center justify-between mb-1 transition-colors ${
+          className={`p-2 border rounded flex items-center justify-between mb-1 transition-colors cursor-move ${
             canDrop && isOver && dropPosition === 'on'
               ? 'border-blue-500 bg-blue-50'
               : 'border-gray-200 bg-white hover:bg-gray-50'
           }`}
         >
           <div className="flex items-center gap-2 flex-1">
+            <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
             {item.children && item.children.length > 0 ? (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
@@ -840,10 +855,10 @@ export const MenuManagement: React.FC = () => {
         )}
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 320px)' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 260px)' }}>
           {/* Left Column - All Menu Items */}
           <Card title="Available Menu Items" className="flex flex-col overflow-hidden">
-            <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+            <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 340px)' }}>
               {getUnassignedMenus().length === 0 ? (
                 <p className="text-center text-gray-500 py-8">
                   All menu items are assigned to the selected role
@@ -888,7 +903,7 @@ export const MenuManagement: React.FC = () => {
               </div>
             }
           >
-            <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+            <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 340px)' }}>
                 <RootDropZone onDrop={handleRootDrop}>
                   {roleMenus.length === 0 ? (
                     <div className="text-center py-12">
