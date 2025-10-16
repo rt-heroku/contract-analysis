@@ -8,7 +8,6 @@ import { Loading } from '@/components/common/Loading';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Plus, Edit, Trash2, Eye, EyeOff, Search, Save, X, Download, Upload as UploadIcon, Star, Copy } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 
 interface Variable {
@@ -55,7 +54,6 @@ interface Prompt {
 }
 
 export const Prompts: React.FC = () => {
-  const { user } = useAuth();
   const { can } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -90,9 +88,6 @@ export const Prompts: React.FC = () => {
     message: '',
     onConfirm: () => {},
   });
-
-  // Check if user is admin
-  const isAdmin = user?.roles?.some((role: string) => role.toLowerCase() === 'admin');
 
   // Flow state
   const [flows, setFlows] = useState<Flow[]>([]);

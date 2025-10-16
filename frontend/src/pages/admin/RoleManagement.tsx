@@ -6,7 +6,7 @@ import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { Shield, Plus, Edit, Trash2, Save, X, Users as UsersIcon, Check } from 'lucide-react';
+import { Shield, Plus, Edit, Trash2, Save, Users as UsersIcon, Check } from 'lucide-react';
 
 interface Permission {
   id: number;
@@ -418,7 +418,6 @@ export const RoleManagement: React.FC = () => {
               <div className="space-y-6">
                 {Object.entries(permissions).map(([category, perms]) => {
                   const allSelected = perms.every((p) => selectedPermissions.includes(p.id));
-                  const someSelected = perms.some((p) => selectedPermissions.includes(p.id)) && !allSelected;
 
                   return (
                     <div key={category} className="border border-gray-200 rounded-lg p-4">

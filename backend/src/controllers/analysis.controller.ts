@@ -298,7 +298,7 @@ class AnalysisController {
       }
 
       // Get user details for shared users
-      const sharedUserIds = analysis.sharedWith || [];
+      const sharedUserIds = (analysis.sharedWith as number[]) || [];
       const users = await prisma.user.findMany({
         where: {
           id: { in: sharedUserIds },
@@ -358,7 +358,7 @@ class AnalysisController {
       }
 
       // Add user to sharedWith array if not already there
-      const currentSharedWith = analysis.sharedWith || [];
+      const currentSharedWith = (analysis.sharedWith as number[]) || [];
       if (!currentSharedWith.includes(userId)) {
         await prisma.analysisRecord.update({
           where: { id: analysisId },
@@ -412,11 +412,11 @@ class AnalysisController {
       }
 
       // Remove user from sharedWith array
-      const currentSharedWith = analysis.sharedWith || [];
+      const currentSharedWith = (analysis.sharedWith as number[]) || [];
       await prisma.analysisRecord.update({
         where: { id: analysisId },
         data: {
-          sharedWith: currentSharedWith.filter((id) => id !== userId),
+          sharedWith: currentSharedWith.filter((id: number) => id !== userId),
         },
       });
 

@@ -142,7 +142,7 @@ const TreeMenuItem: React.FC<{
 
   const [{ canDrop }, drop] = useDrop({
     accept: 'MENU_ITEM',
-    hover: (draggedItem: any, monitor) => {
+    hover: (_draggedItem: any, monitor) => {
       if (!monitor.isOver({ shallow: true })) return;
       
       const hoverBoundingRect = (monitor.getClientOffset() as any);
@@ -855,10 +855,10 @@ export const MenuManagement: React.FC = () => {
         )}
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 260px)' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 215px)' }}>
           {/* Left Column - All Menu Items */}
           <Card title="Available Menu Items" className="flex flex-col overflow-hidden">
-            <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 340px)' }}>
+            <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
               {getUnassignedMenus().length === 0 ? (
                 <p className="text-center text-gray-500 py-8">
                   All menu items are assigned to the selected role
@@ -903,7 +903,7 @@ export const MenuManagement: React.FC = () => {
               </div>
             }
           >
-            <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 340px)' }}>
+            <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
                 <RootDropZone onDrop={handleRootDrop}>
                   {roleMenus.length === 0 ? (
                     <div className="text-center py-12">
@@ -928,7 +928,7 @@ export const MenuManagement: React.FC = () => {
                         />
                       ))}
                       {/* Extra space at bottom for dropping */}
-                      <div className="h-20" />
+                      <div className="h-12" />
                     </>
                   )}
                 </RootDropZone>
