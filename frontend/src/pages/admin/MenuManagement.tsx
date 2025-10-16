@@ -725,10 +725,10 @@ export const MenuManagement: React.FC = () => {
         )}
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 300px)' }}>
           {/* Left Column - All Menu Items */}
-          <Card title="Available Menu Items">
-            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+          <Card title="Available Menu Items" className="flex flex-col h-full">
+            <div className="space-y-2 flex-1 overflow-y-auto">
               {getUnassignedMenus().length === 0 ? (
                 <p className="text-center text-gray-500 py-8">
                   All menu items are assigned to the selected role
@@ -750,6 +750,7 @@ export const MenuManagement: React.FC = () => {
 
           {/* Right Column - Role Menu Tree */}
           <Card 
+            className="flex flex-col h-full"
             title={
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-gray-700">
@@ -772,11 +773,11 @@ export const MenuManagement: React.FC = () => {
               </div>
             }
           >
-            <div className="mt-4">
+            <div className="flex flex-col flex-1 mt-4">
               <p className="text-sm text-gray-600 mb-4">
                 Drag items from the left to build the menu tree. Drop on items to create submenus.
               </p>
-              <div className="max-h-[500px] overflow-y-auto">
+              <div className="flex-1 overflow-y-auto">
                 {roleMenus.length === 0 ? (
                   <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
                     <FolderPlus className="w-12 h-12 text-gray-400 mx-auto mb-3" />

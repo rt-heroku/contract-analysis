@@ -403,23 +403,18 @@ export const RoleManagement: React.FC = () => {
               </div>
             </Card>
           ) : (
-            <Card
-              title={
-                <div className="flex items-center justify-between">
-                  <span className="capitalize">Permissions for {selectedRole.name}</span>
-                  <Button
-                    onClick={handleSavePermissions}
-                    isLoading={saving}
-                    disabled={saving}
-                    className="bg-primary-600 hover:bg-primary-700 flex items-center gap-2"
-                    size="sm"
-                  >
-                    <Save className="w-4 h-4" />
-                    Save Permissions
-                  </Button>
-                </div>
-              }
-            >
+            <Card title={`Permissions for ${selectedRole.name.charAt(0).toUpperCase() + selectedRole.name.slice(1)}`}>
+              <div className="flex justify-end mb-4">
+                <Button
+                  onClick={handleSavePermissions}
+                  isLoading={saving}
+                  disabled={saving}
+                  className="bg-primary-600 hover:bg-primary-700 flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Permissions
+                </Button>
+              </div>
               <div className="space-y-6">
                 {Object.entries(permissions).map(([category, perms]) => {
                   const allSelected = perms.every((p) => selectedPermissions.includes(p.id));
