@@ -57,6 +57,15 @@ export const AnalysisDetails: React.FC = () => {
           // Store the full contract analysis to access mulesoftResponse
           const mulesoftResponse = data.contractAnalysis.mulesoftResponse || {};
           
+          console.log('🔍 DEBUG - Contract Analysis:', {
+            hasMusoftResponse: !!data.contractAnalysis.mulesoftResponse,
+            mulesoftResponseKeys: Object.keys(mulesoftResponse),
+            termsInMulesoft: mulesoftResponse.terms,
+            termsInContractAnalysis: data.contractAnalysis.terms,
+            productsInMulesoft: mulesoftResponse.products,
+            productsInContractAnalysis: data.contractAnalysis.products
+          });
+          
           // Extract terms from mulesoftResponse or contractAnalysis
           let terms = mulesoftResponse.terms || data.contractAnalysis.terms || [];
           if (!Array.isArray(terms)) {
