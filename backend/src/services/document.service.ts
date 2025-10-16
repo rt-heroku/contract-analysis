@@ -531,11 +531,24 @@ class DocumentService {
   ) {
     const skip = (page - 1) * limit;
 
-    const where: any = { userId, isDeleted: false };
+    // Include analyses owned by user OR shared with user
+    const where: any = {
+      isDeleted: false,
+      OR: [
+        { userId }, // Owned by user
+        { sharedWith: { has: userId } }, // Shared with user
+      ],
+    };
+
+    // Add search conditions if provided
     if (search) {
-      where.OR = [
-        { contractUpload: { filename: { contains: search, mode: 'insensitive' } } },
-        { dataUpload: { filename: { contains: search, mode: 'insensitive' } } },
+      where.AND = [
+        {
+          OR: [
+            { contractUpload: { filename: { contains: search, mode: 'insensitive' } } },
+            { dataUpload: { filename: { contains: search, mode: 'insensitive' } } },
+          ],
+        },
       ];
     }
 

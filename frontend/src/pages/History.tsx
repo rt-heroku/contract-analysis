@@ -41,6 +41,7 @@ interface Analysis {
   };
   sharedWith?: number[];
   sharedUsers?: SharedUser[];
+  userId: number;
 }
 
 interface Pagination {
@@ -369,6 +370,12 @@ export const History: React.FC = () => {
                     <Badge variant={getStatusColor(analysis.status)}>
                       {analysis.status.toUpperCase()}
                     </Badge>
+                    {user && analysis.userId !== user.id && (
+                      <Badge variant="info">
+                        <Users className="w-3 h-3 mr-1" />
+                        Shared with me
+                      </Badge>
+                    )}
                     <span className="text-sm text-gray-500 flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
                       {formatDate(analysis.createdAt)}
@@ -508,15 +515,19 @@ export const History: React.FC = () => {
                     <RefreshCw className={`w-4 h-4 ${rerunningId === analysis.id ? 'animate-spin' : ''}`} />
                     {rerunningId === analysis.id ? 'Re-running...' : 'Re-run Analysis'}
                   </Button>
-                  <Button
-                    onClick={() => handleShareClick(analysis.id)}
-                    variant="outline"
-                    className="flex items-center gap-2"
-                  >
-                    <Share2 className="w-4 h-4" />
-                    Share
-                  </Button>
-                  {can.deleteAnalysis && (
+                  {/* Only show Share button if user owns this analysis */}
+                  {user && analysis.userId === user.id && (
+                    <Button
+                      onClick={() => handleShareClick(analysis.id)}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Share
+                    </Button>
+                  )}
+                  {/* Only show Delete button if user owns this analysis and has permission */}
+                  {user && analysis.userId === user.id && can.deleteAnalysis && (
                     <Button
                       onClick={() => handleDeleteAnalysis(analysis.id)}
                       disabled={deletingId === analysis.id}
