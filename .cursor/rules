@@ -1315,7 +1315,7 @@ Before deploying to production:
 4. **Logging**: Log everything for debugging and auditing
 5. **Permissions**: Control access at every level
 6. **Testing**: Test thoroughly before committing
-7. **Documentation**: Keep README and docs up to date
+7. **Documentation**: Keep README and docs up to date, and all md files go into /docs folder
 
 ---
 
