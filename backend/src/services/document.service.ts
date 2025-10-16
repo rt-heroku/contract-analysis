@@ -567,8 +567,29 @@ class DocumentService {
       prisma.analysisRecord.count({ where }),
     ]);
 
+    // Fetch shared user details for each analysis
+    const analysesWithSharedUsers = await Promise.all(
+      analyses.map(async (analysis: any) => {
+        if (analysis.sharedWith && analysis.sharedWith.length > 0) {
+          const sharedUsers = await prisma.user.findMany({
+            where: {
+              id: { in: analysis.sharedWith },
+            },
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          });
+          return { ...analysis, sharedUsers };
+        }
+        return analysis;
+      })
+    );
+
     return {
-      analyses,
+      analyses: analysesWithSharedUsers,
       pagination: {
         page,
         limit,

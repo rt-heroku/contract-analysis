@@ -9,13 +9,21 @@ import { Loading } from '@/components/common/Loading';
 import { Badge } from '@/components/common/Badge';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { FileText, Download, Eye, Search, Calendar, RefreshCw, Trash2 } from 'lucide-react';
+import { ShareModal } from '@/components/common/ShareModal';
+import { FileText, Download, Eye, Search, Calendar, RefreshCw, Trash2, Share2, Users } from 'lucide-react';
 import { Input } from '@/components/common/Input';
 
 interface Upload {
   id: number;
   filename: string;
   createdAt: string;
+}
+
+interface SharedUser {
+  id: number;
+  email: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 interface Analysis {
@@ -31,6 +39,8 @@ interface Analysis {
   contractAnalysis?: {
     terms: string[];
   };
+  sharedWith?: number[];
+  sharedUsers?: SharedUser[];
 }
 
 interface Pagination {
@@ -85,6 +95,10 @@ export const History: React.FC = () => {
     message: '',
     type: 'info',
   });
+
+  // Share modal state
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [sharingAnalysisId, setSharingAnalysisId] = useState<number | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -283,6 +297,16 @@ export const History: React.FC = () => {
     setPagination({ ...pagination, page: newPage });
   };
 
+  const handleShareClick = (analysisId: number) => {
+    setSharingAnalysisId(analysisId);
+    setShareModalOpen(true);
+  };
+
+  const handleShareSuccess = () => {
+    // Refresh the list to get updated shared users
+    fetchHistory();
+  };
+
   if (loading && analyses.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -437,6 +461,29 @@ export const History: React.FC = () => {
                       )}
                     </div>
                   )}
+
+                  {/* Shared With */}
+                  {analysis.sharedWith && analysis.sharedWith.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Users className="w-4 h-4" />
+                        <span>
+                          Shared with{' '}
+                          {analysis.sharedWith.length === 1 ? (
+                            <span className="font-medium text-primary-600">
+                              {analysis.sharedUsers?.[0]?.firstName && analysis.sharedUsers?.[0]?.lastName
+                                ? `${analysis.sharedUsers[0].firstName} ${analysis.sharedUsers[0].lastName}`
+                                : analysis.sharedUsers?.[0]?.email}
+                            </span>
+                          ) : (
+                            <span className="font-medium text-primary-600">
+                              {analysis.sharedWith.length} users
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -460,6 +507,14 @@ export const History: React.FC = () => {
                   >
                     <RefreshCw className={`w-4 h-4 ${rerunningId === analysis.id ? 'animate-spin' : ''}`} />
                     {rerunningId === analysis.id ? 'Re-running...' : 'Re-run Analysis'}
+                  </Button>
+                  <Button
+                    onClick={() => handleShareClick(analysis.id)}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Share
                   </Button>
                   {can.deleteAnalysis && (
                     <Button
@@ -538,6 +593,19 @@ export const History: React.FC = () => {
         message={alertDialog.message}
         type={alertDialog.type}
       />
+
+      {/* Share Modal */}
+      {sharingAnalysisId && (
+        <ShareModal
+          isOpen={shareModalOpen}
+          onClose={() => {
+            setShareModalOpen(false);
+            setSharingAnalysisId(null);
+          }}
+          analysisId={sharingAnalysisId}
+          onShareSuccess={handleShareSuccess}
+        />
+      )}
     </div>
   );
 };
