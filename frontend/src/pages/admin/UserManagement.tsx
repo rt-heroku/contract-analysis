@@ -26,6 +26,12 @@ interface Pagination {
   totalPages: number;
 }
 
+interface RoleData {
+  id: number;
+  name: string;
+  description: string;
+}
+
 export const UserManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserData[]>([]);
@@ -39,10 +45,34 @@ export const UserManagement: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
   const [deleting, setDeleting] = useState(false);
+  
+  // Create/Edit User Modal
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserData | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [roles, setRoles] = useState<RoleData[]>([]);
+  const [userFormData, setUserFormData] = useState({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    role: 'viewer',
+    defaultMenuItem: '',
+  });
 
   useEffect(() => {
     fetchUsers();
+    fetchRoles();
   }, [pagination.page]);
+
+  const fetchRoles = async () => {
+    try {
+      const response = await api.get('/admin/roles');
+      setRoles(response.data.roles);
+    } catch (error) {
+      console.error('Failed to fetch roles:', error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -109,6 +139,54 @@ export const UserManagement: React.FC = () => {
     setPagination({ ...pagination, page: newPage });
   };
 
+  const handleOpenCreateModal = () => {
+    setEditingUser(null);
+    setUserFormData({
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      role: 'viewer',
+      defaultMenuItem: '',
+    });
+    setShowUserModal(true);
+  };
+
+  const handleOpenEditModal = (user: UserData) => {
+    setEditingUser(user);
+    setUserFormData({
+      email: user.email,
+      password: '', // Don't populate password for edit
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      role: user.role,
+      defaultMenuItem: '',
+    });
+    setShowUserModal(true);
+  };
+
+  const handleSaveUser = async () => {
+    try {
+      setSaving(true);
+      
+      if (editingUser) {
+        // Update existing user
+        await api.put(`/admin/users/${editingUser.id}`, userFormData);
+      } else {
+        // Create new user
+        await api.post('/admin/users', userFormData);
+      }
+      
+      setShowUserModal(false);
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Failed to save user:', error);
+      alert(error.response?.data?.error || 'Failed to save user');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading && users.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -125,7 +203,10 @@ export const UserManagement: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
           <p className="text-gray-600 mt-1">Manage user accounts, roles, and permissions</p>
         </div>
-        <Button className="bg-primary-600 hover:bg-primary-700 flex items-center gap-2">
+        <Button 
+          onClick={handleOpenCreateModal}
+          className="bg-primary-600 hover:bg-primary-700 flex items-center gap-2"
+        >
           <Plus className="w-4 h-4" />
           Add User
         </Button>
@@ -231,6 +312,7 @@ export const UserManagement: React.FC = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            onClick={() => handleOpenEditModal(user)}
                             className="text-primary-600 hover:text-primary-900 p-2 hover:bg-primary-50 rounded-lg transition-colors"
                             title="Edit user"
                           >
@@ -320,6 +402,108 @@ export const UserManagement: React.FC = () => {
               className="bg-red-600 hover:bg-red-700"
             >
               Delete User
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create/Edit User Modal */}
+      <Modal
+        isOpen={showUserModal}
+        onClose={() => !saving && setShowUserModal(false)}
+        title={editingUser ? 'Edit User' : 'Create New User'}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="First Name"
+              value={userFormData.firstName}
+              onChange={(e) => setUserFormData({ ...userFormData, firstName: e.target.value })}
+              placeholder="John"
+            />
+            <Input
+              label="Last Name"
+              value={userFormData.lastName}
+              onChange={(e) => setUserFormData({ ...userFormData, lastName: e.target.value })}
+              placeholder="Doe"
+            />
+          </div>
+          
+          <Input
+            label="Email"
+            type="email"
+            value={userFormData.email}
+            onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+            placeholder="user@example.com"
+            required
+            disabled={!!editingUser}
+          />
+          
+          <Input
+            label={editingUser ? 'New Password (leave blank to keep current)' : 'Password'}
+            type="password"
+            value={userFormData.password}
+            onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+            placeholder="••••••••"
+            required={!editingUser}
+          />
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Role
+            </label>
+            <select
+              value={userFormData.role}
+              onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              {roles.map((role) => (
+                <option key={role.id} value={role.name}>
+                  {role.name.charAt(0).toUpperCase() + role.name.slice(1)}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              {roles.find(r => r.name === userFormData.role)?.description}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Default Landing Page (Optional)
+            </label>
+            <select
+              value={userFormData.defaultMenuItem}
+              onChange={(e) => setUserFormData({ ...userFormData, defaultMenuItem: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              <option value="">Use role default</option>
+              <option value="dashboard">Dashboard</option>
+              <option value="history">History</option>
+              <option value="processing">Processing</option>
+              <option value="prompts">Prompts</option>
+              <option value="profile">Profile</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Page to show after login (viewers default to History)
+            </p>
+          </div>
+          
+          <div className="flex gap-3 justify-end pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowUserModal(false)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveUser}
+              isLoading={saving}
+              disabled={saving}
+              className="bg-primary-600 hover:bg-primary-700"
+            >
+              {editingUser ? 'Update User' : 'Create User'}
             </Button>
           </div>
         </div>
