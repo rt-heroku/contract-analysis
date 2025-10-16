@@ -155,26 +155,159 @@ export const AnalysisDetails: React.FC = () => {
 
       <div style="margin-bottom: 40px; padding: 20px; background: #f7fafc; border-radius: 8px; page-break-after: always;">
         <h2 style="color: #2d3748; margin-bottom: 15px; border-bottom: 2px solid #4299e1; padding-bottom: 10px;">📄 Document Extraction</h2>
-        <p><strong>Document:</strong> ${extraction.document}</p>
-        <p><strong>Status:</strong> <span style="color: #48bb78;">${extraction.status}</span></p>
         
-        <h3 style="color: #4a5568; margin-top: 20px;">Terms:</h3>
-        <ul style="margin: 10px 0; padding-left: 20px;">
-          ${extraction.terms.map((term: string) => `<li style="margin: 5px 0;">${term}</li>`).join('')}
-        </ul>
+        ${extraction.mulesoftResponse ? `
+          <!-- Document Information -->
+          <div style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <h3 style="color: #4a5568; margin: 0 0 10px 0;">Document Information</h3>
+            <p style="margin: 5px 0;"><strong>Document Name:</strong> ${extraction.mulesoftResponse.documentName || extraction.document}</p>
+            <p style="margin: 5px 0;"><strong>Document ID:</strong> ${extraction.mulesoftResponse.id || 'N/A'}</p>
+            <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: #48bb78;">${extraction.mulesoftResponse.status || extraction.status}</span></p>
+            ${extraction.mulesoftResponse.documentSummary ? `
+              <div style="margin-top: 10px; padding: 10px; background: #ebf8ff; border-left: 3px solid #4299e1;">
+                <p style="margin: 0; font-size: 13px; line-height: 1.6;">${extraction.mulesoftResponse.documentSummary.replace(/^NOT PARSED:\s*/i, '')}</p>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Parties Information -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            ${extraction.mulesoftResponse.distributor?.distributor ? `
+              <div style="padding: 15px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <h3 style="color: #4a5568; margin: 0 0 10px 0;">🏢 Distributor</h3>
+                <p style="margin: 5px 0; font-weight: 600;">${extraction.mulesoftResponse.distributor.distributor.name}</p>
+                ${extraction.mulesoftResponse.distributor.distributor.address ? `
+                  <p style="margin: 5px 0; font-size: 13px; color: #4a5568;">
+                    ${extraction.mulesoftResponse.distributor.distributor.address.address}<br/>
+                    ${extraction.mulesoftResponse.distributor.distributor.address.city}, ${extraction.mulesoftResponse.distributor.distributor.address.state} ${extraction.mulesoftResponse.distributor.distributor.address.zipcode}
+                  </p>
+                ` : ''}
+                ${extraction.mulesoftResponse.distributor.distributor.phone ? `
+                  <p style="margin: 5px 0; font-size: 13px;">📞 ${extraction.mulesoftResponse.distributor.distributor.phone}</p>
+                ` : ''}
+              </div>
+            ` : ''}
+            
+            ${extraction.mulesoftResponse.retailer?.retailer ? `
+              <div style="padding: 15px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <h3 style="color: #4a5568; margin: 0 0 10px 0;">🏪 Retailer</h3>
+                <p style="margin: 5px 0; font-weight: 600;">${extraction.mulesoftResponse.retailer.retailer.name}</p>
+                ${extraction.mulesoftResponse.retailer.retailer.address ? `
+                  <p style="margin: 5px 0; font-size: 13px; color: #4a5568;">
+                    ${extraction.mulesoftResponse.retailer.retailer.address.address}<br/>
+                    ${extraction.mulesoftResponse.retailer.retailer.address.city}, ${extraction.mulesoftResponse.retailer.retailer.address.state} ${extraction.mulesoftResponse.retailer.retailer.address.zipcode}
+                  </p>
+                ` : ''}
+                ${extraction.mulesoftResponse.retailer.retailer.phone ? `
+                  <p style="margin: 5px 0; font-size: 13px;">📞 ${extraction.mulesoftResponse.retailer.retailer.phone}</p>
+                ` : ''}
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Agreement Information -->
+          ${extraction.mulesoftResponse.createdDates ? `
+            <div style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+              <h3 style="color: #4a5568; margin: 0 0 10px 0;">📅 Agreement Information</h3>
+              <p style="margin: 5px 0;"><strong>Agreement Date:</strong> ${extraction.mulesoftResponse.createdDates.agreedDate || extraction.mulesoftResponse.createdDates.agreed_date || 'N/A'}</p>
+              ${extraction.mulesoftResponse.createdDates.parties && Array.isArray(extraction.mulesoftResponse.createdDates.parties) && extraction.mulesoftResponse.createdDates.parties.length > 0 ? `
+                <p style="margin: 5px 0;"><strong>Parties:</strong></p>
+                <ul style="margin: 5px 0; padding-left: 20px;">
+                  ${extraction.mulesoftResponse.createdDates.parties.map((party: string) => `<li style="margin: 3px 0;">${party}</li>`).join('')}
+                </ul>
+              ` : ''}
+            </div>
+          ` : ''}
+        ` : `
+          <p><strong>Document:</strong> ${extraction.document}</p>
+          <p><strong>Status:</strong> <span style="color: #48bb78;">${extraction.status}</span></p>
+        `}
         
-        <h3 style="color: #4a5568; margin-top: 20px;">Products:</h3>
-        <ul style="margin: 10px 0; padding-left: 20px;">
-          ${extraction.products.map((product: any) => {
-            const productName = typeof product === 'object' && product !== null
-              ? product.name || 'Unknown Product'
-              : product || 'Unknown Product';
-            const unitsSold = typeof product === 'object' && product !== null
-              ? (product.units_sold || product['units sold (ref)'] || '')
-              : '';
-            return `<li style="margin: 5px 0;">${productName}${unitsSold ? ` (Units: ${unitsSold})` : ''}</li>`;
-          }).join('')}
-        </ul>
+        <!-- Contract Terms -->
+        <div style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <h3 style="color: #4a5568; margin: 0 0 10px 0;">📋 Contract Terms</h3>
+          <ol style="margin: 10px 0; padding-left: 25px;">
+            ${extraction.terms.map((term: string) => `<li style="margin: 8px 0; line-height: 1.5;">${term}</li>`).join('')}
+          </ol>
+        </div>
+
+        ${extraction.mulesoftResponse ? `
+          <!-- Agreement Purpose -->
+          ${extraction.mulesoftResponse.purpose ? `
+            <div style="margin-bottom: 20px; padding: 15px; background: #faf5ff; border-radius: 6px; border-left: 3px solid #9f7aea;">
+              <h3 style="color: #4a5568; margin: 0 0 10px 0;">Agreement Purpose</h3>
+              <p style="margin: 0; font-size: 13px; line-height: 1.6;">${extraction.mulesoftResponse.purpose.replace(/^NOT PARSED:\s*/i, '')}</p>
+            </div>
+          ` : ''}
+
+          <!-- Promotional Mathematics -->
+          ${extraction.mulesoftResponse.promotionalMath ? `
+            <div style="margin-bottom: 20px; padding: 15px; background: #f0fff4; border-radius: 6px; border-left: 3px solid #48bb78;">
+              <h3 style="color: #4a5568; margin: 0 0 10px 0;">Promotional Mathematics</h3>
+              <p style="margin: 0; font-size: 13px; line-height: 1.6;">${extraction.mulesoftResponse.promotionalMath.replace(/^NOT PARSED:\s*/i, '')}</p>
+            </div>
+          ` : ''}
+
+          <!-- Display Requirements -->
+          ${extraction.mulesoftResponse.display ? `
+            <div style="margin-bottom: 20px; padding: 15px; background: #fffbeb; border-radius: 6px; border-left: 3px solid #f59e0b;">
+              <h3 style="color: #4a5568; margin: 0 0 10px 0;">Display Requirements</h3>
+              <p style="margin: 0; font-size: 13px; line-height: 1.6;">${extraction.mulesoftResponse.display.replace(/^NOT PARSED:\s*/i, '')}</p>
+            </div>
+          ` : ''}
+
+          <!-- Termination Clause -->
+          ${extraction.mulesoftResponse.termination ? `
+            <div style="margin-bottom: 20px; padding: 15px; background: #fef2f2; border-radius: 6px; border-left: 3px solid #ef4444;">
+              <h3 style="color: #4a5568; margin: 0 0 10px 0;">Termination Clause</h3>
+              <p style="margin: 0; font-size: 13px; line-height: 1.6;">${extraction.mulesoftResponse.termination.replace(/^NOT PARSED:\s*/i, '')}</p>
+            </div>
+          ` : ''}
+
+          <!-- Compliance Requirements -->
+          ${extraction.mulesoftResponse.compliance && Array.isArray(extraction.mulesoftResponse.compliance) && extraction.mulesoftResponse.compliance.length > 0 ? `
+            <div style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+              <h3 style="color: #4a5568; margin: 0 0 10px 0;">✓ Compliance Requirements</h3>
+              <ul style="margin: 10px 0; padding-left: 20px;">
+                ${extraction.mulesoftResponse.compliance.map((item: string) => `<li style="margin: 8px 0; line-height: 1.5;">${item}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+        ` : ''}
+        
+        <!-- Products Table -->
+        <div style="margin-bottom: 20px; padding: 15px; background: white; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <h3 style="color: #4a5568; margin: 0 0 10px 0;">📦 Products</h3>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="background: #f7fafc;">
+                <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: left;">Product Name</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: left; width: 100px;">Units Sold</th>
+                <th style="padding: 8px; border: 1px solid #e2e8f0; text-align: left; width: 100px;">Ref. Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${extraction.products.map((product: any) => {
+                const productName = typeof product === 'object' && product !== null
+                  ? product.name || 'Unknown Product'
+                  : product || 'Unknown Product';
+                const unitsSold = typeof product === 'object' && product !== null
+                  ? (product.units_sold || product['units sold (ref)'] || 'N/A')
+                  : 'N/A';
+                const refPrice = typeof product === 'object' && product !== null
+                  ? (product.ref_price || product['ref. price'] || 'N/A')
+                  : 'N/A';
+                return `
+                  <tr>
+                    <td style="padding: 8px; border: 1px solid #e2e8f0;">${productName}</td>
+                    <td style="padding: 8px; border: 1px solid #e2e8f0;">${unitsSold}</td>
+                    <td style="padding: 8px; border: 1px solid #e2e8f0;">${refPrice !== 'N/A' && !isNaN(Number(refPrice)) ? `$${Number(refPrice).toFixed(2)}` : refPrice}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div style="margin-bottom: 40px; line-height: 1.8; color: #2d3748; page-break-before: always;">
