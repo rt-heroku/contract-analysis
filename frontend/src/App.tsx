@@ -18,6 +18,8 @@ import { Notifications } from './pages/Notifications';
 import { Documents } from './pages/Documents';
 import { Logs } from './pages/admin/Logs';
 import { UserManagement } from './pages/admin/UserManagement';
+import { RoleManagement } from './pages/admin/RoleManagement';
+import { MenuManagement } from './pages/admin/MenuManagement';
 
 const App = () => {
   return (
@@ -44,6 +46,8 @@ const App = () => {
             
             {/* Admin Routes */}
             <Route path="/admin/users" element={<MainLayout><UserManagement /></MainLayout>} />
+            <Route path="/admin/roles" element={<MainLayout><RoleManagement /></MainLayout>} />
+            <Route path="/admin/menu" element={<MainLayout><MenuManagement /></MainLayout>} />
             <Route path="/admin/logs" element={<MainLayout><Logs /></MainLayout>} />
 
             {/* Default Route */}
