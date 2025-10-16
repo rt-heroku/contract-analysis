@@ -1,0 +1,1323 @@
+# Document Analyzer - Cursor Rules
+
+## Core Principles
+
+### Always Test Before Committing
+- Test all functionality thoroughly before committing changes
+- Verify database operations work correctly
+- Check for console errors and warnings
+- Test with different user roles (admin, user, viewer)
+- Test edge cases and error scenarios
+
+### Keep Going Until Complete
+- Complete the entire task before ending your turn
+- Don't leave partial implementations
+- Ensure all related files are updated
+- Test the complete flow end-to-end
+
+### Use Tools, Don't Guess
+- Always read files before editing them
+- Use grep to find existing patterns
+- Check actual database schema before writing queries
+- Don't hallucinate function names or imports
+- Verify API endpoints exist before calling them
+
+### Plan Then Reflect
+- Plan thoroughly before every tool call
+- Consider dependencies and side effects
+- Reflect on outcomes after each operation
+- Adjust plan based on actual results
+
+## Project Architecture
+
+### Stack Overview
+- **Frontend**: React 18+ with TypeScript, Vite, Tailwind CSS
+- **Backend**: Node.js 18+, Express.js, TypeScript
+- **Database**: PostgreSQL with Prisma ORM
+- **Authentication**: JWT with bcrypt
+- **Deployment**: Heroku (single app, monorepo)
+
+### Directory Structure
+```
+webapp/
+├── frontend/
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/          # Page components
+│   │   ├── hooks/          # Custom React hooks
+│   │   ├── context/        # React Context providers
+│   │   ├── lib/            # Utilities and helpers
+│   │   └── App.tsx         # Main app component
+│   └── public/
+│       ├── images/         # Static images and logos
+│       └── docs/           # Documentation files
+├── backend/
+│   ├── src/
+│   │   ├── controllers/    # Request handlers
+│   │   ├── services/       # Business logic
+│   │   ├── routes/         # API routes
+│   │   ├── middleware/     # Express middleware
+│   │   ├── utils/          # Utility functions
+│   │   └── types.ts        # TypeScript types
+│   └── prisma/
+│       └── schema.prisma   # Database schema
+```
+
+## UI/UX Guidelines
+
+### Never Use Native Browser Dialogs
+❌ **NEVER DO THIS:**
+```typescript
+alert('Success!');
+confirm('Are you sure?');
+prompt('Enter value:');
+```
+
+✅ **ALWAYS DO THIS:**
+```typescript
+import { AlertDialog } from '@/components/common/AlertDialog';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+
+// For alerts
+setAlertDialog({
+  isOpen: true,
+  title: 'Success',
+  message: 'Operation completed successfully',
+  type: 'success', // 'success' | 'error' | 'warning' | 'info'
+});
+
+// For confirmations
+setConfirmDialog({
+  isOpen: true,
+  title: 'Confirm Action',
+  message: 'Are you sure you want to proceed?',
+  onConfirm: async () => {
+    // Handle confirmation
+  },
+});
+```
+
+### Component Patterns
+- Use styled components from `@/components/common/`
+- Keep components small and focused
+- Use TypeScript interfaces for props
+- Implement loading states for async operations
+- Handle errors gracefully with user-friendly messages
+
+### Responsive Design
+- Use Tailwind CSS utility classes
+- Mobile-first approach
+- Test on multiple screen sizes
+- Use `flex` and `grid` for layouts
+
+## Security & Permissions
+
+### Role-Based Access Control (RBAC)
+
+#### Default Roles
+1. **Admin**: Full access to everything (39 permissions)
+2. **User**: Standard user access (17 permissions)
+3. **Viewer**: Read-only access + profile edit + change password (7 permissions)
+
+#### Permission Categories
+- **Profile**: view, edit, change_password, request_permissions
+- **Documents**: upload, download, delete, process, analyze
+- **Analysis**: view, create, delete, share, rerun
+- **Prompts**: view, create, edit, delete, set_default
+- **Flows**: view, create, edit, delete
+- **Admin**: users, roles, menu, logs, settings management
+
+### Adding New Features - Permission Checklist
+When adding a new page, modal, or view:
+
+1. **Define Required Permissions**
+```sql
+-- Add to permissions table
+INSERT INTO "permissions" (name, description, category, created_at, updated_at)
+VALUES (
+  'feature.action',
+  'Description of what this allows',
+  'Category',
+  NOW(),
+  NOW()
+);
+```
+
+2. **Assign to Roles**
+```sql
+-- Assign to appropriate roles
+INSERT INTO "role_permissions" (role_id, permission_id, created_at)
+SELECT r.id, p.id, NOW()
+FROM "roles" r, "permissions" p
+WHERE r.name = 'admin' AND p.name = 'feature.action';
+```
+
+3. **Update usePermissions Hook**
+```typescript
+// frontend/src/hooks/usePermissions.ts
+const can = {
+  // ... existing permissions
+  newFeature: hasPermission('feature.action'),
+};
+```
+
+4. **Add Frontend Check**
+```typescript
+const { can } = usePermissions();
+
+{can.newFeature && (
+  <Button onClick={handleNewFeature}>
+    New Feature
+  </Button>
+)}
+```
+
+5. **Add Backend Middleware**
+```typescript
+// Backend route protection
+router.post('/new-feature', authenticate, requirePermission('feature.action'), controller.newFeature);
+```
+
+### Authentication Patterns
+```typescript
+// Frontend - Check if user is authenticated
+const { user } = useAuth();
+if (!user) {
+  navigate('/login');
+  return;
+}
+
+// Backend - Require authentication
+router.post('/endpoint', authenticate, controller.method);
+
+// Backend - Require admin role
+router.post('/admin/endpoint', authenticate, requireAdmin, controller.method);
+
+// Backend - Require specific permission
+router.post('/endpoint', authenticate, requirePermission('permission.name'), controller.method);
+```
+
+## Activity Logging
+
+### Log Every User Action
+Every significant user action must be logged to `activity_logs` table:
+
+```typescript
+// Backend - After successful operation
+await loggingService.logActivity({
+  userId: req.user.id,
+  actionType: 'feature.action', // Use constants from ACTION_TYPES
+  actionDescription: 'User performed X action',
+  ipAddress: getClientIp(req),
+  userAgent: getUserAgent(req),
+});
+```
+
+### Log Every API Call
+API calls are automatically logged via middleware, but for MuleSoft integration:
+
+```typescript
+// Backend - Log MuleSoft API calls
+await loggingService.logApiCall({
+  userId: req.user?.id,
+  jobId: jobId,
+  requestMethod: 'POST',
+  requestUrl: `${mulesoftUrl}/endpoint`,
+  requestHeaders: headers,
+  requestBody: payload,
+  responseStatus: response.status,
+  responseHeaders: response.headers,
+  responseBody: response.data,
+  responseTime: duration,
+});
+```
+
+### Action Type Constants
+```typescript
+// Use these constants for actionType
+const ACTION_TYPES = {
+  USER: {
+    LOGIN: 'user.login',
+    LOGOUT: 'user.logout',
+    VIEW_PROFILE: 'user.view_profile',
+    UPDATE_PROFILE: 'user.update_profile',
+    CHANGE_PASSWORD: 'user.change_password',
+  },
+  DOCUMENT: {
+    UPLOAD: 'document.upload',
+    DOWNLOAD: 'document.download',
+    DELETE: 'document.delete',
+    PROCESS: 'document.process',
+  },
+  ANALYSIS: {
+    CREATE: 'analysis.create',
+    VIEW: 'analysis.view',
+    DELETE: 'analysis.delete',
+    RERUN: 'analysis.rerun',
+    SHARE: 'analysis.share',
+  },
+  // ... etc
+};
+```
+
+## API Integration
+
+### All API Calls Must Go Through Backend
+❌ **NEVER DO THIS (Frontend direct to external API):**
+```typescript
+// WRONG - Frontend calling MuleSoft directly
+const response = await axios.post('http://mulesoft:8081/analyze', data);
+```
+
+✅ **ALWAYS DO THIS (Backend proxy):**
+```typescript
+// Frontend calls backend
+const response = await api.post('/analysis/process', data);
+
+// Backend calls MuleSoft
+// backend/src/services/document.service.ts
+const mulesoftResponse = await axios.post(`${mulesoftUrl}/analyze`, data, {
+  headers: { 'Content-Type': 'application/json' },
+});
+await loggingService.logApiCall({ /* ... */ });
+```
+
+### MuleSoft Integration Pattern
+```typescript
+// 1. Frontend initiates request
+const response = await api.post('/analysis/process', { jobId });
+
+// 2. Backend validates and processes
+// - Check user permissions
+// - Validate input data
+// - Call MuleSoft API
+// - Log API call
+// - Store results in database
+// - Return to frontend
+
+// 3. Backend service example
+async processDocument(jobId: string, userId: number) {
+  try {
+    // Call MuleSoft
+    const startTime = Date.now();
+    const mulesoftUrl = await getSettings('mulesoft_api_url');
+    const response = await axios.post(
+      `${mulesoftUrl}/process/document?job=${jobId}`,
+      requestBody,
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    const duration = Date.now() - startTime;
+
+    // Log API call
+    await loggingService.logApiCall({
+      userId,
+      jobId,
+      requestMethod: 'POST',
+      requestUrl: `${mulesoftUrl}/process/document`,
+      requestBody,
+      responseStatus: response.status,
+      responseBody: response.data,
+      responseTime: duration,
+    });
+
+    // Store in database
+    await prisma.contractAnalysis.create({ /* ... */ });
+
+    return response.data;
+  } catch (error) {
+    // Log error
+    await loggingService.logApiCall({
+      userId,
+      jobId,
+      requestMethod: 'POST',
+      requestUrl: `${mulesoftUrl}/process/document`,
+      responseStatus: error.response?.status || 0,
+      responseBody: error.response?.data || { error: error.message },
+      responseTime: Date.now() - startTime,
+    });
+    throw error;
+  }
+}
+```
+
+## Database Operations
+
+### Key Tables
+
+#### Users & Authentication
+```prisma
+model User {
+  id              Int       @id @default(autoincrement())
+  email           String    @unique
+  passwordHash    String
+  firstName       String?
+  lastName        String?
+  defaultMenuItem String?   // Default landing page
+  isActive        Boolean   @default(true)
+  lastLogin       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  profile         UserProfile?
+  userRoles       UserRole[]
+  sessions        Session[]
+  uploads         Upload[]
+  analysisRecords AnalysisRecord[]
+}
+
+model UserProfile {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique
+  avatarBase64 String?  @db.Text
+  phone        String?
+  bio          String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
+
+#### Roles & Permissions
+```prisma
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  
+  userRoles       UserRole[]
+  menuPermissions MenuPermission[]
+  rolePermissions RolePermission[]
+}
+
+model Permission {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  category    String
+  
+  rolePermissions RolePermission[]
+}
+
+model RolePermission {
+  id           Int      @id @default(autoincrement())
+  roleId       Int
+  permissionId Int
+  
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+  
+  @@unique([roleId, permissionId])
+}
+```
+
+#### Menu System
+```prisma
+model MenuItem {
+  id         Int      @id @default(autoincrement())
+  parentId   Int?
+  title      String
+  icon       String?
+  route      String?
+  isExternal Boolean  @default(false)
+  orderIndex Int      @default(0)
+  isActive   Boolean  @default(true)
+  
+  parent      MenuItem?        @relation("MenuHierarchy", fields: [parentId], references: [id])
+  children    MenuItem[]       @relation("MenuHierarchy")
+  permissions MenuPermission[]
+}
+
+model MenuPermission {
+  id         Int      @id @default(autoincrement())
+  menuItemId Int
+  roleId     Int
+  
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+  role     Role     @relation(fields: [roleId], references: [id])
+  
+  @@unique([menuItemId, roleId])
+}
+```
+
+#### Document Processing
+```prisma
+model Upload {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  jobId        String
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  storagePath  String?
+  fileContent  String?   @db.Text
+  isDeleted    Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  
+  user User @relation(fields: [userId], references: [id])
+}
+
+model AnalysisRecord {
+  id                  Int       @id @default(autoincrement())
+  userId              Int
+  jobId               String
+  contractUploadId    Int?
+  dataUploadId        Int?
+  contractAnalysisId  Int?
+  dataAnalysisId      Int?
+  status              String
+  errorMessage        String?
+  isPublic            Boolean   @default(false)
+  sharedWith          Json      @default("[]")
+  isDeleted           Boolean   @default(false)
+  deletedBy           Int?
+  deletedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  user             User              @relation(fields: [userId], references: [id])
+  contractUpload   Upload?           @relation("ContractUpload", fields: [contractUploadId], references: [id])
+  dataUpload       Upload?           @relation("DataUpload", fields: [dataUploadId], references: [id])
+  contractAnalysis ContractAnalysis? @relation(fields: [contractAnalysisId], references: [id])
+  dataAnalysis     DataAnalysis?     @relation(fields: [dataAnalysisId], references: [id])
+}
+
+model ContractAnalysis {
+  id               Int      @id @default(autoincrement())
+  jobId            String
+  documentName     String?
+  status           String
+  terms            Json?
+  products         Json?
+  mulesoftResponse Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+```
+
+#### Prompts & Flows
+```prisma
+model Prompt {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  name        String
+  content     String    @db.Text
+  flowName    String?
+  isDefault   Boolean   @default(false)
+  isDeleted   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  user      User             @relation(fields: [userId], references: [id])
+  variables PromptVariable[]
+}
+
+model PromptVariable {
+  id            Int     @id @default(autoincrement())
+  promptId      Int
+  name          String
+  defaultValue  String?
+  isMandatory   Boolean @default(false)
+  isFromFlow    Boolean @default(false)
+  
+  prompt Prompt @relation(fields: [promptId], references: [id])
+}
+
+model Flow {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  name        String
+  definition  Json
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user User @relation(fields: [userId], references: [id])
+}
+```
+
+#### Logging & Auditing
+```prisma
+model ActivityLog {
+  id                Int      @id @default(autoincrement())
+  userId            Int?
+  jobId             String?
+  actionType        String
+  actionDescription String
+  ipAddress         String?
+  userAgent         String?
+  createdAt         DateTime @default(now())
+  
+  user User? @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([actionType])
+  @@index([createdAt])
+}
+
+model ApiLog {
+  id              Int      @id @default(autoincrement())
+  userId          Int?
+  jobId           String?
+  requestMethod   String
+  requestUrl      String   @db.Text
+  requestHeaders  Json?
+  requestBody     Json?
+  responseStatus  Int?
+  responseHeaders Json?
+  responseBody    Json?
+  responseTime    Int?
+  createdAt       DateTime @default(now())
+  
+  user User? @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Notification {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  title       String
+  message     String    @db.Text
+  type        String
+  actionUrl   String?
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+  
+  user User @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+```
+
+#### System Configuration
+```prisma
+model SystemSetting {
+  id           Int      @id @default(autoincrement())
+  settingKey   String   @unique
+  settingValue String?  @db.Text
+  description  String?  @db.Text
+  isSecret     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+```
+
+### Database Functions
+
+#### Get Settings (with ENV override)
+```typescript
+// backend/src/utils/getSettings.ts
+export async function getSettings(key: string): Promise<string> {
+  // Priority: ENV VAR > Database > Default
+  const envValue = process.env[key.toUpperCase()];
+  if (envValue) return envValue;
+
+  const setting = await prisma.systemSetting.findUnique({
+    where: { settingKey: key },
+  });
+  
+  return setting?.settingValue || '';
+}
+```
+
+#### Check User Permission
+```typescript
+// backend/src/services/role.service.ts
+async userHasPermission(userId: number, permissionName: string): Promise<boolean> {
+  const userRoles = await prisma.userRole.findMany({
+    where: { userId },
+    include: {
+      role: {
+        include: {
+          rolePermissions: {
+            include: { permission: true },
+          },
+        },
+      },
+    },
+  });
+
+  return userRoles.some((userRole) =>
+    userRole.role.rolePermissions.some(
+      (rp) => rp.permission.name === permissionName
+    )
+  );
+}
+```
+
+#### Get User with Roles
+```typescript
+async getUserWithRoles(userId: number) {
+  return await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      userRoles: {
+        include: { role: true },
+      },
+      profile: true,
+    },
+  });
+}
+```
+
+#### Log Activity
+```typescript
+async logActivity(data: {
+  userId: number;
+  jobId?: string;
+  actionType: string;
+  actionDescription: string;
+  ipAddress?: string;
+  userAgent?: string;
+}) {
+  return await prisma.activityLog.create({
+    data: {
+      userId: data.userId,
+      jobId: data.jobId,
+      actionType: data.actionType,
+      actionDescription: data.actionDescription,
+      ipAddress: data.ipAddress,
+      userAgent: data.userAgent,
+    },
+  });
+}
+```
+
+#### Share Analysis
+```typescript
+async shareAnalysis(analysisId: number, userIds: number[]) {
+  const analysis = await prisma.analysisRecord.findUnique({
+    where: { id: analysisId },
+  });
+  
+  const currentShared = Array.isArray(analysis?.sharedWith) 
+    ? analysis.sharedWith 
+    : [];
+  
+  const newShared = [...new Set([...currentShared, ...userIds])];
+  
+  return await prisma.analysisRecord.update({
+    where: { id: analysisId },
+    data: { sharedWith: newShared },
+  });
+}
+```
+
+### Prisma Best Practices
+```typescript
+// ✅ Use transactions for related operations
+await prisma.$transaction(async (tx) => {
+  const analysis = await tx.analysisRecord.create({ data: { /* ... */ } });
+  await tx.contractAnalysis.create({ data: { /* ... */ } });
+  await tx.activityLog.create({ data: { /* ... */ } });
+});
+
+// ✅ Use select to limit returned fields
+const users = await prisma.user.findMany({
+  select: {
+    id: true,
+    email: true,
+    firstName: true,
+    lastName: true,
+  },
+});
+
+// ✅ Use include for relations
+const analysis = await prisma.analysisRecord.findUnique({
+  where: { id: analysisId },
+  include: {
+    contractUpload: true,
+    dataUpload: true,
+    contractAnalysis: true,
+    dataAnalysis: true,
+  },
+});
+
+// ✅ Handle JSON fields safely
+const sharedWith = Array.isArray(analysis.sharedWith) 
+  ? analysis.sharedWith 
+  : [];
+
+// ✅ Use soft deletes
+await prisma.analysisRecord.update({
+  where: { id },
+  data: {
+    isDeleted: true,
+    deletedBy: userId,
+    deletedAt: new Date(),
+  },
+});
+
+// ✅ Use indexes for frequently queried fields
+@@index([userId])
+@@index([createdAt(sort: Desc)])
+@@index([actionType])
+```
+
+## Code Style & Conventions
+
+### TypeScript
+```typescript
+// ✅ Define interfaces for all data structures
+interface UserProfile {
+  id: number;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+// ✅ Use strict typing
+function processUser(user: UserProfile): void {
+  // Implementation
+}
+
+// ✅ Avoid 'any' - use specific types
+interface ApiResponse<T> {
+  data: T;
+  error?: string;
+}
+
+// ✅ Use enums for constants
+enum UserRole {
+  ADMIN = 'admin',
+  USER = 'user',
+  VIEWER = 'viewer',
+}
+```
+
+### React Component Pattern
+```typescript
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
+import api from '@/lib/api';
+import { Card } from '@/components/common/Card';
+import { Button } from '@/components/common/Button';
+import { Loading } from '@/components/common/Loading';
+import { AlertDialog } from '@/components/common/AlertDialog';
+
+interface MyComponentProps {
+  id: number;
+  onUpdate?: () => void;
+}
+
+export const MyComponent: React.FC<MyComponentProps> = ({ id, onUpdate }) => {
+  const { user } = useAuth();
+  const { can } = usePermissions();
+  
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<DataType | null>(null);
+  const [alertDialog, setAlertDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info' as 'success' | 'error' | 'warning' | 'info',
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, [id]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/endpoint/${id}`);
+      setData(response.data);
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to fetch data',
+        type: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAction = async () => {
+    try {
+      await api.post('/endpoint', { id });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: 'Action completed successfully',
+        type: 'success',
+      });
+      onUpdate?.();
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Action failed',
+        type: 'error',
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loading size="lg" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      <Card title="My Component">
+        {/* Component content */}
+        {can.performAction && (
+          <Button onClick={handleAction}>
+            Perform Action
+          </Button>
+        )}
+      </Card>
+
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+      />
+    </div>
+  );
+};
+```
+
+### Backend Controller Pattern
+```typescript
+import { Response } from 'express';
+import { AuthenticatedRequest } from '../types';
+import { myService } from '../services/my.service';
+import loggingService from '../services/logging.service';
+import { ACTION_TYPES } from '../utils/constants';
+import { getClientIp, getUserAgent } from '../utils/helpers';
+
+export const myController = {
+  async getItem(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const id = parseInt(req.params.id);
+      
+      // Check permissions
+      const hasPermission = await roleService.userHasPermission(
+        req.user.id,
+        'feature.view'
+      );
+      if (!hasPermission) {
+        return res.status(403).json({ error: 'Permission denied' });
+      }
+
+      const item = await myService.getItem(id);
+
+      if (!item) {
+        return res.status(404).json({ error: 'Item not found' });
+      }
+
+      // Log activity
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: ACTION_TYPES.FEATURE.VIEW,
+        actionDescription: `Viewed item #${id}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.json({ item });
+    } catch (error: any) {
+      console.error('Error fetching item:', error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  async createItem(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { name, description } = req.body;
+
+      // Validation
+      if (!name) {
+        return res.status(400).json({ error: 'Name is required' });
+      }
+
+      const item = await myService.createItem({
+        name,
+        description,
+        userId: req.user.id,
+      });
+
+      // Log activity
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: ACTION_TYPES.FEATURE.CREATE,
+        actionDescription: `Created item: ${name}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.status(201).json({ item });
+    } catch (error: any) {
+      console.error('Error creating item:', error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+};
+```
+
+## Testing Guidelines
+
+### Component Testing Checklist
+- [ ] Test user interactions (clicks, form inputs, etc.)
+- [ ] Test state changes
+- [ ] Test loading states
+- [ ] Test error handling scenarios
+- [ ] Test success scenarios
+- [ ] Test form validation
+- [ ] Test permission-based rendering
+- [ ] Test with different user roles
+
+### API Testing Checklist
+- [ ] Test all CRUD operations
+- [ ] Test authentication (401 for unauthenticated)
+- [ ] Test authorization (403 for unauthorized)
+- [ ] Test validation (400 for invalid data)
+- [ ] Test not found (404)
+- [ ] Test server errors (500)
+- [ ] Test edge cases
+- [ ] Test with different user roles
+- [ ] Verify activity logging
+- [ ] Verify API call logging (for MuleSoft integration)
+
+### Manual Testing Flow
+1. **Login as each role** (admin, user, viewer)
+2. **Test all navigation** menu items
+3. **Test CRUD operations** for each entity
+4. **Test permissions** - verify restricted actions
+5. **Test error scenarios** - network errors, validation, etc.
+6. **Test edge cases** - empty states, large datasets, special characters
+7. **Check logs** - verify activity logs and API logs are created
+8. **Check console** - no errors or warnings
+
+## Git Workflow
+
+### Commit Message Format
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, missing semi-colons, etc.)
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
+
+**Examples:**
+```
+feat(auth): Add password reset functionality
+
+Implemented password reset flow with email verification:
+- Added forgot password page
+- Created reset token generation
+- Added email sending service
+- Implemented reset password page
+
+Closes #123
+
+---
+
+fix(analysis): Fix shared analysis access for viewers
+
+Issue: Viewers couldn't access analyses shared with them
+Root Cause: Query only checked userId, not sharedWith array
+Solution: Updated query to include OR condition for sharedWith
+
+Fixes #456
+
+---
+
+refactor(permissions): Move permission checks to custom hook
+
+Extracted permission logic from components into usePermissions hook
+for better reusability and maintainability
+
+---
+
+docs(readme): Update installation instructions
+
+Added Docker setup instructions and troubleshooting section
+```
+
+### Branch Naming
+- `feature/description` - New features
+- `bugfix/description` - Bug fixes
+- `hotfix/description` - Urgent production fixes
+- `refactor/description` - Code improvements
+- `docs/description` - Documentation updates
+
+**Examples:**
+- `feature/role-management`
+- `bugfix/menu-permissions`
+- `hotfix/login-crash`
+- `refactor/api-logging`
+- `docs/api-documentation`
+
+### Pull Request Template
+```markdown
+## Description
+Brief description of changes
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Breaking change
+- [ ] Documentation update
+
+## Testing Checklist
+- [ ] Tested manually
+- [ ] Tested with different user roles
+- [ ] Checked for console errors
+- [ ] Verified activity logging
+- [ ] Tested edge cases
+
+## Screenshots (if applicable)
+[Add screenshots]
+
+## Related Issues
+Closes #issue_number
+```
+
+## Documentation
+
+### Keep README Updated
+When making significant changes:
+1. Update installation instructions if dependencies change
+2. Document new features and how to use them
+3. Add troubleshooting guides for common issues
+4. Update API documentation
+5. Include screenshots for new UI features
+
+### Code Comments
+```typescript
+// ✅ Comment WHY, not WHAT
+// Fetch from database first to check if already processed
+// This prevents duplicate MuleSoft API calls
+const existing = await prisma.analysis.findFirst({ where: { jobId } });
+
+// ✅ Document complex business logic
+/**
+ * Processes contract and data files through MuleSoft IDP
+ * 
+ * Flow:
+ * 1. Upload files to database
+ * 2. Call MuleSoft /process/document with jobId
+ * 3. Store IDP response in contract_analysis table
+ * 4. Call MuleSoft /analyze with IDP response as body
+ * 5. Store analysis in data_analysis table
+ * 6. Update analysis_record status
+ * 
+ * @param jobId - Unique identifier linking contract and data files
+ * @param userId - User initiating the analysis
+ */
+async processDocuments(jobId: string, userId: number) {
+  // Implementation
+}
+```
+
+## Performance Considerations
+
+### Frontend Optimization
+```typescript
+// ✅ Use React.memo for expensive components
+export const ExpensiveComponent = React.memo(({ data }) => {
+  return <div>{/* Render */}</div>;
+});
+
+// ✅ Debounce search inputs
+const debouncedSearch = useMemo(
+  () => debounce((term: string) => {
+    // Search logic
+  }, 300),
+  []
+);
+
+// ✅ Paginate large lists
+const [page, setPage] = useState(1);
+const [pageSize] = useState(20);
+
+// ✅ Use loading states for async operations
+const [loading, setLoading] = useState(false);
+
+// ✅ Cleanup subscriptions and timers
+useEffect(() => {
+  const timer = setInterval(() => { /* ... */ }, 5000);
+  return () => clearInterval(timer);
+}, []);
+```
+
+### Backend Optimization
+```typescript
+// ✅ Use database indexes
+@@index([userId])
+@@index([createdAt(sort: Desc)])
+@@index([status])
+
+// ✅ Limit returned fields
+const users = await prisma.user.findMany({
+  select: { id: true, email: true, firstName: true, lastName: true },
+});
+
+// ✅ Paginate queries
+const analyses = await prisma.analysisRecord.findMany({
+  where: { userId },
+  skip: (page - 1) * pageSize,
+  take: pageSize,
+  orderBy: { createdAt: 'desc' },
+});
+
+// ✅ Use Promise.all for parallel operations
+const [users, roles, permissions] = await Promise.all([
+  prisma.user.findMany(),
+  prisma.role.findMany(),
+  prisma.permission.findMany(),
+]);
+
+// ✅ Cache frequently accessed data
+const cache = new Map<string, any>();
+async function getCachedSettings(key: string) {
+  if (cache.has(key)) return cache.get(key);
+  const value = await getSettings(key);
+  cache.set(key, value);
+  return value;
+}
+```
+
+## Common Pitfalls to Avoid
+
+### ❌ Don't Do These
+```typescript
+// ❌ Don't use alert/confirm/prompt
+alert('Success!');
+
+// ❌ Don't call external APIs directly from frontend
+axios.post('http://mulesoft:8081/analyze', data);
+
+// ❌ Don't hardcode URLs or credentials
+const apiUrl = 'http://localhost:8081';
+
+// ❌ Don't expose sensitive data in frontend
+const apiKey = 'secret-key-123';
+
+// ❌ Don't skip error handling
+const data = await api.get('/endpoint'); // No try-catch!
+
+// ❌ Don't forget to log activities
+await createUser(data); // Missing activity log
+
+// ❌ Don't skip permission checks
+router.post('/admin/endpoint', controller.method); // Missing auth!
+
+// ❌ Don't use 'any' type
+function process(data: any) { } // Use specific types
+
+// ❌ Don't mutate state directly
+state.users.push(newUser); // Use setState
+
+// ❌ Don't forget loading states
+const data = await fetch(); // Show loading indicator!
+```
+
+### ✅ Do These Instead
+```typescript
+// ✅ Use styled dialogs
+setAlertDialog({ isOpen: true, title: 'Success', message: 'Operation completed', type: 'success' });
+
+// ✅ Proxy through backend
+await api.post('/analysis/process', data);
+
+// ✅ Use environment variables/database settings
+const apiUrl = await getSettings('mulesoft_api_url');
+
+// ✅ Keep secrets on backend
+const apiKey = process.env.MULESOFT_API_KEY;
+
+// ✅ Always handle errors
+try {
+  const data = await api.get('/endpoint');
+} catch (error: any) {
+  setAlertDialog({ isOpen: true, title: 'Error', message: error.response?.data?.error || 'Request failed', type: 'error' });
+}
+
+// ✅ Log all activities
+await createUser(data);
+await loggingService.logActivity({ userId, actionType: 'user.create', actionDescription: 'Created user' });
+
+// ✅ Always check permissions
+router.post('/admin/endpoint', authenticate, requireAdmin, controller.method);
+
+// ✅ Use specific types
+interface UserData { id: number; email: string; }
+function process(data: UserData) { }
+
+// ✅ Use setState properly
+setUsers([...users, newUser]);
+
+// ✅ Show loading states
+const [loading, setLoading] = useState(false);
+setLoading(true);
+const data = await fetch();
+setLoading(false);
+```
+
+## Production Readiness Checklist
+
+Before deploying to production:
+
+- [ ] All features tested manually
+- [ ] No console errors or warnings
+- [ ] All TypeScript errors resolved
+- [ ] Activity logging works for all actions
+- [ ] API logging works for all MuleSoft calls
+- [ ] Permissions checked and working for all roles
+- [ ] Error handling in place for all API calls
+- [ ] Loading states implemented
+- [ ] Styled dialogs used (no alert/confirm/prompt)
+- [ ] Database migrations run successfully
+- [ ] Environment variables configured
+- [ ] Sensitive data not exposed
+- [ ] All backend API calls go through backend (no direct frontend calls)
+- [ ] README updated with new features
+- [ ] Git history clean with descriptive commits
+
+## Remember
+
+1. **Security First**: Always validate, authenticate, and authorize
+2. **User Experience**: Show loading, handle errors, give feedback
+3. **Maintainability**: Write clean, documented, testable code
+4. **Logging**: Log everything for debugging and auditing
+5. **Permissions**: Control access at every level
+6. **Testing**: Test thoroughly before committing
+7. **Documentation**: Keep README and docs up to date
+
+---
+
+*This is a production-ready system. Always consider security, performance, and user experience in your implementations.*
+
