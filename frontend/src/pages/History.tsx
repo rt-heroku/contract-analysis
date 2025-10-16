@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
@@ -42,6 +43,7 @@ interface Pagination {
 export const History: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { can, isViewer } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -83,9 +85,6 @@ export const History: React.FC = () => {
     message: '',
     type: 'info',
   });
-  
-  // Check if user is admin
-  const isAdmin = user?.roles?.some((r: string) => r.toLowerCase() === 'admin');
 
   // Debounce search
   useEffect(() => {
@@ -158,6 +157,23 @@ export const History: React.FC = () => {
   const handleRerunAnalysis = async (analysis: Analysis, forceReprocess: boolean = false) => {
     try {
       setRerunningId(analysis.id);
+      
+      // Viewers can only view existing data, not call MuleSoft APIs
+      if (isViewer) {
+        if (analysis.contractAnalysis) {
+          // Just navigate to the existing analysis
+          navigate(`/analysis-details/${analysis.id}`);
+        } else {
+          setAlertDialog({
+            isOpen: true,
+            title: 'No Data Available',
+            message: 'This analysis has not been processed yet. Please contact an administrator to run the processing.',
+            type: 'warning',
+          });
+        }
+        setRerunningId(null);
+        return;
+      }
       
       // Check if this analysis already has an IDP response (contract analysis)
       if (analysis.contractAnalysis && !forceReprocess) {
@@ -309,7 +325,7 @@ export const History: React.FC = () => {
               <p className="text-gray-400 text-sm mt-2">
                 {searchTerm ? 'Try a different search term' : 'Start by processing some documents'}
               </p>
-              {!searchTerm && (
+              {!searchTerm && can.processDocuments && (
                 <Button
                   onClick={() => navigate('/processing')}
                   className="mt-4 bg-primary-600 hover:bg-primary-700"
@@ -445,7 +461,7 @@ export const History: React.FC = () => {
                     <RefreshCw className={`w-4 h-4 ${rerunningId === analysis.id ? 'animate-spin' : ''}`} />
                     {rerunningId === analysis.id ? 'Re-running...' : 'Re-run Analysis'}
                   </Button>
-                  {isAdmin && (
+                  {can.deleteAnalysis && (
                     <Button
                       onClick={() => handleDeleteAnalysis(analysis.id)}
                       disabled={deletingId === analysis.id}
