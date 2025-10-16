@@ -7,7 +7,7 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { User, Mail, Calendar, Upload, X, Camera, Save, Send } from 'lucide-react';
+import { User, Mail, Calendar, Upload, X, Camera, Save, Send, Lock, Key } from 'lucide-react';
 
 interface UserProfile {
   id: number;
@@ -39,6 +39,15 @@ export const Profile: React.FC = () => {
     phone: '',
     bio: '',
   });
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -150,6 +159,73 @@ export const Profile: React.FC = () => {
       });
     } finally {
       setRequesting(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    try {
+      // Validation
+      if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Validation Error',
+          message: 'All password fields are required',
+          type: 'error',
+        });
+        return;
+      }
+
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Validation Error',
+          message: 'New password and confirmation do not match',
+          type: 'error',
+        });
+        return;
+      }
+
+      if (passwordForm.newPassword.length < 6) {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Validation Error',
+          message: 'New password must be at least 6 characters long',
+          type: 'error',
+        });
+        return;
+      }
+
+      setChangingPassword(true);
+
+      await api.post('/users/change-password', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+
+      // Reset form
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      setShowPasswordForm(false);
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: 'Password changed successfully',
+        type: 'success',
+      });
+    } catch (error: any) {
+      console.error('Failed to change password:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to change password',
+        type: 'error',
+      });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -395,6 +471,87 @@ export const Profile: React.FC = () => {
           </div>
         )}
       </Card>
+
+      {/* Change Password */}
+      {can.changePassword && (
+        <Card title="Security">
+          <div className="space-y-4">
+            {!showPasswordForm ? (
+              <Button
+                onClick={() => setShowPasswordForm(true)}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Key className="w-4 h-4" />
+                Change Password
+              </Button>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Current Password
+                  </label>
+                  <Input
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                    placeholder="Enter current password"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    New Password
+                  </label>
+                  <Input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    placeholder="Enter new password (min 6 characters)"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirm New Password
+                  </label>
+                  <Input
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    placeholder="Confirm new password"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <Button
+                    onClick={handleChangePassword}
+                    isLoading={changingPassword}
+                    disabled={changingPassword}
+                    className="bg-primary-600 hover:bg-primary-700 flex items-center gap-2"
+                  >
+                    <Lock className="w-4 h-4" />
+                    {changingPassword ? 'Changing...' : 'Change Password'}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowPasswordForm(false);
+                      setPasswordForm({
+                        currentPassword: '',
+                        newPassword: '',
+                        confirmPassword: '',
+                      });
+                    }}
+                    variant="outline"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Account Information */}
       <Card title="Account Information">
