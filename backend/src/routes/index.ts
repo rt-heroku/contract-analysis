@@ -12,6 +12,8 @@ import dashboardRoutes from './dashboard.routes';
 import flowRoutes from './flow.routes';
 import flowEditorRoutes from './flowEditor.routes';
 import documentsRoutes from './documents.routes';
+import menuRoutes from './menu.routes';
+import roleRoutes from './role.routes';
 
 const router = Router();
 
@@ -28,6 +30,8 @@ router.use('/dashboard', dashboardRoutes);
 router.use('/flows', flowRoutes);
 router.use('/flow-editor', flowEditorRoutes);
 router.use('/documents', documentsRoutes);
+router.use('/menu', menuRoutes);
+router.use('/roles', roleRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {
