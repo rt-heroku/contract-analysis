@@ -432,7 +432,7 @@ class AdminController {
       if (email !== undefined) updateData.email = email;
       if (firstName !== undefined) updateData.firstName = firstName;
       if (lastName !== undefined) updateData.lastName = lastName;
-      if (defaultMenuItem !== undefined) updateData.defaultMenuItem = defaultMenuItem;
+      if (defaultMenuItem !== undefined) updateData.defaultMenuItem = defaultMenuItem || null;
       if (isActive !== undefined) updateData.isActive = isActive;
       if (password) {
         updateData.passwordHash = await bcrypt.hash(password, 10);

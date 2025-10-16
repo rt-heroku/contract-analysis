@@ -6,6 +6,7 @@ import { Loading } from '@/components/common/Loading';
 import { Badge } from '@/components/common/Badge';
 import { Input } from '@/components/common/Input';
 import { Modal } from '@/components/common/Modal';
+import { AlertDialog } from '@/components/common/AlertDialog';
 import { User, Search, Edit, Trash2, Plus, Shield, Mail, Calendar } from 'lucide-react';
 
 interface UserData {
@@ -60,6 +61,19 @@ export const UserManagement: React.FC = () => {
     defaultMenuItem: '',
   });
 
+  // Alert Dialog
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
   useEffect(() => {
     fetchUsers();
     fetchRoles();
@@ -107,9 +121,21 @@ export const UserManagement: React.FC = () => {
       setShowDeleteModal(false);
       setUserToDelete(null);
       fetchUsers();
+      
+      setAlertDialog({
+        isOpen: true,
+        title: 'User Deleted',
+        message: 'User has been successfully deleted.',
+        type: 'success',
+      });
     } catch (error: any) {
       console.error('Failed to delete user:', error);
-      alert(error.response?.data?.error || 'Failed to delete user');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Delete Failed',
+        message: error.response?.data?.error || 'Failed to delete user',
+        type: 'error',
+      });
     } finally {
       setDeleting(false);
     }
@@ -121,7 +147,12 @@ export const UserManagement: React.FC = () => {
       fetchUsers();
     } catch (error: any) {
       console.error('Failed to update user status:', error);
-      alert(error.response?.data?.error || 'Failed to update user status');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Update Failed',
+        message: error.response?.data?.error || 'Failed to update user status',
+        type: 'error',
+      });
     }
   };
 
@@ -179,9 +210,23 @@ export const UserManagement: React.FC = () => {
       
       setShowUserModal(false);
       fetchUsers();
+      
+      setAlertDialog({
+        isOpen: true,
+        title: editingUser ? 'User Updated' : 'User Created',
+        message: editingUser 
+          ? 'User has been successfully updated.' 
+          : 'User has been successfully created.',
+        type: 'success',
+      });
     } catch (error: any) {
       console.error('Failed to save user:', error);
-      alert(error.response?.data?.error || 'Failed to save user');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Save Failed',
+        message: error.response?.data?.error || 'Failed to save user',
+        type: 'error',
+      });
     } finally {
       setSaving(false);
     }
@@ -508,6 +553,15 @@ export const UserManagement: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Alert Dialog */}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+      />
     </div>
   );
 };
