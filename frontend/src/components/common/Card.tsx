@@ -4,7 +4,7 @@ import { cn } from '@/utils/helpers';
 interface CardProps {
   children: ReactNode;
   className?: string;
-  title?: string;
+  title?: ReactNode; // Changed from string to ReactNode to support JSX elements
   subtitle?: string;
   action?: ReactNode;
   actions?: ReactNode; // Support both 'action' and 'actions'
