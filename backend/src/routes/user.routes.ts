@@ -16,6 +16,7 @@ router.delete('/avatar', authenticate, userController.deleteAvatar);
 router.put('/password', authenticate, validate(changePasswordSchema), userController.changePassword);
 router.get('/activity', authenticate, userController.getActivityLogs);
 router.post('/request-permissions', authenticate, userController.requestPermissions);
+router.get('/search', authenticate, userController.searchUsers);
 
 export default router;
 

@@ -276,6 +276,166 @@ class AnalysisController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  /**
+   * Get shared users for an analysis
+   */
+  async getSharedUsers(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const analysisId = parseInt(req.params.id);
+
+      const analysis = await prisma.analysisRecord.findUnique({
+        where: { id: analysisId },
+        select: { sharedWith: true },
+      });
+
+      if (!analysis) {
+        return res.status(404).json({ error: 'Analysis not found' });
+      }
+
+      // Get user details for shared users
+      const sharedUserIds = analysis.sharedWith || [];
+      const users = await prisma.user.findMany({
+        where: {
+          id: { in: sharedUserIds },
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      });
+
+      res.json({ sharedUsers: users });
+    } catch (error: any) {
+      console.error('Error fetching shared users:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Share analysis with a user
+   */
+  async shareAnalysis(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const analysisId = parseInt(req.params.id);
+      const { userId } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({ error: 'User ID is required' });
+      }
+
+      const analysis = await prisma.analysisRecord.findUnique({
+        where: { id: analysisId },
+        select: { sharedWith: true, userId: true },
+      });
+
+      if (!analysis) {
+        return res.status(404).json({ error: 'Analysis not found' });
+      }
+
+      // Check if user owns this analysis
+      if (analysis.userId !== req.user.id) {
+        return res.status(403).json({ error: 'You can only share your own analyses' });
+      }
+
+      // Check if target user exists
+      const targetUser = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!targetUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Add user to sharedWith array if not already there
+      const currentSharedWith = analysis.sharedWith || [];
+      if (!currentSharedWith.includes(userId)) {
+        await prisma.analysisRecord.update({
+          where: { id: analysisId },
+          data: {
+            sharedWith: [...currentSharedWith, userId],
+          },
+        });
+      }
+
+      // Log activity
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: 'analysis.share',
+        actionDescription: `Shared analysis with ${targetUser.email}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+        metadata: { analysisId, sharedWithUserId: userId },
+      });
+
+      res.json({ message: 'Analysis shared successfully' });
+    } catch (error: any) {
+      console.error('Error sharing analysis:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Remove share from analysis
+   */
+  async unshareAnalysis(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const analysisId = parseInt(req.params.id);
+      const userId = parseInt(req.params.userId);
+
+      const analysis = await prisma.analysisRecord.findUnique({
+        where: { id: analysisId },
+        select: { sharedWith: true, userId: true },
+      });
+
+      if (!analysis) {
+        return res.status(404).json({ error: 'Analysis not found' });
+      }
+
+      // Check if user owns this analysis
+      if (analysis.userId !== req.user.id) {
+        return res.status(403).json({ error: 'You can only unshare your own analyses' });
+      }
+
+      // Remove user from sharedWith array
+      const currentSharedWith = analysis.sharedWith || [];
+      await prisma.analysisRecord.update({
+        where: { id: analysisId },
+        data: {
+          sharedWith: currentSharedWith.filter((id) => id !== userId),
+        },
+      });
+
+      // Log activity
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: 'analysis.unshare',
+        actionDescription: `Removed share from analysis`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+        metadata: { analysisId, removedUserId: userId },
+      });
+
+      res.json({ message: 'Share removed successfully' });
+    } catch (error: any) {
+      console.error('Error unsharing analysis:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 export default new AnalysisController();

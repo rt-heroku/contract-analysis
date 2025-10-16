@@ -238,6 +238,47 @@ class UserController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  /**
+   * Search users (for sharing)
+   */
+  async searchUsers(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { q } = req.query;
+      const searchTerm = (q as string) || '';
+
+      const users = await prisma.user.findMany({
+        where: {
+          AND: [
+            { id: { not: req.user.id } }, // Exclude current user
+            {
+              OR: [
+                { email: { contains: searchTerm, mode: 'insensitive' } },
+                { firstName: { contains: searchTerm, mode: 'insensitive' } },
+                { lastName: { contains: searchTerm, mode: 'insensitive' } },
+              ],
+            },
+          ],
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+        take: 10,
+      });
+
+      res.json({ users });
+    } catch (error: any) {
+      console.error('Error searching users:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
 }
 
 export default new UserController();
