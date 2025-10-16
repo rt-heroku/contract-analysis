@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
-import { User, Mail, Calendar, Upload, X, Camera, Save } from 'lucide-react';
+import { User, Mail, Calendar, Upload, X, Camera, Save, Send } from 'lucide-react';
 
 interface UserProfile {
   id: number;
@@ -22,8 +23,10 @@ interface UserProfile {
 
 export const Profile: React.FC = () => {
   const { refreshAuth } = useAuth();
+  const { can, isViewer } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [requesting, setRequesting] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -114,6 +117,19 @@ export const Profile: React.FC = () => {
     }
   };
 
+  const handleRequestPermissions = async () => {
+    try {
+      setRequesting(true);
+      await api.post('/users/request-permissions');
+      alert('Permission request sent! An administrator will review your request.');
+    } catch (error: any) {
+      console.error('Failed to request permissions:', error);
+      alert(error.response?.data?.error || 'Failed to send permission request');
+    } finally {
+      setRequesting(false);
+    }
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Never';
     const date = new Date(dateString);
@@ -148,16 +164,32 @@ export const Profile: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-          <p className="text-gray-600 mt-1">Manage your personal information</p>
+          <p className="text-gray-600 mt-1">
+            {isViewer ? 'View your personal information' : 'Manage your personal information'}
+          </p>
         </div>
-        {!editMode && (
-          <Button
-            onClick={() => setEditMode(true)}
-            className="bg-primary-600 hover:bg-primary-700"
-          >
-            Edit Profile
-          </Button>
-        )}
+        <div className="flex gap-3">
+          {!editMode && can.editProfile && (
+            <Button
+              onClick={() => setEditMode(true)}
+              className="bg-primary-600 hover:bg-primary-700"
+            >
+              Edit Profile
+            </Button>
+          )}
+          {can.requestPermissions && (
+            <Button
+              onClick={handleRequestPermissions}
+              isLoading={requesting}
+              disabled={requesting}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Send className="w-4 h-4" />
+              Request Permissions
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Profile Picture */}

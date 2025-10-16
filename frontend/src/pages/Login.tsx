@@ -56,7 +56,21 @@ export const Login: React.FC = () => {
     setIsLoading(true);
     try {
       await login(formData);
-      navigate('/dashboard');
+      
+      // Get the user from storage after login
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Redirect based on user's default menu item or role
+      if (user.defaultMenuItem) {
+        // User has a specific default page
+        navigate(`/${user.defaultMenuItem}`);
+      } else if (user.roles?.includes('viewer')) {
+        // Viewers go to history by default
+        navigate('/history');
+      } else {
+        // All other users go to dashboard
+        navigate('/dashboard');
+      }
     } catch (error: any) {
       setErrorMessage(error.message || 'Login failed. Please try again.');
     } finally {
@@ -143,6 +157,7 @@ export const Login: React.FC = () => {
               <div className="text-xs text-blue-700 space-y-1">
                 <p>Admin: admin@demo.com / Admin@123</p>
                 <p>User: user@demo.com / User@123</p>
+                <p>Viewer: demo@mulesoft.com / Demo@123</p>
               </div>
             </div>
           )}

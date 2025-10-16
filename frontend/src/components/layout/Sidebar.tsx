@@ -56,19 +56,47 @@ export const Sidebar: React.FC = () => {
       { id: 5, title: 'Profile', icon: 'user', route: '/profile', orderIndex: 6, isActive: true, children: [] },
     ];
 
+    // Filter menu items based on user role
+    const filterMenuForViewer = (menu: MenuItem[]): MenuItem[] => {
+      const isViewer = user?.roles?.includes('viewer');
+      if (!isViewer) return menu;
+
+      // Viewer restrictions: exclude these menu items
+      const excludedMenus = ['Admin', 'Flows', 'Processing', 'Dashboard'];
+      
+      return menu.filter(item => {
+        // Exclude restricted menu items
+        if (excludedMenus.includes(item.title)) {
+          return false;
+        }
+        
+        // Filter children as well
+        if (item.children && item.children.length > 0) {
+          item.children = filterMenuForViewer(item.children);
+        }
+        
+        return true;
+      });
+    };
+
     const fetchMenu = async () => {
       try {
         const response = await api.get('/system/menu');
         console.log('📋 Menu API Response:', response.data);
         
-        const menu = response.data.menu && response.data.menu.length > 0 ? response.data.menu : defaultMenu;
+        let menu = response.data.menu && response.data.menu.length > 0 ? response.data.menu : defaultMenu;
+        
+        // Filter menu for viewers
+        menu = filterMenuForViewer(menu);
+        
         console.log('📋 Menu to display:', menu);
         console.log('📋 Final menu items:', menu);
         setMenuItems(menu);
       } catch (error) {
         console.error('❌ Error fetching menu:', error);
         // Silently fall back to default menu
-        setMenuItems(defaultMenu);
+        const filteredDefaultMenu = filterMenuForViewer(defaultMenu);
+        setMenuItems(filteredDefaultMenu);
       }
     };
 

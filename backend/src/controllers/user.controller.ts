@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../types';
+import prisma from '../config/database';
 import userService from '../services/user.service';
 import authService from '../services/auth.service';
 import loggingService from '../services/logging.service';
@@ -165,6 +166,76 @@ class UserController {
       res.json(result);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Request permissions upgrade (for viewers)
+   */
+  async requestPermissions(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Get user details
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: {
+          email: true,
+          firstName: true,
+          lastName: true,
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get all admins
+      const adminRole = await prisma.role.findUnique({
+        where: { name: 'admin' },
+      });
+
+      if (!adminRole) {
+        return res.status(500).json({ error: 'Admin role not found' });
+      }
+
+      const adminUserRoles = await prisma.userRole.findMany({
+        where: { roleId: adminRole.id },
+        select: { userId: true },
+      });
+
+      const adminIds = adminUserRoles.map((ur) => ur.userId);
+
+      // Create notifications for all admins
+      const userName = user.firstName && user.lastName
+        ? `${user.firstName} ${user.lastName}`
+        : user.email;
+
+      await prisma.notification.createMany({
+        data: adminIds.map((adminId) => ({
+          userId: adminId,
+          title: 'Permission Request',
+          message: `${userName} (${user.email}) has requested elevated permissions.`,
+          type: 'info',
+          actionUrl: '/admin/users',
+        })),
+      });
+
+      // Log activity
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: 'user.request_permissions',
+        actionDescription: `Requested permission upgrade`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.json({ message: 'Permission request sent to administrators' });
+    } catch (error: any) {
+      console.error('Error requesting permissions:', error);
+      res.status(500).json({ error: error.message });
     }
   }
 }

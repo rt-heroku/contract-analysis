@@ -65,6 +65,8 @@ class AuthService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      defaultMenuItem: user.defaultMenuItem,
+      roles: [ROLES.VIEWER], // New users are viewers by default
     };
   }
 
@@ -144,6 +146,7 @@ class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        defaultMenuItem: user.defaultMenuItem,
         roles,
       },
     };
