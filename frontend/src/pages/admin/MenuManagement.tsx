@@ -8,9 +8,10 @@ import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { Modal } from '@/components/common/Modal';
 import { 
   Menu, Plus, Edit, Trash2, Save, X, GripVertical, 
-  ExternalLink, Home, Users as UsersIcon 
+  ExternalLink, ChevronRight, ChevronDown, FolderPlus
 } from 'lucide-react';
 
 interface MenuItem {
@@ -22,6 +23,7 @@ interface MenuItem {
   parentId?: number;
   orderIndex: number;
   isActive: boolean;
+  children?: MenuItem[];
   permissions?: { roleId: number; role: { name: string } }[];
 }
 
@@ -31,14 +33,14 @@ interface Role {
   description?: string;
 }
 
-const MenuItemDraggable: React.FC<{
+const DraggableMenuItem: React.FC<{
   item: MenuItem;
   onEdit: (item: MenuItem) => void;
   onDelete: (id: number) => void;
 }> = ({ item, onEdit, onDelete }) => {
   const [{ isDragging }, drag] = useDrag({
     type: 'MENU_ITEM',
-    item: { id: item.id, title: item.title },
+    item: { id: item.id, title: item.title, isNew: false },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -47,13 +49,13 @@ const MenuItemDraggable: React.FC<{
   return (
     <div
       ref={drag}
-      className={`p-3 bg-white border border-gray-200 rounded-lg flex items-center justify-between hover:shadow-md transition-shadow cursor-move ${
+      className={`p-3 bg-white border border-gray-200 rounded-lg flex items-center justify-between hover:shadow-md transition-shadow cursor-move mb-2 ${
         isDragging ? 'opacity-50' : ''
       }`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-1">
         <GripVertical className="w-4 h-4 text-gray-400" />
-        <div>
+        <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-gray-900">{item.title}</span>
             {item.isExternal && <ExternalLink className="w-3 h-3 text-blue-500" />}
@@ -61,18 +63,6 @@ const MenuItemDraggable: React.FC<{
           </div>
           {item.route && (
             <span className="text-xs text-gray-500">{item.route}</span>
-          )}
-          {item.permissions && item.permissions.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {item.permissions.map((p) => (
-                <span
-                  key={p.roleId}
-                  className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full"
-                >
-                  {p.role.name}
-                </span>
-              ))}
-            </div>
           )}
         </div>
       </div>
@@ -98,65 +88,122 @@ const MenuItemDraggable: React.FC<{
   );
 };
 
-const RoleMenuDropZone: React.FC<{
-  role: Role;
-  assignedMenuIds: number[];
-  onDrop: (menuId: number, roleId: number) => void;
-  onRemove: (menuId: number, roleId: number) => void;
-  allMenuItems: MenuItem[];
-}> = ({ role, assignedMenuIds, onDrop, onRemove, allMenuItems }) => {
-  const [{ isOver }, drop] = useDrop({
+const TreeMenuItem: React.FC<{
+  item: MenuItem;
+  level: number;
+  onDrop: (draggedId: number, targetId: number, dropPosition: 'on' | 'before' | 'after') => void;
+  onRemove: (menuId: number) => void;
+  roleId: number;
+}> = ({ item, level, onDrop, onRemove, roleId }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isOver, setIsOver] = useState(false);
+  const [dropPosition, setDropPosition] = useState<'on' | 'before' | 'after' | null>(null);
+
+  const [{ canDrop }, drop] = useDrop({
     accept: 'MENU_ITEM',
-    drop: (item: { id: number; title: string }) => {
-      if (!assignedMenuIds.includes(item.id)) {
-        onDrop(item.id, role.id);
+    hover: (draggedItem: any, monitor) => {
+      if (!monitor.isOver({ shallow: true })) return;
+      
+      const hoverBoundingRect = (monitor.getClientOffset() as any);
+      const targetElement = document.getElementById(`tree-item-${item.id}`);
+      if (!targetElement) return;
+      
+      const targetRect = targetElement.getBoundingClientRect();
+      const hoverY = hoverBoundingRect.y - targetRect.top;
+      const height = targetRect.height;
+      
+      // Determine drop position
+      if (hoverY < height * 0.25) {
+        setDropPosition('before');
+      } else if (hoverY > height * 0.75) {
+        setDropPosition('after');
+      } else {
+        setDropPosition('on');
       }
     },
+    drop: (draggedItem: any, monitor) => {
+      if (!monitor.isOver({ shallow: true })) return;
+      onDrop(draggedItem.id, item.id, dropPosition || 'on');
+      setDropPosition(null);
+    },
     collect: (monitor) => ({
-      isOver: monitor.isOver(),
+      canDrop: monitor.canDrop(),
     }),
   });
 
-  const assignedMenus = allMenuItems.filter((m) => assignedMenuIds.includes(m.id));
-
   return (
-    <div
-      ref={drop}
-      className={`p-4 border-2 border-dashed rounded-lg min-h-[200px] ${
-        isOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50'
-      }`}
-    >
-      <div className="flex items-center gap-2 mb-3">
-        <UsersIcon className="w-4 h-4 text-gray-600" />
-        <h4 className="font-medium text-gray-900 capitalize">{role.name}</h4>
-        <span className="text-xs text-gray-500">
-          ({assignedMenus.length} menu{assignedMenus.length !== 1 ? 's' : ''})
-        </span>
-      </div>
-      <div className="space-y-2">
-        {assignedMenus.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-8">
-            Drag menu items here to assign to {role.name}
-          </p>
-        ) : (
-          assignedMenus.map((menu) => (
-            <div
-              key={menu.id}
-              className="p-2 bg-white border border-gray-200 rounded flex items-center justify-between"
-            >
-              <span className="text-sm text-gray-900">{menu.title}</span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onRemove(menu.id, role.id)}
-                className="p-1 text-red-600 hover:text-red-700"
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            </div>
-          ))
+    <div className="relative">
+      <div
+        id={`tree-item-${item.id}`}
+        ref={drop}
+        className={`group relative ${level > 0 ? 'ml-6' : ''}`}
+        onMouseEnter={() => setIsOver(true)}
+        onMouseLeave={() => {
+          setIsOver(false);
+          setDropPosition(null);
+        }}
+      >
+        {/* Drop indicators */}
+        {canDrop && isOver && dropPosition === 'before' && (
+          <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 z-10" />
         )}
+        {canDrop && isOver && dropPosition === 'after' && (
+          <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-500 z-10" />
+        )}
+        
+        <div
+          className={`p-2 border rounded flex items-center justify-between mb-1 transition-colors ${
+            canDrop && isOver && dropPosition === 'on'
+              ? 'border-blue-500 bg-blue-50'
+              : 'border-gray-200 bg-white hover:bg-gray-50'
+          }`}
+        >
+          <div className="flex items-center gap-2 flex-1">
+            {item.children && item.children.length > 0 ? (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-0.5 hover:bg-gray-200 rounded"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-gray-600" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                )}
+              </button>
+            ) : (
+              <div className="w-5" />
+            )}
+            <span className="text-sm font-medium text-gray-900">{item.title}</span>
+            {item.isExternal && <ExternalLink className="w-3 h-3 text-blue-500" />}
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onRemove(item.id)}
+            className="p-1 text-red-600 hover:text-red-700 opacity-0 group-hover:opacity-100"
+          >
+            <X className="w-3 h-3" />
+          </Button>
+        </div>
       </div>
+
+      {/* Children */}
+      {isExpanded && item.children && item.children.length > 0 && (
+        <div className="ml-4">
+          {item.children
+            .sort((a, b) => a.orderIndex - b.orderIndex)
+            .map((child) => (
+              <TreeMenuItem
+                key={child.id}
+                item={child}
+                level={level + 1}
+                onDrop={onDrop}
+                onRemove={onRemove}
+                roleId={roleId}
+              />
+            ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -165,6 +212,8 @@ export const MenuManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [roleMenus, setRoleMenus] = useState<MenuItem[]>([]);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -177,6 +226,18 @@ export const MenuManagement: React.FC = () => {
     parentId: undefined as number | undefined,
     orderIndex: 0,
     isActive: true,
+  });
+
+  const [submenuDialog, setSubmenuDialog] = useState<{
+    isOpen: boolean;
+    item1Id: number;
+    item2Id: number;
+    parentName: string;
+  }>({
+    isOpen: false,
+    item1Id: 0,
+    item2Id: 0,
+    parentName: '',
   });
 
   const [alertDialog, setAlertDialog] = useState<{
@@ -207,6 +268,12 @@ export const MenuManagement: React.FC = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (selectedRole) {
+      buildRoleMenuTree();
+    }
+  }, [selectedRole, menuItems]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -216,6 +283,11 @@ export const MenuManagement: React.FC = () => {
       ]);
       setMenuItems(menuRes.data.menuItems);
       setRoles(rolesRes.data.roles);
+      
+      // Select first role by default
+      if (rolesRes.data.roles.length > 0 && !selectedRole) {
+        setSelectedRole(rolesRes.data.roles[0]);
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error);
       setAlertDialog({
@@ -227,6 +299,32 @@ export const MenuManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const buildRoleMenuTree = () => {
+    if (!selectedRole) return;
+
+    // Get menu items assigned to this role
+    const assignedMenuIds = menuItems
+      .filter((item) => item.permissions?.some((p) => p.roleId === selectedRole.id))
+      .map((item) => item.id);
+
+    // Build tree structure
+    const buildTree = (parentId: number | null = null): MenuItem[] => {
+      return menuItems
+        .filter((item) => {
+          const isInRole = assignedMenuIds.includes(item.id);
+          const matchesParent = item.parentId === parentId;
+          return isInRole && matchesParent;
+        })
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((item) => ({
+          ...item,
+          children: buildTree(item.id),
+        }));
+    };
+
+    setRoleMenus(buildTree(null));
   };
 
   const handleCreateOrUpdate = async () => {
@@ -328,30 +426,162 @@ export const MenuManagement: React.FC = () => {
     setShowForm(false);
   };
 
-  const handleAssignMenu = async (menuId: number, roleId: number) => {
+  const handleDrop = async (draggedId: number, targetId: number, dropPosition: 'on' | 'before' | 'after') => {
+    if (!selectedRole) return;
+
     try {
-      await api.post('/menu/assign', { menuItemId: menuId, roleId });
+      const draggedItem = menuItems.find((m) => m.id === draggedId);
+      const targetItem = menuItems.find((m) => m.id === targetId);
+
+      if (!draggedItem || !targetItem) return;
+
+      // Check if dragged item is already in this role
+      const isAlreadyInRole = draggedItem.permissions?.some((p) => p.roleId === selectedRole.id);
+
+      // If not in role, assign it first
+      if (!isAlreadyInRole) {
+        await api.post('/menu/assign', { menuItemId: draggedId, roleId: selectedRole.id });
+      }
+
+      // Handle drop position
+      if (dropPosition === 'on') {
+        // Drop on target - make it a child
+        if (targetItem.children && targetItem.children.length > 0) {
+          // Target already has children, just add as child
+          await api.put(`/menu/${draggedId}`, {
+            parentId: targetId,
+            orderIndex: targetItem.children.length,
+          });
+        } else {
+          // Target has no children - ask if user wants to create submenu
+          const hasRoute = targetItem.route && targetItem.route.trim() !== '';
+          
+          if (hasRoute) {
+            // Target is a regular menu item, create submenu
+            setSubmenuDialog({
+              isOpen: true,
+              item1Id: targetId,
+              item2Id: draggedId,
+              parentName: '',
+            });
+            return;
+          } else {
+            // Target is already a parent/submenu, just add as child
+            await api.put(`/menu/${draggedId}`, {
+              parentId: targetId,
+              orderIndex: 0,
+            });
+          }
+        }
+      } else if (dropPosition === 'before' || dropPosition === 'after') {
+        // Drop before/after - make it a sibling
+        const newOrderIndex = dropPosition === 'before' ? targetItem.orderIndex : targetItem.orderIndex + 1;
+        await api.put(`/menu/${draggedId}`, {
+          parentId: targetItem.parentId,
+          orderIndex: newOrderIndex,
+        });
+      }
+
       await fetchData();
-      setAlertDialog({
-        isOpen: true,
-        title: 'Success',
-        message: 'Menu assigned to role',
-        type: 'success',
-      });
     } catch (error: any) {
-      console.error('Failed to assign menu:', error);
+      console.error('Failed to handle drop:', error);
       setAlertDialog({
         isOpen: true,
         title: 'Error',
-        message: error.response?.data?.error || 'Failed to assign menu',
+        message: error.response?.data?.error || 'Failed to update menu structure',
         type: 'error',
       });
     }
   };
 
-  const handleRemoveMenu = async (menuId: number, roleId: number) => {
+  const handleCreateSubmenu = async () => {
+    if (!submenuDialog.parentName.trim()) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Validation Error',
+        message: 'Submenu name is required',
+        type: 'error',
+      });
+      return;
+    }
+
     try {
-      await api.post('/menu/remove', { menuItemId: menuId, roleId });
+      const item1 = menuItems.find((m) => m.id === submenuDialog.item1Id);
+      if (!item1) return;
+
+      // Create new parent menu item
+      const parentResponse = await api.post('/menu', {
+        title: submenuDialog.parentName,
+        icon: item1.icon,
+        route: null, // No route for parent
+        isExternal: false,
+        parentId: item1.parentId,
+        orderIndex: item1.orderIndex,
+        isActive: true,
+      });
+
+      const newParentId = parentResponse.data.menuItem.id;
+
+      // Assign parent to role
+      await api.post('/menu/assign', { 
+        menuItemId: newParentId, 
+        roleId: selectedRole!.id 
+      });
+
+      // Update item1 to be child of new parent
+      await api.put(`/menu/${item1.id}`, {
+        parentId: newParentId,
+        orderIndex: 0,
+        route: item1.route, // Keep original route
+      });
+
+      // Update item2 (dragged item) to be child of new parent
+      await api.put(`/menu/${submenuDialog.item2Id}`, {
+        parentId: newParentId,
+        orderIndex: 1,
+      });
+
+      // Assign dragged item to role if not already
+      const draggedItem = menuItems.find((m) => m.id === submenuDialog.item2Id);
+      const isAlreadyInRole = draggedItem?.permissions?.some((p) => p.roleId === selectedRole!.id);
+      if (!isAlreadyInRole) {
+        await api.post('/menu/assign', { 
+          menuItemId: submenuDialog.item2Id, 
+          roleId: selectedRole!.id 
+        });
+      }
+
+      await fetchData();
+      
+      setSubmenuDialog({
+        isOpen: false,
+        item1Id: 0,
+        item2Id: 0,
+        parentName: '',
+      });
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: 'Submenu created successfully',
+        type: 'success',
+      });
+    } catch (error: any) {
+      console.error('Failed to create submenu:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to create submenu',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleRemoveFromRole = async (menuId: number) => {
+    if (!selectedRole) return;
+
+    try {
+      await api.post('/menu/remove', { menuItemId: menuId, roleId: selectedRole.id });
       await fetchData();
     } catch (error: any) {
       console.error('Failed to remove menu:', error);
@@ -362,6 +592,16 @@ export const MenuManagement: React.FC = () => {
         type: 'error',
       });
     }
+  };
+
+  // Get unassigned menu items (not in current role)
+  const getUnassignedMenus = () => {
+    if (!selectedRole) return [];
+    
+    return menuItems.filter((item) => {
+      const isInRole = item.permissions?.some((p) => p.roleId === selectedRole.id);
+      return !isInRole && !item.parentId; // Only show top-level items
+    });
   };
 
   if (loading) {
@@ -382,7 +622,7 @@ export const MenuManagement: React.FC = () => {
               <Menu className="w-8 h-8" />
               Menu Management
             </h1>
-            <p className="text-gray-600 mt-1">Create and manage navigation menu items</p>
+            <p className="text-gray-600 mt-1">Drag menu items to assign them to roles</p>
           </div>
           <Button
             onClick={() => setShowForm(true)}
@@ -476,10 +716,7 @@ export const MenuManagement: React.FC = () => {
                   <Save className="w-4 h-4" />
                   {editingItem ? 'Update' : 'Create'}
                 </Button>
-                <Button
-                  onClick={resetForm}
-                  variant="outline"
-                >
+                <Button onClick={resetForm} variant="outline">
                   Cancel
                 </Button>
               </div>
@@ -487,51 +724,123 @@ export const MenuManagement: React.FC = () => {
           </Card>
         )}
 
-        {/* Menu Items List */}
-        <Card title="All Menu Items">
-          <div className="space-y-2">
-            {menuItems.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">No menu items yet</p>
-            ) : (
-              menuItems
-                .filter((item) => !item.parentId) // Only show top-level items
-                .sort((a, b) => a.orderIndex - b.orderIndex)
-                .map((item) => (
-                  <MenuItemDraggable
-                    key={item.id}
-                    item={item}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                  />
-                ))
-            )}
-          </div>
-        </Card>
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column - All Menu Items */}
+          <Card title="Available Menu Items">
+            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+              {getUnassignedMenus().length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  All menu items are assigned to the selected role
+                </p>
+              ) : (
+                getUnassignedMenus()
+                  .sort((a, b) => a.orderIndex - b.orderIndex)
+                  .map((item) => (
+                    <DraggableMenuItem
+                      key={item.id}
+                      item={item}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  ))
+              )}
+            </div>
+          </Card>
 
-        {/* Role Assignment */}
-        <Card title="Assign Menus to Roles">
-          <p className="text-sm text-gray-600 mb-4">
-            Drag and drop menu items from above into role sections to assign them.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {roles.map((role) => {
-              const assignedMenuIds = menuItems
-                .filter((item) => item.permissions?.some((p) => p.roleId === role.id))
-                .map((item) => item.id);
+          {/* Right Column - Role Menu Tree */}
+          <Card 
+            title={
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700">
+                  Select Role
+                </label>
+                <select
+                  value={selectedRole?.id || ''}
+                  onChange={(e) => {
+                    const role = roles.find((r) => r.id === parseInt(e.target.value));
+                    setSelectedRole(role || null);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name.charAt(0).toUpperCase() + role.name.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            }
+          >
+            <div className="mt-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Drag items from the left to build the menu tree. Drop on items to create submenus.
+              </p>
+              <div className="max-h-[500px] overflow-y-auto">
+                {roleMenus.length === 0 ? (
+                  <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                    <FolderPlus className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">
+                      No menu items assigned to this role yet.
+                    </p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Drag items from the left to get started.
+                    </p>
+                  </div>
+                ) : (
+                  roleMenus.map((item) => (
+                    <TreeMenuItem
+                      key={item.id}
+                      item={item}
+                      level={0}
+                      onDrop={handleDrop}
+                      onRemove={handleRemoveFromRole}
+                      roleId={selectedRole!.id}
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
 
-              return (
-                <RoleMenuDropZone
-                  key={role.id}
-                  role={role}
-                  assignedMenuIds={assignedMenuIds}
-                  onDrop={handleAssignMenu}
-                  onRemove={handleRemoveMenu}
-                  allMenuItems={menuItems}
-                />
-              );
-            })}
+        {/* Submenu Creation Dialog */}
+        <Modal
+          isOpen={submenuDialog.isOpen}
+          onClose={() => setSubmenuDialog({ ...submenuDialog, isOpen: false })}
+          title="Create Submenu"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              The target item is a regular menu item. Enter a name for the new submenu that will contain both items:
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Submenu Name *
+              </label>
+              <Input
+                value={submenuDialog.parentName}
+                onChange={(e) => setSubmenuDialog({ ...submenuDialog, parentName: e.target.value })}
+                placeholder="Enter submenu name"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <Button
+                onClick={handleCreateSubmenu}
+                className="bg-primary-600 hover:bg-primary-700"
+              >
+                Create Submenu
+              </Button>
+              <Button
+                onClick={() => setSubmenuDialog({ ...submenuDialog, isOpen: false })}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
-        </Card>
+        </Modal>
 
         {/* Alert Dialog */}
         <AlertDialog
@@ -554,4 +863,3 @@ export const MenuManagement: React.FC = () => {
     </DndProvider>
   );
 };
-
