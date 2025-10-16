@@ -165,7 +165,15 @@ export const AnalysisDetails: React.FC = () => {
         
         <h3 style="color: #4a5568; margin-top: 20px;">Products:</h3>
         <ul style="margin: 10px 0; padding-left: 20px;">
-          ${extraction.products.map((product: string) => `<li style="margin: 5px 0;">${product}</li>`).join('')}
+          ${extraction.products.map((product: any) => {
+            const productName = typeof product === 'object' && product !== null
+              ? product.name || 'Unknown Product'
+              : product || 'Unknown Product';
+            const unitsSold = typeof product === 'object' && product !== null
+              ? (product.units_sold || product['units sold (ref)'] || '')
+              : '';
+            return `<li style="margin: 5px 0;">${productName}${unitsSold ? ` (Units: ${unitsSold})` : ''}</li>`;
+          }).join('')}
         </ul>
       </div>
 
