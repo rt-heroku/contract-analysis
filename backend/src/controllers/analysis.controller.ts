@@ -85,18 +85,6 @@ class AnalysisController {
         userAgent: getUserAgent(req),
       });
 
-      // Debug: Log contract analysis data
-      if (analysis.contractAnalysis) {
-        console.log('🔍 Backend - Sending contract analysis:', {
-          hasMusoftResponse: !!analysis.contractAnalysis.mulesoftResponse,
-          mulesoftResponseType: typeof analysis.contractAnalysis.mulesoftResponse,
-          mulesoftResponseKeys: analysis.contractAnalysis.mulesoftResponse ? Object.keys(analysis.contractAnalysis.mulesoftResponse) : [],
-          termsType: typeof analysis.contractAnalysis.terms,
-          productsType: typeof analysis.contractAnalysis.products,
-          firstProduct: analysis.contractAnalysis.mulesoftResponse?.products?.[0],
-        });
-      }
-
       res.json({ analysis });
     } catch (error: any) {
       res.status(400).json({ error: error.message });

@@ -15,7 +15,14 @@ import {
   CheckCircle, 
   Clock, 
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  Building,
+  MapPin,
+  Phone,
+  Calendar,
+  Users,
+  ShieldCheck,
+  Package
 } from 'lucide-react';
 
 export const AnalysisDetails: React.FC = () => {
@@ -56,15 +63,6 @@ export const AnalysisDetails: React.FC = () => {
         if (data.contractAnalysis) {
           // Store the full contract analysis to access mulesoftResponse
           const mulesoftResponse = data.contractAnalysis.mulesoftResponse || {};
-          
-          console.log('🔍 DEBUG - Contract Analysis:', {
-            hasMusoftResponse: !!data.contractAnalysis.mulesoftResponse,
-            mulesoftResponseKeys: Object.keys(mulesoftResponse),
-            termsInMulesoft: mulesoftResponse.terms,
-            termsInContractAnalysis: data.contractAnalysis.terms,
-            productsInMulesoft: mulesoftResponse.products,
-            productsInContractAnalysis: data.contractAnalysis.products
-          });
           
           // Extract terms from mulesoftResponse or contractAnalysis
           let terms = mulesoftResponse.terms || data.contractAnalysis.terms || [];
@@ -428,76 +426,300 @@ export const AnalysisDetails: React.FC = () => {
       </div>
 
       {/* Content */}
-      {activeTab === 'extraction' && (
+      {activeTab === 'extraction' && displayExtraction.mulesoftResponse && (
         <div className="space-y-6">
-          {/* Terms Section */}
-          <Card title="Extracted Terms">
-            <div className="space-y-3">
-              {displayExtraction.terms.map((term: string, index: number) => (
-                <div
-                  key={index}
-                  className="p-4 bg-blue-50 border border-blue-200 rounded-lg"
-                >
-                  <p className="text-gray-800">{term}</p>
+          {/* Document Information */}
+          <Card title="Document Information">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Document Name</p>
+                <p className="font-medium text-gray-900">{displayExtraction.mulesoftResponse.documentName || displayExtraction.document}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Document ID</p>
+                <p className="font-mono text-xs text-gray-700">{displayExtraction.mulesoftResponse.id || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Processing Status</p>
+                <div className="flex items-center gap-2">
+                  {displayExtraction.mulesoftResponse.status?.toLowerCase().includes('success') ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <span className="font-medium text-green-600">Success</span>
+                    </>
+                  ) : displayExtraction.mulesoftResponse.status?.includes('VALIDATION') ? (
+                    <>
+                      <AlertCircle className="w-4 h-4 text-yellow-600" />
+                      <span className="font-medium text-yellow-600 text-xs">{displayExtraction.mulesoftResponse.status}</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium text-blue-600 text-xs">{displayExtraction.mulesoftResponse.status}</span>
+                    </>
+                  )}
                 </div>
-              ))}
+              </div>
             </div>
+
+            {/* Document Summary */}
+            {displayExtraction.mulesoftResponse.documentSummary && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-medium text-blue-900 mb-2">Document Summary</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {displayExtraction.mulesoftResponse.documentSummary.replace(/^NOT PARSED:\s*/i, '')}
+                </p>
+              </div>
+            )}
           </Card>
 
-          {/* Products Section */}
-          <Card title="Extracted Products">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      #
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Product Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Units Sold
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ref. Price
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {displayExtraction.products.map((product: any, index: number) => {
-                    // Handle product which might be a string or an object
-                    const productName = typeof product === 'object' && product !== null
-                      ? product.name || 'Unknown Product'
-                      : product || 'Unknown Product';
-                    const unitsSold = typeof product === 'object' && product !== null
-                      ? (product.units_sold || product['units sold (ref)'] || 'N/A')
-                      : 'N/A';
-                    const refPrice = typeof product === 'object' && product !== null
-                      ? (product.ref_price || product['ref. price'] || 'N/A')
-                      : 'N/A';
-                    
-                    return (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {index + 1}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {productName}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-700">
-                          {unitsSold}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-700">
-                          {refPrice !== 'N/A' && !isNaN(Number(refPrice)) ? `$${Number(refPrice).toFixed(2)}` : refPrice}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+          {/* Parties Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Distributor */}
+            {displayExtraction.mulesoftResponse.distributor?.distributor && (
+              <Card title={
+                <div className="flex items-center gap-2">
+                  <Building className="w-5 h-5 text-primary-600" />
+                  <span>Distributor</span>
+                </div>
+              }>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {displayExtraction.mulesoftResponse.distributor.distributor.name}
+                    </p>
+                  </div>
+                  {displayExtraction.mulesoftResponse.distributor.distributor.address && (
+                    <div className="flex items-start gap-2 text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p>{displayExtraction.mulesoftResponse.distributor.distributor.address.address}</p>
+                        <p>
+                          {displayExtraction.mulesoftResponse.distributor.distributor.address.city}, {displayExtraction.mulesoftResponse.distributor.distributor.address.state} {displayExtraction.mulesoftResponse.distributor.distributor.address.zipcode}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {displayExtraction.mulesoftResponse.distributor.distributor.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Phone className="w-4 h-4" />
+                      <span>{displayExtraction.mulesoftResponse.distributor.distributor.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* Retailer */}
+            {displayExtraction.mulesoftResponse.retailer?.retailer && (
+              <Card title={
+                <div className="flex items-center gap-2">
+                  <Building className="w-5 h-5 text-green-600" />
+                  <span>Retailer</span>
+                </div>
+              }>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {displayExtraction.mulesoftResponse.retailer.retailer.name}
+                    </p>
+                  </div>
+                  {displayExtraction.mulesoftResponse.retailer.retailer.address && (
+                    <div className="flex items-start gap-2 text-sm text-gray-600">
+                      <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p>{displayExtraction.mulesoftResponse.retailer.retailer.address.address}</p>
+                        <p>
+                          {displayExtraction.mulesoftResponse.retailer.retailer.address.city}, {displayExtraction.mulesoftResponse.retailer.retailer.address.state} {displayExtraction.mulesoftResponse.retailer.retailer.address.zipcode}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {displayExtraction.mulesoftResponse.retailer.retailer.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Phone className="w-4 h-4" />
+                      <span>{displayExtraction.mulesoftResponse.retailer.retailer.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+          </div>
+
+          {/* Agreement Dates */}
+          {displayExtraction.mulesoftResponse.createdDates && (
+            <Card title={
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-purple-600" />
+                <span>Agreement Information</span>
+              </div>
+            }>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Agreement Date</p>
+                  <p className="font-medium text-gray-900">
+                    {displayExtraction.mulesoftResponse.createdDates.agreedDate || 
+                     displayExtraction.mulesoftResponse.createdDates.agreed_date || 'N/A'}
+                  </p>
+                </div>
+                {displayExtraction.mulesoftResponse.createdDates.parties && Array.isArray(displayExtraction.mulesoftResponse.createdDates.parties) && displayExtraction.mulesoftResponse.createdDates.parties.length > 0 && (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Parties</p>
+                    <div className="space-y-1">
+                      {displayExtraction.mulesoftResponse.createdDates.parties.map((party: string, idx: number) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Users className="w-3 h-3 text-gray-500" />
+                          <span className="text-sm text-gray-800">{party}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Contract Terms */}
+          {displayExtraction.terms && displayExtraction.terms.length > 0 && (
+            <Card title={
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-blue-600" />
+                <span>Contract Terms</span>
+              </div>
+            }>
+              <div className="space-y-3">
+                {displayExtraction.terms.map((term: string, index: number) => (
+                  <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-xs font-bold text-blue-700">{index + 1}</span>
+                      </div>
+                      <p className="text-sm text-gray-800 flex-1">{term}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Purpose */}
+          {displayExtraction.mulesoftResponse.purpose && (
+            <Card title="Agreement Purpose">
+              <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {displayExtraction.mulesoftResponse.purpose.replace(/^NOT PARSED:\s*/i, '')}
+                </p>
+              </div>
+            </Card>
+          )}
+
+          {/* Promotional Math */}
+          {displayExtraction.mulesoftResponse.promotionalMath && (
+            <Card title="Promotional Mathematics">
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {displayExtraction.mulesoftResponse.promotionalMath.replace(/^NOT PARSED:\s*/i, '')}
+                </p>
+              </div>
+            </Card>
+          )}
+
+          {/* Display Requirements */}
+          {displayExtraction.mulesoftResponse.display && (
+            <Card title="Display Requirements">
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {displayExtraction.mulesoftResponse.display.replace(/^NOT PARSED:\s*/i, '')}
+                </p>
+              </div>
+            </Card>
+          )}
+
+          {/* Termination */}
+          {displayExtraction.mulesoftResponse.termination && (
+            <Card title="Termination Clause">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  {displayExtraction.mulesoftResponse.termination.replace(/^NOT PARSED:\s*/i, '')}
+                </p>
+              </div>
+            </Card>
+          )}
+
+          {/* Compliance */}
+          {displayExtraction.mulesoftResponse.compliance && Array.isArray(displayExtraction.mulesoftResponse.compliance) && displayExtraction.mulesoftResponse.compliance.length > 0 && (
+            <Card title={
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-green-600" />
+                <span>Compliance Requirements</span>
+              </div>
+            }>
+              <div className="space-y-2">
+                {displayExtraction.mulesoftResponse.compliance.map((item: string, index: number) => (
+                  <div key={index} className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-gray-800">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Products */}
+          {displayExtraction.products && displayExtraction.products.length > 0 && (
+            <Card title={
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-orange-600" />
+                <span>Products ({displayExtraction.products.length})</span>
+              </div>
+            }>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Product Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Units Sold (Ref)
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ref. Price
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {displayExtraction.products.map((product: any, index: number) => {
+                      // Handle product which might be a string or an object
+                      const productName = typeof product === 'object' && product !== null
+                        ? product.name || 'Unknown Product'
+                        : product || 'Unknown Product';
+                      const unitsSold = typeof product === 'object' && product !== null
+                        ? (product.units_sold || product['units sold (ref)'] || 'N/A')
+                        : 'N/A';
+                      const refPrice = typeof product === 'object' && product !== null
+                        ? (product.ref_price || product['ref. price'] || 'N/A')
+                        : 'N/A';
+                      
+                      return (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {productName}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            {unitsSold}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-700">
+                            {refPrice !== 'N/A' && !isNaN(Number(refPrice)) ? `$${Number(refPrice).toFixed(2)}` : refPrice}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
         </div>
       )}
 
