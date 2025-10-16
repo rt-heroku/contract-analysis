@@ -88,6 +88,39 @@ const DraggableMenuItem: React.FC<{
   );
 };
 
+const RootDropZone: React.FC<{
+  onDrop: (draggedId: number) => void;
+  children: React.ReactNode;
+}> = ({ onDrop, children }) => {
+  const [{ isOver, canDrop }, drop] = useDrop({
+    accept: 'MENU_ITEM',
+    drop: (draggedItem: any, monitor) => {
+      // Only handle drop if not dropped on a child
+      if (monitor.didDrop()) {
+        return;
+      }
+      onDrop(draggedItem.id);
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver({ shallow: true }),
+      canDrop: monitor.canDrop(),
+    }),
+  });
+
+  return (
+    <div
+      ref={drop}
+      className={`min-h-[200px] rounded-lg transition-colors ${
+        canDrop && isOver
+          ? 'bg-blue-50 border-2 border-dashed border-blue-400'
+          : 'border-2 border-transparent'
+      }`}
+    >
+      {children}
+    </div>
+  );
+};
+
 const TreeMenuItem: React.FC<{
   item: MenuItem;
   level: number;
@@ -594,13 +627,46 @@ export const MenuManagement: React.FC = () => {
     }
   };
 
+  const handleRootDrop = async (draggedId: number) => {
+    if (!selectedRole) return;
+
+    try {
+      const draggedItem = menuItems.find((m) => m.id === draggedId);
+      if (!draggedItem) return;
+
+      // Check if dragged item is already in this role
+      const isAlreadyInRole = draggedItem.permissions?.some((p) => p.roleId === selectedRole.id);
+
+      // If not in role, assign it first
+      if (!isAlreadyInRole) {
+        await api.post('/menu/assign', { menuItemId: draggedId, roleId: selectedRole.id });
+      }
+
+      // Make it a root-level item (no parent)
+      await api.put(`/menu/${draggedId}`, {
+        parentId: null,
+        orderIndex: roleMenus.length, // Add at the end
+      });
+
+      await fetchData();
+    } catch (error: any) {
+      console.error('Failed to handle root drop:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to add menu item',
+        type: 'error',
+      });
+    }
+  };
+
   // Get unassigned menu items (not in current role)
   const getUnassignedMenus = () => {
     if (!selectedRole) return [];
     
     return menuItems.filter((item) => {
       const isInRole = item.permissions?.some((p) => p.roleId === selectedRole.id);
-      return !isInRole && !item.parentId; // Only show top-level items
+      return !isInRole; // Show all items, including submenu items
     });
   };
 
@@ -778,28 +844,34 @@ export const MenuManagement: React.FC = () => {
                 Drag items from the left to build the menu tree. Drop on items to create submenus.
               </p>
               <div className="flex-1 overflow-y-auto">
-                {roleMenus.length === 0 ? (
-                  <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
-                    <FolderPlus className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500">
-                      No menu items assigned to this role yet.
-                    </p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Drag items from the left to get started.
-                    </p>
-                  </div>
-                ) : (
-                  roleMenus.map((item) => (
-                    <TreeMenuItem
-                      key={item.id}
-                      item={item}
-                      level={0}
-                      onDrop={handleDrop}
-                      onRemove={handleRemoveFromRole}
-                      roleId={selectedRole!.id}
-                    />
-                  ))
-                )}
+                <RootDropZone onDrop={handleRootDrop}>
+                  {roleMenus.length === 0 ? (
+                    <div className="text-center py-12">
+                      <FolderPlus className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-500">
+                        No menu items assigned to this role yet.
+                      </p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Drag items from the left to get started.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {roleMenus.map((item) => (
+                        <TreeMenuItem
+                          key={item.id}
+                          item={item}
+                          level={0}
+                          onDrop={handleDrop}
+                          onRemove={handleRemoveFromRole}
+                          roleId={selectedRole!.id}
+                        />
+                      ))}
+                      {/* Extra space at bottom for dropping */}
+                      <div className="h-20" />
+                    </>
+                  )}
+                </RootDropZone>
               </div>
             </div>
           </Card>
