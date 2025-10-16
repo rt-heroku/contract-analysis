@@ -502,19 +502,22 @@ export const History: React.FC = () => {
                     <Eye className="w-4 h-4" />
                     View Details
                   </Button>
-                  <Button
-                    onClick={() => handleRerunAnalysis(analysis)}
-                    disabled={rerunningId === analysis.id}
-                    style={{ 
-                      backgroundColor: rerunningId === analysis.id ? '#4ade80' : '#16a34a',
-                      color: 'white',
-                      borderColor: '#16a34a'
-                    }}
-                    className="hover:bg-green-700 focus:ring-green-500 flex items-center gap-2"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${rerunningId === analysis.id ? 'animate-spin' : ''}`} />
-                    {rerunningId === analysis.id ? 'Re-running...' : 'Re-run Analysis'}
-                  </Button>
+                  {/* Only show Re-run button if user has process documents permission */}
+                  {can.processDocuments && (
+                    <Button
+                      onClick={() => handleRerunAnalysis(analysis)}
+                      disabled={rerunningId === analysis.id}
+                      style={{ 
+                        backgroundColor: rerunningId === analysis.id ? '#4ade80' : '#16a34a',
+                        color: 'white',
+                        borderColor: '#16a34a'
+                      }}
+                      className="hover:bg-green-700 focus:ring-green-500 flex items-center gap-2"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${rerunningId === analysis.id ? 'animate-spin' : ''}`} />
+                      {rerunningId === analysis.id ? 'Re-running...' : 'Re-run Analysis'}
+                    </Button>
+                  )}
                   {/* Only show Share button if user owns this analysis */}
                   {user && analysis.userId === user.id && (
                     <Button

@@ -494,13 +494,8 @@ class DocumentService {
    * Get analysis record by ID
    */
   async getAnalysisById(analysisRecordId: number, userId?: number) {
-    const where: any = { id: analysisRecordId, isDeleted: false };
-    if (userId) {
-      where.userId = userId;
-    }
-
     const analysis = await prisma.analysisRecord.findUnique({
-      where,
+      where: { id: analysisRecordId },
       include: {
         contractUpload: true,
         dataUpload: true,
@@ -516,6 +511,22 @@ class DocumentService {
         },
       },
     });
+
+    // Check if analysis exists and is not deleted
+    if (!analysis || analysis.isDeleted) {
+      return null;
+    }
+
+    // If userId is provided, check if user has access (owns it OR it's shared with them)
+    if (userId) {
+      const isOwner = analysis.userId === userId;
+      const sharedWith = Array.isArray(analysis.sharedWith) ? analysis.sharedWith : [];
+      const isSharedWithUser = sharedWith.includes(userId);
+      
+      if (!isOwner && !isSharedWithUser) {
+        return null; // User doesn't have access
+      }
+    }
 
     return analysis;
   }
