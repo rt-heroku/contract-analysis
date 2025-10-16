@@ -1,6 +1,7 @@
 export const ROLES = {
   ADMIN: 'admin',
   USER: 'user',
+  VIEWER: 'viewer',
 } as const;
 
 export const ACTION_TYPES = {

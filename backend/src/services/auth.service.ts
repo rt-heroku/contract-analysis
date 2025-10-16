@@ -32,6 +32,7 @@ class AuthService {
           passwordHash,
           firstName: data.firstName,
           lastName: data.lastName,
+          defaultMenuItem: 'history', // Viewer role defaults to history page
         },
       });
 
@@ -42,16 +43,16 @@ class AuthService {
         },
       });
 
-      // Assign user role
-      const userRole = await tx.role.findUnique({
-        where: { name: ROLES.USER },
+      // Assign viewer role (default for new registrations)
+      const viewerRole = await tx.role.findUnique({
+        where: { name: ROLES.VIEWER },
       });
 
-      if (userRole) {
+      if (viewerRole) {
         await tx.userRole.create({
           data: {
             userId: newUser.id,
-            roleId: userRole.id,
+            roleId: viewerRole.id,
           },
         });
       }
