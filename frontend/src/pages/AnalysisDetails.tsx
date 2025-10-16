@@ -54,11 +54,21 @@ export const AnalysisDetails: React.FC = () => {
 
         // If we have contract analysis, set extraction data
         if (data.contractAnalysis) {
+          // Store the full contract analysis to access mulesoftResponse
+          const mulesoftResponse = data.contractAnalysis.mulesoftResponse || {};
+          
+          // Extract terms from mulesoftResponse or contractAnalysis
+          let terms = mulesoftResponse.terms || data.contractAnalysis.terms || [];
+          if (!Array.isArray(terms)) {
+            terms = terms ? [terms] : [];
+          }
+          
           setExtraction({
             document: data.contractAnalysis.documentName || 'Document',
             status: data.contractAnalysis.status || 'PROCESSING',
-            terms: Array.isArray(data.contractAnalysis.terms) ? data.contractAnalysis.terms : (data.contractAnalysis.terms ? [data.contractAnalysis.terms] : []),
-            products: Array.isArray(data.contractAnalysis.products) ? data.contractAnalysis.products : []
+            terms: terms,
+            products: mulesoftResponse.products || data.contractAnalysis.products || [],
+            mulesoftResponse: mulesoftResponse
           });
         }
 
