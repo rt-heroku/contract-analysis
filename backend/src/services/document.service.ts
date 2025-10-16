@@ -531,54 +531,95 @@ class DocumentService {
   ) {
     const skip = (page - 1) * limit;
 
-    // Include analyses owned by user OR shared with user
-    const where: any = {
+    // Build where clause for owned analyses
+    const ownedWhere: any = {
+      userId,
       isDeleted: false,
-      OR: [
-        { userId }, // Owned by user
-        { sharedWith: { has: userId } }, // Shared with user
-      ],
     };
 
-    // Add search conditions if provided
     if (search) {
-      where.AND = [
-        {
-          OR: [
-            { contractUpload: { filename: { contains: search, mode: 'insensitive' } } },
-            { dataUpload: { filename: { contains: search, mode: 'insensitive' } } },
-          ],
-        },
+      ownedWhere.OR = [
+        { contractUpload: { filename: { contains: search, mode: 'insensitive' } } },
+        { dataUpload: { filename: { contains: search, mode: 'insensitive' } } },
       ];
     }
 
-    const [analyses, total] = await Promise.all([
-      prisma.analysisRecord.findMany({
-        where,
-        include: {
-          contractUpload: {
-            select: {
-              filename: true,
-              createdAt: true,
-            },
-          },
-          dataUpload: {
-            select: {
-              filename: true,
-            },
-          },
-          contractAnalysis: {
-            select: {
-              terms: true,
-            },
+    // Fetch owned analyses
+    const ownedAnalyses = await prisma.analysisRecord.findMany({
+      where: ownedWhere,
+      include: {
+        contractUpload: {
+          select: {
+            filename: true,
+            createdAt: true,
           },
         },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      prisma.analysisRecord.count({ where }),
-    ]);
+        dataUpload: {
+          select: {
+            filename: true,
+          },
+        },
+        contractAnalysis: {
+          select: {
+            terms: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Fetch all non-deleted analyses to check for shared ones
+    const allAnalyses = await prisma.analysisRecord.findMany({
+      where: {
+        isDeleted: false,
+        NOT: { userId }, // Exclude owned analyses
+      },
+      include: {
+        contractUpload: {
+          select: {
+            filename: true,
+            createdAt: true,
+          },
+        },
+        dataUpload: {
+          select: {
+            filename: true,
+          },
+        },
+        contractAnalysis: {
+          select: {
+            terms: true,
+          },
+        },
+      },
+    });
+
+    // Filter analyses shared with this user
+    const sharedAnalyses = allAnalyses.filter((analysis: any) => {
+      const sharedWith = Array.isArray(analysis.sharedWith) 
+        ? analysis.sharedWith 
+        : [];
+      return sharedWith.includes(userId);
+    });
+
+    // Apply search filter to shared analyses
+    let filteredSharedAnalyses = sharedAnalyses;
+    if (search) {
+      filteredSharedAnalyses = sharedAnalyses.filter((analysis: any) => {
+        const contractMatch = analysis.contractUpload?.filename?.toLowerCase().includes(search.toLowerCase());
+        const dataMatch = analysis.dataUpload?.filename?.toLowerCase().includes(search.toLowerCase());
+        return contractMatch || dataMatch;
+      });
+    }
+
+    // Combine and sort by createdAt
+    const allUserAnalyses = [...ownedAnalyses, ...filteredSharedAnalyses].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    // Paginate
+    const total = allUserAnalyses.length;
+    const analyses = allUserAnalyses.slice(skip, skip + limit);
 
     // Fetch shared user details for each analysis
     const analysesWithSharedUsers = await Promise.all(
