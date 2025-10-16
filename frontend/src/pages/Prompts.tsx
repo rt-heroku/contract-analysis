@@ -5,8 +5,11 @@ import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
+import { AlertDialog } from '@/components/common/AlertDialog';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Plus, Edit, Trash2, Eye, EyeOff, Search, Save, X, Download, Upload as UploadIcon, Star, Copy } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Variable {
   id?: number;
@@ -53,6 +56,7 @@ interface Prompt {
 
 export const Prompts: React.FC = () => {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,6 +65,31 @@ export const Prompts: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Dialog states
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // Check if user is admin
   const isAdmin = user?.roles?.some((role: string) => role.toLowerCase() === 'admin');
@@ -133,7 +162,12 @@ export const Prompts: React.FC = () => {
     
     // Check if variable already exists
     if (variables.some(v => v.variableName === newVariableName.trim())) {
-      alert('Variable already exists');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Variable Exists',
+        message: 'A variable with this name already exists.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -153,7 +187,12 @@ export const Prompts: React.FC = () => {
     // Don't allow removing flow variables
     const variable = variables.find(v => v.variableName === variableName);
     if (variable?.isFlowVariable) {
-      alert('Cannot remove flow variables');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Cannot Remove',
+        message: 'Flow variables cannot be removed as they are required by the selected flow.',
+        type: 'warning',
+      });
       return;
     }
     setVariables(variables.filter(v => v.variableName !== variableName));
@@ -243,7 +282,12 @@ export const Prompts: React.FC = () => {
     if (file && (file.type === 'text/markdown' || file.type === 'text/plain' || file.name.endsWith('.md') || file.name.endsWith('.txt'))) {
       handleFileRead(file);
     } else {
-      alert('Please drop a .md or .txt file');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Invalid File Type',
+        message: 'Please drop a .md or .txt file',
+        type: 'warning',
+      });
     }
   };
 
@@ -358,24 +402,65 @@ export const Prompts: React.FC = () => {
 
       setShowForm(false);
       fetchPrompts();
+      
+      setAlertDialog({
+        isOpen: true,
+        title: editingPrompt ? 'Prompt Updated' : 'Prompt Created',
+        message: editingPrompt ? 'Prompt has been successfully updated.' : 'Prompt has been successfully created.',
+        type: 'success',
+      });
     } catch (error: any) {
       console.error('Failed to save prompt:', error);
-      alert(error.response?.data?.error || 'Failed to save prompt');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Save Failed',
+        message: error.response?.data?.error || 'Failed to save prompt',
+        type: 'error',
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this prompt?')) return;
-
-    try {
-      await api.delete(`/prompts/${id}`);
-      fetchPrompts();
-    } catch (error) {
-      console.error('Failed to delete prompt:', error);
-      alert('Failed to delete prompt');
+  const handleDelete = (id: number) => {
+    // Check permissions
+    if (!can.deletePrompts) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Permission Denied',
+        message: 'You do not have permission to delete prompts. Please contact an administrator.',
+        type: 'warning',
+      });
+      return;
     }
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Prompt',
+      message: 'Are you sure you want to delete this prompt? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/prompts/${id}`);
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+          fetchPrompts();
+          
+          setAlertDialog({
+            isOpen: true,
+            title: 'Prompt Deleted',
+            message: 'Prompt has been successfully deleted.',
+            type: 'success',
+          });
+        } catch (error) {
+          console.error('Failed to delete prompt:', error);
+          setAlertDialog({
+            isOpen: true,
+            title: 'Delete Failed',
+            message: 'Failed to delete prompt',
+            type: 'error',
+          });
+        }
+      },
+    });
   };
 
   const handleToggleActive = async (prompt: Prompt) => {
@@ -395,7 +480,12 @@ export const Prompts: React.FC = () => {
       fetchPrompts();
     } catch (error: any) {
       console.error('Failed to set default:', error);
-      alert(error.response?.data?.error || 'Failed to set default prompt');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Set Default Failed',
+        message: error.response?.data?.error || 'Failed to set default prompt',
+        type: 'error',
+      });
     }
   };
 
@@ -405,7 +495,12 @@ export const Prompts: React.FC = () => {
       fetchPrompts();
     } catch (error: any) {
       console.error('Failed to unset default:', error);
-      alert(error.response?.data?.error || 'Failed to unset default prompt');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Unset Default Failed',
+        message: error.response?.data?.error || 'Failed to unset default prompt',
+        type: 'error',
+      });
     }
   };
 
@@ -699,13 +794,15 @@ export const Prompts: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Prompt Library</h1>
           <p className="text-gray-600 mt-1">Manage AI prompts with variables for document processing</p>
         </div>
-        <Button
-          onClick={handleCreateNew}
-          className="bg-primary-600 hover:bg-primary-700"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Create New Prompt
-        </Button>
+        {can.createPrompts && (
+          <Button
+            onClick={handleCreateNew}
+            className="bg-primary-600 hover:bg-primary-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create New Prompt
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-4">
@@ -761,31 +858,35 @@ export const Prompts: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  onClick={() => handleEdit(prompt)}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-                <Button
-                  onClick={() => handleDuplicate(prompt)}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Duplicate
-                </Button>
-                <Button
-                  onClick={() => handleToggleActive(prompt)}
-                  variant="outline"
-                  size="sm"
-                >
-                  {prompt.isActive ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
-                  {prompt.isActive ? 'Deactivate' : 'Activate'}
-                </Button>
-                {isAdmin && (
+                {can.editPrompts && (
+                  <>
+                    <Button
+                      onClick={() => handleEdit(prompt)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                    <Button
+                      onClick={() => handleDuplicate(prompt)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Copy className="w-4 h-4 mr-2" />
+                      Duplicate
+                    </Button>
+                    <Button
+                      onClick={() => handleToggleActive(prompt)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      {prompt.isActive ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+                      {prompt.isActive ? 'Deactivate' : 'Activate'}
+                    </Button>
+                  </>
+                )}
+                {can.setDefaultPrompt && (
                   <Button
                     onClick={() => prompt.isDefault ? handleUnsetDefault(prompt.id) : handleSetDefault(prompt.id)}
                     variant="outline"
@@ -796,15 +897,17 @@ export const Prompts: React.FC = () => {
                     {prompt.isDefault ? 'Unset Default' : 'Set as Default'}
                   </Button>
                 )}
-                <Button
-                  onClick={() => handleDelete(prompt.id)}
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </Button>
+                {can.deletePrompts && (
+                  <Button
+                    onClick={() => handleDelete(prompt.id)}
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                )}
               </div>
             </div>
           </Card>
@@ -823,6 +926,25 @@ export const Prompts: React.FC = () => {
           </Button>
         </div>
       )}
+
+      {/* Alert Dialog */}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+      />
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type="danger"
+      />
     </div>
     </>
   );

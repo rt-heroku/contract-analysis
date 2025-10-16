@@ -6,6 +6,7 @@ import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
+import { AlertDialog } from '@/components/common/AlertDialog';
 import { User, Mail, Calendar, Upload, X, Camera, Save, Send } from 'lucide-react';
 
 interface UserProfile {
@@ -117,14 +118,36 @@ export const Profile: React.FC = () => {
     }
   };
 
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
   const handleRequestPermissions = async () => {
     try {
       setRequesting(true);
       await api.post('/users/request-permissions');
-      alert('Permission request sent! An administrator will review your request.');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Request Sent',
+        message: 'Permission request sent! An administrator will review your request.',
+        type: 'success',
+      });
     } catch (error: any) {
       console.error('Failed to request permissions:', error);
-      alert(error.response?.data?.error || 'Failed to send permission request');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Request Failed',
+        message: error.response?.data?.error || 'Failed to send permission request',
+        type: 'error',
+      });
     } finally {
       setRequesting(false);
     }
@@ -413,6 +436,15 @@ export const Profile: React.FC = () => {
           </div>
         </div>
       </Card>
+
+      {/* Alert Dialog */}
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+      />
     </div>
   );
 };
