@@ -1,8 +1,8 @@
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
+import { AuthenticatedRequest } from '../types';
 import { menuService } from '../services/menu.service';
-import { loggingService } from '../services/logging.service';
-import { getClientIp, getUserAgent } from '../utils/request';
+import loggingService from '../services/logging.service';
+import { getClientIp, getUserAgent } from '../utils/helpers';
 
 export const menuController = {
   /**
