@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import bcrypt from 'bcrypt';
 import { AuthenticatedRequest } from '../types';
 import prisma from '../config/database';
 import loggingService from '../services/logging.service';
@@ -297,6 +298,218 @@ class AdminController {
       });
 
       res.json({ message: 'User status updated successfully' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Create a new user
+   */
+  async createUser(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { email, password, firstName, lastName, role, defaultMenuItem } = req.body;
+
+      // Validation
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+
+      if (!role || !['admin', 'user', 'viewer'].includes(role)) {
+        return res.status(400).json({ error: 'Valid role is required (admin, user, or viewer)' });
+      }
+
+      // Check if email already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (existingUser) {
+        return res.status(400).json({ error: 'Email already exists' });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Get role ID
+      const roleRecord = await prisma.role.findUnique({
+        where: { name: role },
+      });
+
+      if (!roleRecord) {
+        return res.status(400).json({ error: 'Role not found' });
+      }
+
+      // Create user
+      const newUser = await prisma.user.create({
+        data: {
+          email,
+          passwordHash,
+          firstName: firstName || null,
+          lastName: lastName || null,
+          defaultMenuItem: defaultMenuItem || null,
+          isActive: true,
+        },
+      });
+
+      // Assign role
+      await prisma.userRole.create({
+        data: {
+          userId: newUser.id,
+          roleId: roleRecord.id,
+        },
+      });
+
+      // Log activity
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: ACTION_TYPES.ADMIN.CREATE_USER,
+        actionDescription: `Created user ${newUser.email} with role ${role}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.status(201).json({
+        message: 'User created successfully',
+        user: {
+          id: newUser.id,
+          email: newUser.email,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
+          role,
+          isActive: newUser.isActive,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Update a user
+   */
+  async updateUser(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const userId = parseInt(req.params.id);
+      const { email, password, firstName, lastName, role, defaultMenuItem, isActive } = req.body;
+
+      // Check if user exists
+      const existingUser = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!existingUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Validate role if provided
+      if (role && !['admin', 'user', 'viewer'].includes(role)) {
+        return res.status(400).json({ error: 'Valid role is required (admin, user, or viewer)' });
+      }
+
+      // Check if email is being changed and if it's already taken
+      if (email && email !== existingUser.email) {
+        const emailExists = await prisma.user.findUnique({
+          where: { email },
+        });
+
+        if (emailExists) {
+          return res.status(400).json({ error: 'Email already exists' });
+        }
+      }
+
+      // Prepare update data
+      const updateData: any = {};
+      if (email !== undefined) updateData.email = email;
+      if (firstName !== undefined) updateData.firstName = firstName;
+      if (lastName !== undefined) updateData.lastName = lastName;
+      if (defaultMenuItem !== undefined) updateData.defaultMenuItem = defaultMenuItem;
+      if (isActive !== undefined) updateData.isActive = isActive;
+      if (password) {
+        updateData.passwordHash = await bcrypt.hash(password, 10);
+      }
+
+      // Update user
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+      });
+
+      // Update role if provided
+      if (role) {
+        // Get role ID
+        const roleRecord = await prisma.role.findUnique({
+          where: { name: role },
+        });
+
+        if (!roleRecord) {
+          return res.status(400).json({ error: 'Role not found' });
+        }
+
+        // Delete old role assignments
+        await prisma.userRole.deleteMany({
+          where: { userId },
+        });
+
+        // Create new role assignment
+        await prisma.userRole.create({
+          data: {
+            userId,
+            roleId: roleRecord.id,
+          },
+        });
+      }
+
+      // Log activity
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: ACTION_TYPES.ADMIN.UPDATE_USER,
+        actionDescription: `Updated user ${updatedUser.email}${role ? ` - changed role to ${role}` : ''}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.json({
+        message: 'User updated successfully',
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          role,
+          isActive: updatedUser.isActive,
+        },
+      });
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  /**
+   * Get all roles
+   */
+  async getRoles(req: AuthenticatedRequest, res: Response) {
+    try {
+      const roles = await prisma.role.findMany({
+        select: {
+          id: true,
+          name: true,
+          description: true,
+        },
+        orderBy: { name: 'asc' },
+      });
+
+      res.json({ roles });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

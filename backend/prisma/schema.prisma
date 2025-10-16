@@ -23,15 +23,16 @@ model Role {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  email        String    @unique @db.VarChar(255)
-  passwordHash String    @map("password_hash") @db.VarChar(255)
-  firstName    String?   @map("first_name") @db.VarChar(100)
-  lastName     String?   @map("last_name") @db.VarChar(100)
-  isActive     Boolean   @default(true) @map("is_active")
-  lastLogin    DateTime? @map("last_login")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  id              Int       @id @default(autoincrement())
+  email           String    @unique @db.VarChar(255)
+  passwordHash    String    @map("password_hash") @db.VarChar(255)
+  firstName       String?   @map("first_name") @db.VarChar(100)
+  lastName        String?   @map("last_name") @db.VarChar(100)
+  defaultMenuItem String?   @map("default_menu_item") @db.VarChar(50)
+  isActive        Boolean   @default(true) @map("is_active")
+  lastLogin       DateTime? @map("last_login")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
   profile         UserProfile?
   userRoles       UserRole[]
@@ -165,6 +166,8 @@ model Upload {
   mimeType          String?  @map("mime_type") @db.VarChar(100)
   fileContentBase64 String   @map("file_content_base64") @db.Text
   uploadType        String   @map("upload_type") @db.VarChar(20)
+  isPublic          Boolean  @default(false) @map("is_public")
+  sharedWith        Json     @default("[]") @map("shared_with")
   createdAt         DateTime @default(now()) @map("created_at")
 
   user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -227,6 +230,8 @@ model AnalysisRecord {
   dataAnalysisId      Int?      @map("data_analysis_id")
   status              String    @db.VarChar(50)
   errorMessage        String?   @map("error_message") @db.Text
+  isPublic            Boolean   @default(false) @map("is_public")
+  sharedWith          Json      @default("[]") @map("shared_with")
   isDeleted           Boolean   @default(false) @map("is_deleted")
   deletedBy           Int?      @map("deleted_by")
   deletedAt           DateTime? @map("deleted_at")

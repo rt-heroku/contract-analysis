@@ -39,6 +39,7 @@ export const ACTION_TYPES = {
   ADMIN: {
     VIEW_USERS: 'admin.view_users',
     VIEW_USER: 'admin.view_user',
+    CREATE_USER: 'admin.create_user',
     UPDATE_USER: 'admin.update_user',
     DELETE_USER: 'admin.delete_user',
     VIEW_LOGS: 'admin.view_logs',

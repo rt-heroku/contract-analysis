@@ -20,7 +20,12 @@ router.get('/sessions', adminController.getSessions);
 
 // User Management
 router.get('/users', adminController.getUsers);
+router.post('/users', adminController.createUser);
+router.put('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
 router.put('/users/:id/status', adminController.updateUserStatus);
+
+// Roles
+router.get('/roles', adminController.getRoles);
 
 export default router;
