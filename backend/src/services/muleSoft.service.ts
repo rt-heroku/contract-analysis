@@ -90,6 +90,13 @@ class MuleSoftService {
         logger.info(`Request includes payload from previous step`);
       }
       
+      // Debug: Log the complete request details
+      logger.debug('=== MuleSoft API Request Details ===');
+      logger.debug(`URL: ${fullUrl}`);
+      logger.debug(`Method: POST`);
+      logger.debug(`Request Body: ${JSON.stringify(bodyToSend, null, 2)}`);
+      logger.debug('====================================');
+      
       response = await axios.post(fullUrl, bodyToSend, config);
 
       const duration = Date.now() - startTime;
