@@ -616,8 +616,9 @@ export const History: React.FC = () => {
             setShareModalOpen(false);
             setSharingAnalysisId(null);
           }}
-          analysisId={sharingAnalysisId}
-          onShareSuccess={handleShareSuccess}
+          resourceId={sharingAnalysisId}
+          resourceType="analysis"
+          onShareComplete={handleShareSuccess}
         />
       )}
     </div>

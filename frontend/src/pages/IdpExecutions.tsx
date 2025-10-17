@@ -9,7 +9,6 @@ import {
   Share2, 
   Key, 
   Globe,
-  Copy,
   X,
   ExternalLink,
   Users as UsersIcon,
@@ -19,6 +18,7 @@ import {
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { AlertDialog } from '@/components/common/AlertDialog';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { ShareModal } from '@/components/common/ShareModal';
 
 interface IdpExecution {
@@ -58,13 +58,24 @@ export const IdpExecutions: React.FC = () => {
     isOpen: boolean;
     title: string;
     message: string;
-    type: 'success' | 'error' | 'warning' | 'confirm';
-    onConfirm?: () => void;
+    type: 'success' | 'error' | 'warning' | 'info';
   }>({
     isOpen: false,
     title: '',
     message: '',
     type: 'success',
+  });
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
   });
 
   // Form state
@@ -245,12 +256,12 @@ export const IdpExecutions: React.FC = () => {
   };
 
   const handleDelete = (execution: IdpExecution) => {
-    setAlertDialog({
+    setConfirmDialog({
       isOpen: true,
       title: 'Confirm Deletion',
       message: `Are you sure you want to delete "${execution.name}"? This action cannot be undone.`,
-      type: 'confirm',
       onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
         try {
           await api.delete(`/idp-executions/${execution.id}`);
           setAlertDialog({
@@ -312,7 +323,6 @@ export const IdpExecutions: React.FC = () => {
 
   const ExecutionCard = ({ execution, isShared }: { execution: IdpExecution; isShared: boolean }) => {
     const isOwner = execution.userId === user?.id;
-    const secretVisibleKey = `${execution.id}-secret`;
 
     return (
       <Card className="hover:shadow-md transition-shadow">
@@ -728,7 +738,17 @@ export const IdpExecutions: React.FC = () => {
         title={alertDialog.title}
         message={alertDialog.message}
         type={alertDialog.type}
-        onConfirm={alertDialog.onConfirm}
+      />
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type="danger"
+        confirmText="Delete"
       />
     </div>
   );
