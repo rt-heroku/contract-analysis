@@ -33,6 +33,14 @@ interface Prompt {
   variables: PromptVariable[];
 }
 
+interface IdpExecution {
+  id: number;
+  name: string;
+  description?: string;
+  protocol: string;
+  host: string;
+}
+
 interface ExistingUpload {
   id: number;
   filename: string;
@@ -80,6 +88,11 @@ export const Processing: React.FC = () => {
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
 
+  // IDP Execution selection
+  const [idpExecutions, setIdpExecutions] = useState<IdpExecution[]>([]);
+  const [selectedIdpExecution, setSelectedIdpExecution] = useState<IdpExecution | null>(null);
+  const [loadingIdpExecutions, setLoadingIdpExecutions] = useState(false);
+
   // Dialog state
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -125,6 +138,31 @@ export const Processing: React.FC = () => {
       }
     };
     fetchPrompts();
+  }, []);
+
+  // Fetch available IDP executions
+  useEffect(() => {
+    const fetchIdpExecutions = async () => {
+      try {
+        setLoadingIdpExecutions(true);
+        const response = await api.get('/idp-executions');
+        const allExecutions = [
+          ...(response.data.myExecutions || []),
+          ...(response.data.sharedExecutions || [])
+        ];
+        setIdpExecutions(allExecutions);
+        
+        // Auto-select first one if available
+        if (allExecutions.length > 0) {
+          setSelectedIdpExecution(allExecutions[0]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch IDP executions:', error);
+      } finally {
+        setLoadingIdpExecutions(false);
+      }
+    };
+    fetchIdpExecutions();
   }, []);
 
   // Load existing uploads if jobId is provided in URL
@@ -498,6 +536,11 @@ export const Processing: React.FC = () => {
         processPayload.variables = variableValues;
       }
 
+      // Include IDP execution ID if selected
+      if (selectedIdpExecution) {
+        processPayload.idpExecutionId = selectedIdpExecution.id;
+      }
+
       const processRes = await api.post('/analysis/start', processPayload);
 
       // Navigate to IDP Response page (Step 1 complete)
@@ -722,8 +765,72 @@ export const Processing: React.FC = () => {
         </div>
       </Card>
 
+      {/* IDP Execution Selection */}
+      <Card title="Step 3: IDP Execution Configuration">
+        <p className="text-sm text-gray-600 mb-4">
+          Select which MuleSoft IDP configuration to use for document processing.
+        </p>
+
+        {loadingIdpExecutions ? (
+          <div className="flex items-center justify-center py-8">
+            <Loading size="md" />
+            <span className="ml-2 text-gray-600">Loading IDP executions...</span>
+          </div>
+        ) : idpExecutions.length === 0 ? (
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">No IDP Executions Available</p>
+                <p className="text-sm text-yellow-700 mt-1">
+                  Please create an IDP execution configuration first.
+                </p>
+                <button
+                  onClick={() => navigate('/idp-executions')}
+                  className="mt-2 text-sm text-yellow-800 underline hover:text-yellow-900"
+                >
+                  Go to IDP Executions
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700">
+              Select IDP Configuration <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={selectedIdpExecution?.id || ''}
+              onChange={(e) => {
+                const execution = idpExecutions.find(ex => ex.id === parseInt(e.target.value));
+                setSelectedIdpExecution(execution || null);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            >
+              {idpExecutions.map((execution) => (
+                <option key={execution.id} value={execution.id}>
+                  {execution.name} - {execution.protocol}://{execution.host}
+                </option>
+              ))}
+            </select>
+
+            {selectedIdpExecution && (
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-medium text-blue-900">{selectedIdpExecution.name}</p>
+                {selectedIdpExecution.description && (
+                  <p className="text-sm text-blue-700 mt-1">{selectedIdpExecution.description}</p>
+                )}
+                <p className="text-xs text-blue-600 mt-2">
+                  {selectedIdpExecution.protocol}://{selectedIdpExecution.host}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
       {/* Prompt Selection (Optional) */}
-      <Card title="Step 3: AI Prompt (Optional)">
+      <Card title="Step 4: AI Prompt (Optional)">
         <p className="text-sm text-gray-600 mb-4">
           Select an AI prompt to enhance the analysis with custom instructions and variables.
         </p>
@@ -875,7 +982,7 @@ export const Processing: React.FC = () => {
       <div className="flex gap-4">
         <Button
           onClick={handleProcess}
-          disabled={(!contractFile && !existingContractUpload) || (!dataFile && !existingDataUpload) || processing}
+          disabled={(!contractFile && !existingContractUpload) || (!dataFile && !existingDataUpload) || !selectedIdpExecution || processing}
           isLoading={processing}
           size="lg"
         >
