@@ -30,20 +30,16 @@ class MuleSoftService {
   ): Promise<T> {
     const startTime = Date.now();
     
-    // If IDP config is provided, use it; otherwise use default MuleSoft config
-    let fullUrl: string;
-    let timeout: number;
+    // Always use MuleSoft API from env/config
+    const muleSoftConfig = await getMuleSoftConfig();
+    const fullUrl = `${muleSoftConfig.baseUrl}${endpoint}?job=${jobId}`;
+    
+    // Use longer timeout if IDP config is provided (IDP calls can take longer)
+    const timeout = idpConfig ? 300000 : muleSoftConfig.timeout; // 5 min for IDP, default otherwise
     
     if (idpConfig) {
-      // Use IDP execution configuration
-      fullUrl = `${idpConfig.protocol.toLowerCase()}://${idpConfig.host}${idpConfig.basePath}${idpConfig.orgId}${endpoint}`;
-      timeout = 300000; // 5 minutes for IDP calls
-      logger.info(`Using IDP Execution configuration for ${endpoint}`);
+      logger.info(`Using IDP Execution configuration for ${endpoint} (IDP config will be sent in body)`);
     } else {
-      // Use default MuleSoft configuration
-      const muleSoftConfig = await getMuleSoftConfig();
-      fullUrl = `${muleSoftConfig.baseUrl}${endpoint}?job=${jobId}`;
-      timeout = muleSoftConfig.timeout;
       logger.info(`Using default MuleSoft configuration for ${endpoint}`);
     }
 
@@ -54,15 +50,12 @@ class MuleSoftService {
       },
     };
 
-    // Add basic auth if configured (only for non-IDP requests)
-    if (!idpConfig) {
-      const muleSoftConfig = await getMuleSoftConfig();
-      if (muleSoftConfig.username && muleSoftConfig.password) {
-        config.auth = {
-          username: muleSoftConfig.username,
-          password: muleSoftConfig.password,
-        };
-      }
+    // Add basic auth if configured
+    if (muleSoftConfig.username && muleSoftConfig.password) {
+      config.auth = {
+        username: muleSoftConfig.username,
+        password: muleSoftConfig.password,
+      };
     }
 
     let response;
@@ -91,11 +84,11 @@ class MuleSoftService {
       }
       
       // Debug: Log the complete request details
-      logger.debug('=== MuleSoft API Request Details ===');
-      logger.debug(`URL: ${fullUrl}`);
-      logger.debug(`Method: POST`);
-      logger.debug(`Request Body: ${JSON.stringify(bodyToSend, null, 2)}`);
-      logger.debug('====================================');
+      logger.info('=== MuleSoft API Request Details ===');
+      logger.info(`URL: ${fullUrl}`);
+      logger.info(`Method: POST`);
+      logger.info(`Request Body: ${JSON.stringify(bodyToSend, null, 2)}`);
+      logger.info('====================================');
       
       response = await axios.post(fullUrl, bodyToSend, config);
 
