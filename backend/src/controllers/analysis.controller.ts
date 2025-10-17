@@ -13,7 +13,7 @@ class AnalysisController {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const { contractUploadId, dataUploadId, prompt, variables } = req.body;
+      const { contractUploadId, dataUploadId, prompt, variables, idpExecutionId } = req.body;
 
       if (!contractUploadId || !dataUploadId) {
         return res.status(400).json({
@@ -26,7 +26,8 @@ class AnalysisController {
         parseInt(contractUploadId),
         parseInt(dataUploadId),
         prompt,
-        variables
+        variables,
+        idpExecutionId ? parseInt(idpExecutionId) : undefined
       );
 
       if (!result.success) {

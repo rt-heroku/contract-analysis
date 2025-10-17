@@ -1,5 +1,6 @@
 import prisma from '../config/database';
 import muleSoftService from './muleSoft.service';
+import { idpExecutionService } from './idpExecution.service';
 import notificationService from './notification.service';
 import logger from '../utils/logger';
 import { ANALYSIS_STATUS, NOTIFICATION_TYPES } from '../utils/constants';
@@ -14,7 +15,8 @@ class DocumentService {
     contractUploadId: number,
     dataUploadId: number,
     prompt?: { id: number; name: string },
-    variables?: Record<string, any>
+    variables?: Record<string, any>,
+    idpExecutionId?: number
   ): Promise<ProcessingResult> {
     try {
       // Get uploads to retrieve jobId
@@ -39,7 +41,7 @@ class DocumentService {
       });
 
       // Start ONLY Step 1 (contract processing) asynchronously
-      this.processContractOnly(userId, contractUploadId, analysisRecord.id, contractUpload.jobId)
+      this.processContractOnly(userId, contractUploadId, analysisRecord.id, contractUpload.jobId, idpExecutionId)
         .catch((error) => {
           logger.error('Contract document processing failed:', error);
         });
@@ -229,7 +231,8 @@ class DocumentService {
     userId: number,
     contractUploadId: number,
     analysisRecordId: number,
-    jobId: string
+    jobId: string,
+    idpExecutionId?: number
   ): Promise<void> {
     try {
       // Get contract upload file
@@ -241,6 +244,13 @@ class DocumentService {
         throw new Error('Contract upload file not found');
       }
 
+      // Get IDP execution config if provided
+      let idpConfig;
+      if (idpExecutionId) {
+        logger.info(`Using IDP Execution ID: ${idpExecutionId} for jobId: ${jobId}`);
+        idpConfig = await idpExecutionService.getForProcessing(idpExecutionId, userId);
+      }
+
       // Step 1: Process contract document via MuleSoft IDP
       logger.info(`[Step 1/2] Processing contract document for jobId: ${jobId}`);
       let contractResult;
@@ -248,7 +258,8 @@ class DocumentService {
         contractResult = await muleSoftService.processContractDocument(
           jobId,
           userId,
-          contractUploadId
+          contractUploadId,
+          idpConfig
         );
         logger.info(`[Step 1/2] Contract processing successful for jobId: ${jobId}`);
       } catch (error: any) {

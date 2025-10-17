@@ -14,6 +14,7 @@ import flowEditorRoutes from './flowEditor.routes';
 import documentsRoutes from './documents.routes';
 import menuRoutes from './menu.routes';
 import roleRoutes from './role.routes';
+import idpExecutionRoutes from './idpExecution.routes';
 
 const router = Router();
 
@@ -32,6 +33,7 @@ router.use('/flow-editor', flowEditorRoutes);
 router.use('/documents', documentsRoutes);
 router.use('/menu', menuRoutes);
 router.use('/roles', roleRoutes);
+router.use('/idp-executions', idpExecutionRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {

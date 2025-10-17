@@ -16,16 +16,29 @@ interface User {
 interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
-  analysisId: number;
+  resourceId: number;
+  resourceType: 'analysis' | 'idp-execution';
+  onShareComplete?: () => void;
+  // Legacy prop for backward compatibility
+  analysisId?: number;
   onShareSuccess?: () => void;
 }
 
 export const ShareModal: React.FC<ShareModalProps> = ({
   isOpen,
   onClose,
+  resourceId: propResourceId,
+  resourceType: propResourceType = 'analysis',
+  onShareComplete,
+  // Legacy props
   analysisId,
   onShareSuccess,
 }) => {
+  // Support legacy props
+  const resourceId = propResourceId || analysisId!;
+  const resourceType = propResourceType || 'analysis';
+  const onSuccess = onShareComplete || onShareSuccess;
+
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [sharedUsers, setSharedUsers] = useState<User[]>([]);
@@ -33,11 +46,39 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Get API endpoints based on resource type
+  const getApiEndpoint = (action: 'list' | 'share' | 'unshare', userId?: number) => {
+    if (resourceType === 'idp-execution') {
+      switch (action) {
+        case 'list':
+          return `/idp-executions/${resourceId}/shared-users`;
+        case 'share':
+          return `/idp-executions/${resourceId}/share`;
+        case 'unshare':
+          return `/idp-executions/${resourceId}/unshare/${userId}`;
+      }
+    } else {
+      // analysis
+      switch (action) {
+        case 'list':
+          return `/analysis/${resourceId}/shared-users`;
+        case 'share':
+          return `/analysis/${resourceId}/share`;
+        case 'unshare':
+          return `/analysis/${resourceId}/share/${userId}`;
+      }
+    }
+  };
+
+  const getResourceLabel = () => {
+    return resourceType === 'idp-execution' ? 'IDP Execution' : 'Analysis';
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchSharedUsers();
     }
-  }, [isOpen, analysisId]);
+  }, [isOpen, resourceId, resourceType]);
 
   useEffect(() => {
     if (searchTerm.trim()) {
@@ -53,7 +94,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const fetchSharedUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/analysis/${analysisId}/shared-users`);
+      const response = await api.get(getApiEndpoint('list'));
       setSharedUsers(response.data.sharedUsers || []);
     } catch (error) {
       console.error('Failed to fetch shared users:', error);
@@ -82,14 +123,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   const handleShare = async (user: User) => {
     try {
-      await api.post(`/analysis/${analysisId}/share`, {
-        userId: user.id,
-      });
+      const endpoint = getApiEndpoint('share');
+      if (resourceType === 'idp-execution') {
+        await api.post(endpoint, { userIds: [user.id] });
+      } else {
+        await api.post(endpoint, { userId: user.id });
+      }
       setSharedUsers([...sharedUsers, user]);
       setSearchResults(searchResults.filter((u) => u.id !== user.id));
       setSearchTerm('');
-      if (onShareSuccess) {
-        onShareSuccess();
+      if (onSuccess) {
+        onSuccess();
       }
     } catch (error: any) {
       console.error('Failed to share:', error);
@@ -100,10 +144,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   const handleUnshare = async (userId: number) => {
     try {
-      await api.delete(`/analysis/${analysisId}/share/${userId}`);
+      await api.delete(getApiEndpoint('unshare', userId));
       setSharedUsers(sharedUsers.filter((u) => u.id !== userId));
-      if (onShareSuccess) {
-        onShareSuccess();
+      if (onSuccess) {
+        onSuccess();
       }
     } catch (error: any) {
       console.error('Failed to unshare:', error);
@@ -120,7 +164,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Share Analysis">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Share ${getResourceLabel()}`}>
       <div className="space-y-4">
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">

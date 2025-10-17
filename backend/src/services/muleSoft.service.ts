@@ -5,6 +5,18 @@ import loggingService from './logging.service';
 import { MuleSoftContractResponse, MuleSoftDataResponse } from '../types';
 import { sanitizeHeaders } from '../utils/helpers';
 
+export interface IdpExecutionConfig {
+  id?: number;
+  protocol: string;
+  host: string;
+  basePath: string;
+  orgId: string;
+  actionId: string;
+  actionVersion: string;
+  authClientId: string;
+  authClientSecret: string;
+}
+
 class MuleSoftService {
   private async makeRequest<T>(
     endpoint: string,
@@ -13,31 +25,64 @@ class MuleSoftService {
     jobIdParam?: string,
     relatedRecordType?: string,
     relatedRecordId?: number,
-    requestBody?: any
+    requestBody?: any,
+    idpConfig?: IdpExecutionConfig
   ): Promise<T> {
     const startTime = Date.now();
     
-    // Get config from database
-    const muleSoftConfig = await getMuleSoftConfig();
-    const fullUrl = `${muleSoftConfig.baseUrl}${endpoint}?job=${jobId}`;
+    // If IDP config is provided, use it; otherwise use default MuleSoft config
+    let fullUrl: string;
+    let timeout: number;
+    
+    if (idpConfig) {
+      // Use IDP execution configuration
+      fullUrl = `${idpConfig.protocol.toLowerCase()}://${idpConfig.host}${idpConfig.basePath}${idpConfig.orgId}${endpoint}`;
+      timeout = 300000; // 5 minutes for IDP calls
+      logger.info(`Using IDP Execution configuration for ${endpoint}`);
+    } else {
+      // Use default MuleSoft configuration
+      const muleSoftConfig = await getMuleSoftConfig();
+      fullUrl = `${muleSoftConfig.baseUrl}${endpoint}?job=${jobId}`;
+      timeout = muleSoftConfig.timeout;
+      logger.info(`Using default MuleSoft configuration for ${endpoint}`);
+    }
 
     const config: AxiosRequestConfig = {
-      timeout: muleSoftConfig.timeout,
+      timeout,
       headers: {
         'Content-Type': 'application/json',
       },
     };
 
-    // Add basic auth if configured
-    if (muleSoftConfig.username && muleSoftConfig.password) {
-      config.auth = {
-        username: muleSoftConfig.username,
-        password: muleSoftConfig.password,
-      };
+    // Add basic auth if configured (only for non-IDP requests)
+    if (!idpConfig) {
+      const muleSoftConfig = await getMuleSoftConfig();
+      if (muleSoftConfig.username && muleSoftConfig.password) {
+        config.auth = {
+          username: muleSoftConfig.username,
+          password: muleSoftConfig.password,
+        };
+      }
     }
 
     let response;
-    const bodyToSend = requestBody || {};
+    let bodyToSend = requestBody || {};
+    
+    // If using IDP config, add auth credentials and IDP request structure to body
+    if (idpConfig) {
+      bodyToSend = {
+        ...bodyToSend,
+        job_id: jobId,
+        auth_client_id: idpConfig.authClientId,
+        auth_client_secret: idpConfig.authClientSecret,
+        idp_http_request: {
+          host: idpConfig.host,
+          base_path: idpConfig.basePath,
+          executions_path: `actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
+          protocol: idpConfig.protocol,
+        },
+      };
+    }
 
     try {
       logger.info(`Making MuleSoft API request to ${endpoint} with jobId: ${jobId}`);
@@ -101,7 +146,8 @@ class MuleSoftService {
   async processContractDocument(
     jobId: string,
     userId?: number,
-    uploadId?: number
+    uploadId?: number,
+    idpConfig?: IdpExecutionConfig
   ): Promise<MuleSoftContractResponse> {
     const config = await getMuleSoftConfig();
     const endpoint = config.endpoints.processDocument;
@@ -112,7 +158,9 @@ class MuleSoftService {
       userId,
       jobId,
       'upload',
-      uploadId
+      uploadId,
+      undefined, // no request body for processDocument
+      idpConfig
     );
   }
 

@@ -16,6 +16,7 @@ import { History } from './pages/History';
 import { Profile } from './pages/Profile';
 import { Notifications } from './pages/Notifications';
 import { Documents } from './pages/Documents';
+import { IdpExecutions } from './pages/IdpExecutions';
 import { Logs } from './pages/admin/Logs';
 import { UserManagement } from './pages/admin/UserManagement';
 import { RoleManagement } from './pages/admin/RoleManagement';
@@ -37,6 +38,7 @@ const App = () => {
             <Route path="/documents" element={<MainLayout><Documents /></MainLayout>} />
             <Route path="/prompts" element={<MainLayout><Prompts /></MainLayout>} />
             <Route path="/flows" element={<MainLayout><Flows /></MainLayout>} />
+            <Route path="/idp-executions" element={<MainLayout><IdpExecutions /></MainLayout>} />
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
             <Route path="/history" element={<MainLayout><History /></MainLayout>} />
             <Route path="/idp-response/:analysisRecordId" element={<MainLayout><IDPResponse /></MainLayout>} />
