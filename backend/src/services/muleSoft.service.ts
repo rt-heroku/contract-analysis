@@ -77,7 +77,7 @@ class MuleSoftService {
         auth_client_secret: idpConfig.authClientSecret,
         idp_http_request: {
           host: idpConfig.host,
-          base_path: idpConfig.basePath,
+          base_path: `${idpConfig.basePath}${idpConfig.orgId}/`,
           executions_path: `actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
           protocol: idpConfig.protocol,
         },
