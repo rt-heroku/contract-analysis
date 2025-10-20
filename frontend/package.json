@@ -1,6 +1,7 @@
 {
   "name": "document-processing-frontend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Frontend for Document Processing Application",
   "private": true,
   "scripts": {
