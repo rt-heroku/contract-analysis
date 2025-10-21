@@ -4,6 +4,9 @@ import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { Loading } from '@/components/common/Loading';
 import { GenericIDPRenderer } from '@/components/idp/GenericIDPRenderer';
+import { ContractRenderer } from '@/components/idp/ContractRenderer';
+import { PurchaseOrderRenderer } from '@/components/idp/PurchaseOrderRenderer';
+import { InvoiceRenderer } from '@/components/idp/InvoiceRenderer';
 import { 
   ArrowRight, 
   CheckCircle, 
@@ -125,6 +128,44 @@ export const IDPResponse: React.FC = () => {
   const handleAnalyze = () => {
     // Navigate to analysis setup page
     navigate(`/analysis-setup/${analysisRecordId}`);
+  };
+
+  // Detect document type and render appropriate component
+  const detectDocumentType = (data: any): 'purchaseOrder' | 'invoice' | 'contract' | 'generic' => {
+    if (!data) return 'generic';
+    
+    // Check if it's a paginated response
+    if (data.pages && Array.isArray(data.pages) && data.pages.length > 0) {
+      const firstPageFields = data.pages[0]?.fields || {};
+      
+      // Check for Purchase Order
+      if ('purchaseOrderNumber' in firstPageFields) {
+        return 'purchaseOrder';
+      }
+      
+      // Check for Invoice
+      if ('invoiceNumber' in firstPageFields) {
+        return 'invoice';
+      }
+    }
+    
+    // Default to contract for non-paginated or unrecognized documents
+    return 'contract';
+  };
+
+  const renderDocumentContent = (data: any) => {
+    const docType = detectDocumentType(data);
+    
+    switch (docType) {
+      case 'purchaseOrder':
+        return <PurchaseOrderRenderer data={data} />;
+      case 'invoice':
+        return <InvoiceRenderer data={data} />;
+      case 'contract':
+        return <ContractRenderer data={data} />;
+      default:
+        return <GenericIDPRenderer data={data} />;
+    }
   };
 
   if (loading) {
@@ -254,8 +295,8 @@ export const IDPResponse: React.FC = () => {
         </div>
       </div>
 
-      {/* Generic IDP Data Renderer */}
-      <GenericIDPRenderer data={contractAnalysis.mulesoftResponse} />
+      {/* Smart Document Renderer */}
+      {renderDocumentContent(contractAnalysis.mulesoftResponse)}
 
       {/* Action Buttons */}
       <div className="flex gap-4 mt-8">
