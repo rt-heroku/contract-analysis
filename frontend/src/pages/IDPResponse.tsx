@@ -27,7 +27,6 @@ export const IDPResponse: React.FC = () => {
   const navigate = useNavigate();
   const { analysisRecordId } = useParams<{ analysisRecordId: string }>();
   const [loading, setLoading] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
   const [contractAnalysis, setContractAnalysis] = useState<ContractAnalysis | null>(null);
   const [error, setError] = useState('');
   const [pollingAttempts, setPollingAttempts] = useState(0);

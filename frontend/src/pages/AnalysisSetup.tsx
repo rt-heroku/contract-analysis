@@ -7,7 +7,6 @@ import { Button } from '@/components/common/Button';
 import { Loading } from '@/components/common/Loading';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { 
-  Upload, 
   FileSpreadsheet, 
   X,
   ArrowRight,
@@ -26,6 +25,7 @@ interface Prompt {
   name: string;
   content: string;
   flowName: string | null;
+  isDefault?: boolean;
   variables: Array<{
     id: number;
     name: string;

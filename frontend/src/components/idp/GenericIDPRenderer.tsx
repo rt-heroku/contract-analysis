@@ -79,7 +79,7 @@ export const GenericIDPRenderer: React.FC<GenericIDPRendererProps> = ({ data }) 
   };
 
   // Render a value (single, nested object, or array)
-  const renderValue = (value: any, key?: string): React.ReactNode => {
+  const renderValue = (value: any, _key?: string): React.ReactNode => {
     if (value === null || value === undefined) {
       return <span className="text-gray-400">N/A</span>;
     }

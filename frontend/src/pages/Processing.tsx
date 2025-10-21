@@ -373,18 +373,6 @@ export const Processing: React.FC = () => {
     }));
   };
 
-  const validateVariables = (): boolean => {
-    if (!selectedPrompt) return true;
-
-    for (const variable of selectedPrompt.variables) {
-      if (variable.isRequired && !variableValues[variable.variableName]) {
-        setError(`Required variable "${variable.displayName}" is missing`);
-        return false;
-      }
-    }
-    return true;
-  };
-
   const filteredPrompts = prompts.filter((prompt) =>
     prompt.name.toLowerCase().includes(promptSearch.toLowerCase()) ||
     (prompt.description && prompt.description.toLowerCase().includes(promptSearch.toLowerCase())) ||
@@ -472,7 +460,6 @@ export const Processing: React.FC = () => {
 
     try {
       let contractUploadId: number;
-      let dataUploadId: number;
       let jobId: string;
 
       // Upload contract file if new, otherwise use existing
@@ -648,12 +635,12 @@ export const Processing: React.FC = () => {
                     <Upload className="w-6 h-6 text-blue-600" />
                   </div>
                   <div className="text-left">
-                    <p className="font-medium text-gray-900">{existingDataUpload.filename}</p>
+                    <p className="font-medium text-gray-900">{existingDataUpload!.filename}</p>
                     <p className="text-sm text-blue-600">Selected from library</p>
                   </div>
                 </div>
                 <Button
-                  onClick={() => handleRemoveExistingUpload(existingDataUpload.id, 'data')}
+                  onClick={() => handleRemoveExistingUpload(existingDataUpload!.id, 'data')}
                   variant="outline"
                   size="sm"
                   className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-50"
@@ -683,8 +670,8 @@ export const Processing: React.FC = () => {
                       <CheckCircle className="w-6 h-6 text-green-600" />
                     </div>
                     <div className="text-left">
-                      <p className="font-medium text-gray-900">{dataFile.name}</p>
-                      <p className="text-sm text-gray-500">{formatFileSize(dataFile.size)}</p>
+                      <p className="font-medium text-gray-900">{dataFile!.name}</p>
+                      <p className="text-sm text-gray-500">{formatFileSize(dataFile!.size)}</p>
                     </div>
                   </div>
                   <button
@@ -859,13 +846,13 @@ export const Processing: React.FC = () => {
           <div className="mb-4 p-4 bg-primary-50 border border-primary-200 rounded-lg">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <h3 className="font-semibold text-primary-900">{selectedPrompt.name}</h3>
-                {selectedPrompt.description && (
-                  <p className="text-sm text-primary-700 mt-1">{selectedPrompt.description}</p>
+                <h3 className="font-semibold text-primary-900">{selectedPrompt!.name}</h3>
+                {selectedPrompt!.description && (
+                  <p className="text-sm text-primary-700 mt-1">{selectedPrompt!.description}</p>
                 )}
-                {selectedPrompt.variables.length > 0 && (
+                {selectedPrompt!.variables.length > 0 && (
                   <p className="text-xs text-primary-600 mt-2">
-                    {selectedPrompt.variables.length} variable(s) detected
+                    {selectedPrompt!.variables.length} variable(s) detected
                   </p>
                 )}
               </div>
@@ -884,11 +871,11 @@ export const Processing: React.FC = () => {
         )}
 
         {/* Variable Inputs */}
-        {selectedPrompt && selectedPrompt.variables.length > 0 && (
+        {selectedPrompt && selectedPrompt!.variables.length > 0 && (
           <div className="space-y-4">
             <div className="border-t border-gray-200 pt-4">
               <h4 className="font-medium text-gray-900 mb-4">Configure Variables</h4>
-              {selectedPrompt.variables.map((variable) => (
+              {selectedPrompt!.variables.map((variable) => (
                 <div key={variable.id} className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     {variable.displayName}
