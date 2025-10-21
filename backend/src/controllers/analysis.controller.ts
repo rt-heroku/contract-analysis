@@ -15,16 +15,18 @@ class AnalysisController {
 
       const { contractUploadId, dataUploadId, prompt, variables, idpExecutionId } = req.body;
 
-      if (!contractUploadId || !dataUploadId) {
+      // Only contract is required for Step 1 (extraction)
+      // Data file will be uploaded in Step 3 (AnalysisSetup page)
+      if (!contractUploadId) {
         return res.status(400).json({
-          error: 'Both contract and data upload IDs are required',
+          error: 'Contract upload ID is required',
         });
       }
 
       const result = await documentService.startProcessing(
         req.user.id,
         parseInt(contractUploadId),
-        parseInt(dataUploadId),
+        dataUploadId ? parseInt(dataUploadId) : undefined,
         prompt,
         variables,
         idpExecutionId ? parseInt(idpExecutionId) : undefined

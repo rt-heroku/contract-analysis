@@ -13,7 +13,7 @@ class DocumentService {
   async startProcessing(
     userId: number,
     contractUploadId: number,
-    dataUploadId: number,
+    dataUploadId?: number,
     prompt?: { id: number; name: string },
     variables?: Record<string, any>,
     idpExecutionId?: number
@@ -30,12 +30,13 @@ class DocumentService {
       }
 
       // Create analysis record with jobId
+      // Note: dataUploadId is optional and will be added later in Step 3 (AnalysisSetup)
       const analysisRecord = await prisma.analysisRecord.create({
         data: {
           userId,
           jobId: contractUpload.jobId,
           contractUploadId,
-          dataUploadId,
+          dataUploadId: dataUploadId || null,
           status: ANALYSIS_STATUS.PROCESSING,
         },
       });
