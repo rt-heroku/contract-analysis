@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '@/lib/api';
-import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Loading } from '@/components/common/Loading';
 import { GenericIDPRenderer } from '@/components/idp/GenericIDPRenderer';

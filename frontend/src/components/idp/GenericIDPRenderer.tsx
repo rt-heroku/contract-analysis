@@ -1,9 +1,9 @@
 import React from 'react';
 import { Card } from '@/components/common/Card';
 import {
-  FileText, CheckCircle, AlertCircle, Building, MapPin, Phone, Calendar,
-  ShieldCheck, Package, Users, Info, List, Hash, DollarSign, Mail,
-  CreditCard, Truck, Globe, User, Home, Flag
+  FileText, AlertCircle, Building, MapPin, Phone,
+  Package, Info, List, DollarSign, Mail,
+  Truck, Globe, User, Home, Flag
 } from 'lucide-react';
 
 interface GenericIDPRendererProps {
