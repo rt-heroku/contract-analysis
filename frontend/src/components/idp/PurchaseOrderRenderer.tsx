@@ -1,8 +1,8 @@
 import React from 'react';
 import { Card } from '@/components/common/Card';
 import {
-  FileText, Package, MapPin, Building, Calendar, CreditCard,
-  Truck, DollarSign, User, Phone, Globe, Mail, Hash
+  FileText, Package, MapPin, Building, CreditCard,
+  Truck, User, Phone, Globe
 } from 'lucide-react';
 
 interface PurchaseOrderRendererProps {
