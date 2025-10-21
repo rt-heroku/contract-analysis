@@ -420,7 +420,7 @@ export const History: React.FC = () => {
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="font-semibold text-blue-900 flex items-center gap-2">
                             <FileText className="w-4 h-4" />
-                            Contract Document
+                            Scanned Document
                           </h3>
                         </div>
                         <p className="text-sm text-blue-800 break-all mb-2">
