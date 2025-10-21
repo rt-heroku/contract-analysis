@@ -9,9 +9,7 @@ import { PurchaseOrderRenderer } from '@/components/idp/PurchaseOrderRenderer';
 import { InvoiceRenderer } from '@/components/idp/InvoiceRenderer';
 import { 
   ArrowRight, 
-  CheckCircle, 
-  AlertCircle,
-  FileText
+  AlertCircle
 } from 'lucide-react';
 
 interface ContractAnalysis {
