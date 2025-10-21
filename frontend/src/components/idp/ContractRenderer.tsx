@@ -33,17 +33,6 @@ export const ContractRenderer: React.FC<ContractRendererProps> = ({ data }) => {
   };
 
   const fields = getFields();
-  
-  // Helper to format keys for display
-  const formatKey = (key: string): string => {
-    return key
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/_/g, ' ')
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-      .trim();
-  };
 
   return (
     <div className="space-y-4">
