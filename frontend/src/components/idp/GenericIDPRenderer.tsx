@@ -8,27 +8,6 @@ interface GenericIDPRendererProps {
   data: any;
 }
 
-const getIcon = (key: string) => {
-  const lowerKey = key.toLowerCase();
-  
-  if (lowerKey.includes('email')) return <Mail className="w-4 h-4 text-blue-600" />;
-  if (lowerKey.includes('phone')) return <Phone className="w-4 h-4 text-green-600" />;
-  if (lowerKey.includes('fob')) return <Truck className="w-4 h-4 text-orange-600" />;
-  if (lowerKey.includes('tax')) return <DollarSign className="w-4 h-4 text-red-600" />;
-  if (lowerKey.includes('total')) return <DollarSign className="w-4 h-4 text-green-600" />;
-  if (lowerKey.includes('carrier')) return <Truck className="w-4 h-4 text-blue-600" />;
-  if (lowerKey.includes('buyer') || lowerKey.includes('customer')) return <User className="w-4 h-4 text-purple-600" />;
-  if (lowerKey.includes('bill') || lowerKey.includes('ship')) return <Home className="w-4 h-4 text-indigo-600" />;
-  if (lowerKey.includes('address')) return <MapPin className="w-4 h-4 text-red-600" />;
-  if (lowerKey.includes('city')) return <Building className="w-4 h-4 text-blue-600" />;
-  if (lowerKey.includes('state')) return <Flag className="w-4 h-4 text-indigo-600" />;
-  if (lowerKey.includes('country')) return <Globe className="w-4 h-4 text-green-600" />;
-  if (lowerKey.includes('zip')) return <MapPin className="w-4 h-4 text-orange-600" />;
-  if (lowerKey.includes('name')) return <User className="w-4 h-4 text-gray-600" />;
-  
-  return <Info className="w-4 h-4 text-gray-400" />;
-};
-
 const formatKey = (key: string) => {
   return key
     .replace(/([A-Z])/g, ' $1')
