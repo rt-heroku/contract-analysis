@@ -456,15 +456,14 @@ export const Processing: React.FC = () => {
   const handleProcess = async () => {
     // Check if we have either new files or existing uploads
     const hasContract = contractFile || existingContractUpload;
-    const hasData = dataFile || existingDataUpload;
 
-    if (!hasContract || !hasData) {
-      setError('Please upload both contract and data files');
+    if (!hasContract) {
+      setError('Please upload a contract PDF');
       return;
     }
-
-    // Validate required variables if prompt is selected
-    if (!validateVariables()) {
+    
+    if (!selectedIdpExecution) {
+      setError('Please select an IDP Execution configuration');
       return;
     }
 
@@ -502,44 +501,14 @@ export const Processing: React.FC = () => {
 
       console.log('📝 Job ID for this session:', jobId);
 
-      // Upload data file if new, otherwise use existing
-      if (dataFile) {
-        setProcessingStatus('Uploading data file...');
-        const dataFormData = new FormData();
-        dataFormData.append('file', dataFile);
-        dataFormData.append('uploadType', 'data');
-        dataFormData.append('jobId', jobId); // ✅ Pass the same jobId
-        
-        const dataUploadRes = await api.post('/uploads', dataFormData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        
-        dataUploadId = dataUploadRes.data.upload.id;
-      } else {
-        // Use existing data upload
-        dataUploadId = existingDataUpload!.id;
-      }
-
-      // Start processing
-      setProcessingStatus('Starting document processing...');
+      // Start processing (data file will be handled in AnalysisSetup page)
+      setProcessingStatus('Starting document extraction...');
       const processPayload: any = {
         contractUploadId,
-        dataUploadId,
       };
 
-      // Include prompt data if selected
-      if (selectedPrompt) {
-        processPayload.prompt = {
-          id: selectedPrompt.id,
-          name: selectedPrompt.name,
-        };
-        processPayload.variables = variableValues;
-      }
-
-      // Include IDP execution ID if selected
-      if (selectedIdpExecution) {
-        processPayload.idpExecutionId = selectedIdpExecution.id;
-      }
+      // Include IDP execution ID (required)
+      processPayload.idpExecutionId = selectedIdpExecution!.id;
 
       const processRes = await api.post('/analysis/start', processPayload);
 
@@ -557,9 +526,9 @@ export const Processing: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Document Processing</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Document Extraction</h1>
         <p className="text-gray-600 mt-1">
-          Upload your contract PDF and data file to start processing
+          Upload your contract PDF to extract data with MuleSoft IDP
         </p>
       </div>
 
@@ -667,8 +636,8 @@ export const Processing: React.FC = () => {
         </div>
       </Card>
 
-      {/* Data Upload */}
-      <Card title="Step 2: Upload Data File (Excel/CSV)">
+      {/* Data Upload - REMOVED: Now handled in AnalysisSetup page */}
+      {false && <Card title="Step 2: Upload Data File (Excel/CSV)">
         <div className="space-y-4">
           {existingDataUpload && !dataFile ? (
             <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4">
@@ -766,7 +735,7 @@ export const Processing: React.FC = () => {
       </Card>
 
       {/* IDP Execution Selection */}
-      <Card title="Step 3: IDP Execution Configuration">
+      <Card title="Step 2: IDP Execution Configuration">
         <p className="text-sm text-gray-600 mb-4">
           Select which MuleSoft IDP configuration to use for document processing.
         </p>
@@ -829,8 +798,8 @@ export const Processing: React.FC = () => {
         )}
       </Card>
 
-      {/* Prompt Selection (Optional) */}
-      <Card title="Step 4: AI Prompt (Optional)">
+      {/* Prompt Selection - REMOVED: Now handled in AnalysisSetup page */}
+      {false && <Card title="Step 4: AI Prompt (Optional)">
         <p className="text-sm text-gray-600 mb-4">
           Select an AI prompt to enhance the analysis with custom instructions and variables.
         </p>
@@ -982,20 +951,17 @@ export const Processing: React.FC = () => {
       <div className="flex gap-4">
         <Button
           onClick={handleProcess}
-          disabled={(!contractFile && !existingContractUpload) || (!dataFile && !existingDataUpload) || !selectedIdpExecution || processing}
+          disabled={(!contractFile && !existingContractUpload) || !selectedIdpExecution || processing}
           isLoading={processing}
           size="lg"
         >
-          Process Documents
+          Extract Data
         </Button>
         <Button
           variant="secondary"
           onClick={() => {
             setContractFile(null);
-            setDataFile(null);
-            setSelectedPrompt(null);
-            setPromptSearch('');
-            setVariableValues({});
+            setSelectedIdpExecution(null);
             setError('');
           }}
           disabled={processing}
