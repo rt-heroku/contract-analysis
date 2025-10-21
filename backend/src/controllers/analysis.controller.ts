@@ -195,11 +195,12 @@ class AnalysisController {
       }
 
       const analysisRecordId = parseInt(req.params.id);
-      const { prompt, variables } = req.body;
+      const { dataUploadId, prompt, variables } = req.body;
 
       const result = await documentService.runAnalysis(
         req.user.id,
         analysisRecordId,
+        dataUploadId ? parseInt(dataUploadId) : undefined,
         prompt,
         variables
       );

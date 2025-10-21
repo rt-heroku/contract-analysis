@@ -123,9 +123,19 @@ export const IDPResponse: React.FC = () => {
     };
   }, [analysisRecordId]);
 
-  const handleAnalyze = () => {
-    // Navigate to analysis setup page
-    navigate(`/analysis-setup/${analysisRecordId}`);
+  const handleAnalyze = async () => {
+    try {
+      setAnalyzing(true);
+      await api.post(`/analysis/${analysisRecordId}/run`);
+      
+      // Navigate to analysis details page
+      setTimeout(() => {
+        navigate(`/analysis/${analysisRecordId}`);
+      }, 1000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to start analysis');
+      setAnalyzing(false);
+    }
   };
 
   if (loading) {
@@ -266,15 +276,18 @@ export const IDPResponse: React.FC = () => {
       <div className="flex gap-4">
         <Button
           onClick={handleAnalyze}
+          disabled={analyzing}
+          isLoading={analyzing}
           size="lg"
           className="bg-primary-600 hover:bg-primary-700"
         >
           <ArrowRight className="w-5 h-5 mr-2" />
-          Analyze with AI
+          {analyzing ? 'Starting Analysis...' : 'Analyze with AI'}
         </Button>
         <Button
           variant="secondary"
           onClick={() => navigate('/processing')}
+          disabled={analyzing}
         >
           Back to Processing
         </Button>

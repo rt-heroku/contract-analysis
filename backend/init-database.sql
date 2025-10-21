@@ -194,9 +194,10 @@ BEGIN
   SELECT id INTO viewer_role_id FROM "roles" WHERE name = 'viewer';
 
   -- Dashboard
-  INSERT INTO "menu_items" (parent_id, title, icon, route, order_index, is_active, is_external, created_at, updated_at)
-  VALUES (NULL, 'Dashboard', 'home', '/dashboard', 1, TRUE, FALSE, NOW(), NOW())
-  ON CONFLICT DO NOTHING;
+  IF NOT EXISTS (SELECT 1 FROM "menu_items" WHERE title = 'Dashboard' AND parent_id IS NULL) THEN
+    INSERT INTO "menu_items" (parent_id, title, icon, route, order_index, is_active, is_external, created_at, updated_at)
+    VALUES (NULL, 'Dashboard', 'home', '/dashboard', 1, TRUE, FALSE, NOW(), NOW());
+  END IF;
   
   SELECT id INTO menu_id FROM "menu_items" WHERE title = 'Dashboard' AND parent_id IS NULL;
   INSERT INTO "menu_permissions" (menu_item_id, role_id, created_at)
@@ -340,17 +341,29 @@ END $$;
 -- SECTION 4: System Settings
 -- ============================================
 
-INSERT INTO "system_settings" (setting_key, setting_value, description, is_secret, created_at, updated_at) VALUES
-('app_name', 'Document Analyzer', 'Application name displayed in header', FALSE, NOW(), NOW()),
-('app_logo_url', '/images/mulesoft-logo.svg', 'URL to application logo', FALSE, NOW(), NOW()),
-('powered_by_text', 'Powered by MuleSoft', 'Footer attribution text', FALSE, NOW(), NOW()),
-('mulesoft_api_base_url', 'http://localhost:8081', 'MuleSoft API base URL', FALSE, NOW(), NOW()),
-('mulesoft_api_timeout', '30000', 'MuleSoft API timeout in milliseconds', FALSE, NOW(), NOW()),
-('show_demo_credentials', 'true', 'Display demo credentials on login page (true/false)', FALSE, NOW(), NOW())
-ON CONFLICT (setting_key) DO NOTHING;
+DO $$
+BEGIN
 
-RAISE NOTICE '✓ System settings created';
 
+
+INSERT INTO system_settings (setting_key,setting_value,description,is_secret,created_at) VALUES
+	 ('app_logo_url','/images/logos/MuleSoft-RGB-icon.png','Application logo URL (can be uploaded by admin)',false, NOW()),
+	 ('app_name','Document Analyzer','Application name displayed in header',false, NOW()),
+	 ('cors_origin','http://localhost:3000','CORS allowed origin',false, NOW()),
+	 ('jwt_expires_in','7d','JWT token expiration time',false, NOW()),
+	 ('jwt_secret','wAK6rM4Qg9dBhsr89X0GANUOSsZQpEIz0OPEQptS/rI=','JWT secret key for token signing',true, NOW()),
+	 ('log_level','info','Logging level (debug, info, warn, error)',false, NOW()),
+	 ('mulesoft_api_base_url','https://idp-process-contracts-w4i20p.y8riuw.usa-e2.cloudhub.io','MuleSoft API base URL',false, NOW()),
+	 ('mulesoft_api_password','','MuleSoft API password for basic authentication',true, NOW()),
+	 ('mulesoft_api_timeout','180000','MuleSoft API timeout in milliseconds',false, NOW()),
+	 ('mulesoft_api_username','','MuleSoft API username for basic authentication',true, NOW()),
+	 ('powered_by_text','Powered by MuleSoft','Footer text',false, NOW()),
+	 ('show_demo_credentials','false','Display demo credentials on login page (true/false)',false, NOW())
+   ON CONFLICT (setting_key) DO NOTHING;
+
+  RAISE NOTICE '✓ System settings created';
+END;
+$$;
 -- ============================================
 -- SECTION 5: Demo Users
 -- ============================================
@@ -385,7 +398,7 @@ BEGIN
     INSERT INTO "user_profiles" (user_id, created_at, updated_at)
     VALUES (admin_user_id, NOW(), NOW());
     
-    INSERT INTO "user_roles" (user_id, role_id, assigned_at)
+    INSERT INTO "user_roles" (user_id, role_id, created_at)
     VALUES (admin_user_id, admin_role_id, NOW());
     
     RAISE NOTICE '✓ Admin user created (admin@demo.com)';
@@ -410,7 +423,7 @@ BEGIN
     INSERT INTO "user_profiles" (user_id, created_at, updated_at)
     VALUES (regular_user_id, NOW(), NOW());
     
-    INSERT INTO "user_roles" (user_id, role_id, assigned_at)
+    INSERT INTO "user_roles" (user_id, role_id, created_at)
     VALUES (regular_user_id, user_role_id, NOW());
     
     RAISE NOTICE '✓ Regular user created (user@demo.com)';
@@ -436,7 +449,7 @@ BEGIN
     INSERT INTO "user_profiles" (user_id, created_at, updated_at)
     VALUES (viewer_user_id, NOW(), NOW());
     
-    INSERT INTO "user_roles" (user_id, role_id, assigned_at)
+    INSERT INTO "user_roles" (user_id, role_id, created_at)
     VALUES (viewer_user_id, viewer_role_id, NOW());
     
     RAISE NOTICE '✓ Viewer user created (demo@mulesoft.com)';

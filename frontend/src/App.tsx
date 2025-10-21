@@ -9,7 +9,8 @@ import { Dashboard } from './pages/Dashboard';
 import { Processing } from './pages/Processing';
 import { AnalysisDetails } from './pages/AnalysisDetails';
 import { IDPResponse } from './pages/IDPResponse';
-import { Settings } from './pages/Settings';
+import { AnalysisSetup } from './pages/AnalysisSetup';
+import { Settings } from './pages/admin/Settings';
 import { Prompts } from './pages/Prompts';
 import { Flows } from './pages/Flows';
 import { History } from './pages/History';
@@ -42,8 +43,9 @@ const App = () => {
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
             <Route path="/history" element={<MainLayout><History /></MainLayout>} />
             <Route path="/idp-response/:analysisRecordId" element={<MainLayout><IDPResponse /></MainLayout>} />
+            <Route path="/analysis-setup/:analysisRecordId" element={<MainLayout><AnalysisSetup /></MainLayout>} />
             <Route path="/analysis/:id" element={<MainLayout><AnalysisDetails /></MainLayout>} />
-            <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
+            <Route path="/admin/settings" element={<MainLayout><Settings /></MainLayout>} />
             <Route path="/notifications" element={<MainLayout><Notifications /></MainLayout>} />
             
             {/* Admin Routes */}

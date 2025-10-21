@@ -344,6 +344,7 @@ class DocumentService {
   async runAnalysis(
     userId: number,
     analysisRecordId: number,
+    dataUploadId?: number,
     prompt?: { id: number; name: string },
     variables?: Record<string, any>
   ): Promise<ProcessingResult> {
@@ -364,10 +365,15 @@ class DocumentService {
         throw new Error('Contract analysis not found. Please run Step 1 first.');
       }
 
-      // Update status to processing
+      // Update status to processing and link data upload if provided
+      const updateData: any = { status: ANALYSIS_STATUS.PROCESSING };
+      if (dataUploadId) {
+        updateData.dataUploadId = dataUploadId;
+      }
+      
       await prisma.analysisRecord.update({
         where: { id: analysisRecordId },
-        data: { status: ANALYSIS_STATUS.PROCESSING },
+        data: updateData,
       });
 
       // Run analysis asynchronously
@@ -377,6 +383,7 @@ class DocumentService {
         analysisRecord.contractAnalysisId!,
         analysisRecord.jobId,
         analysisRecord.contractAnalysis.mulesoftResponse,
+        dataUploadId,
         prompt,
         variables
       ).catch((error) => {
@@ -405,6 +412,7 @@ class DocumentService {
     contractAnalysisId: number,
     jobId: string,
     contractResult: any,
+    dataUploadId?: number,
     prompt?: { id: number; name: string },
     variables?: Record<string, any>
   ): Promise<void> {
