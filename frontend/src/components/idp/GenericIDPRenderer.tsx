@@ -145,42 +145,25 @@ export const GenericIDPRenderer: React.FC<GenericIDPRendererProps> = ({ data }) 
   const isPaginated = Array.isArray(data.pages) && data.pages.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {isPaginated ? (
         // Paginated format
         data.pages.map((pageData: any, pageIndex: number) => (
           <div key={pageIndex} className="space-y-4">
-            {/* Page Header */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md">
-                <FileText className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Page {pageData.page}</h3>
-                <p className="text-sm text-gray-500">Extracted Information</p>
-              </div>
-            </div>
 
             {/* Fields Section */}
             {pageData.fields && Object.keys(pageData.fields).length > 0 && (
               <Card>
                 <div className="p-6">
-                  <div className="flex items-center gap-2 mb-6">
-                    <List className="w-5 h-5 text-blue-600" />
-                    <h4 className="text-lg font-bold text-gray-900">Fields</h4>
-                  </div>
+                  <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <List className="w-5 h-5 text-primary-600" />
+                    {pageData.page ? `Page ${pageData.page} - ` : ''}Extracted Fields
+                  </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {Object.entries(pageData.fields).map(([key, value]) => (
-                      <div key={key} className="group">
-                        <div className="flex items-center gap-2 mb-2">
-                          {getIcon(key)}
-                          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                            {formatKey(key)}
-                          </p>
-                        </div>
-                        <div className="pl-6 transition-all group-hover:pl-7">
-                          {renderValue(value, key)}
-                        </div>
+                      <div key={key}>
+                        <p className="text-sm text-gray-600 mb-1">{formatKey(key)}</p>
+                        <div>{renderValue(value, key)}</div>
                       </div>
                     ))}
                   </div>
@@ -193,10 +176,10 @@ export const GenericIDPRenderer: React.FC<GenericIDPRendererProps> = ({ data }) 
               Object.entries(pageData.tables).map(([tableName, tableData]: [string, any], tableIndex: number) => (
                 <Card key={tableIndex}>
                   <div className="p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Package className="w-5 h-5 text-orange-600" />
-                      <h4 className="text-lg font-bold text-gray-900">{formatKey(tableName)}</h4>
-                    </div>
+                    <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Package className="w-5 h-5 text-primary-600" />
+                      {formatKey(tableName)}
+                    </h4>
                     {renderValue(tableData, tableName)}
                   </div>
                 </Card>
@@ -208,10 +191,10 @@ export const GenericIDPRenderer: React.FC<GenericIDPRendererProps> = ({ data }) 
         // Fallback for old flat format
         <Card>
           <div className="p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <List className="w-5 h-5 text-blue-600" />
-              <h4 className="text-lg font-bold text-gray-900">Extracted Data</h4>
-            </div>
+            <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <List className="w-5 h-5 text-primary-600" />
+              Extracted Data
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Object.entries(data).map(([key, value]) => {
                 // Exclude already handled fields
@@ -219,16 +202,9 @@ export const GenericIDPRenderer: React.FC<GenericIDPRendererProps> = ({ data }) 
                   return null;
                 }
                 return (
-                  <div key={key} className="group">
-                    <div className="flex items-center gap-2 mb-2">
-                      {getIcon(key)}
-                      <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                        {formatKey(key)}
-                      </p>
-                    </div>
-                    <div className="pl-6 transition-all group-hover:pl-7">
-                      {renderValue(value, key)}
-                    </div>
+                  <div key={key}>
+                    <p className="text-sm text-gray-600 mb-1">{formatKey(key)}</p>
+                    <div>{renderValue(value, key)}</div>
                   </div>
                 );
               })}
@@ -237,24 +213,6 @@ export const GenericIDPRenderer: React.FC<GenericIDPRendererProps> = ({ data }) 
         </Card>
       )}
 
-      {/* Full Response - Collapsible */}
-      {data && (
-        <Card>
-          <div className="p-6">
-            <details className="cursor-pointer group">
-              <summary className="flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors">
-                <FileText className="w-4 h-4" />
-                <span>Full MuleSoft IDP Response (Raw JSON)</span>
-                <span className="ml-auto text-xs text-gray-500 group-open:hidden">Click to expand</span>
-                <span className="ml-auto text-xs text-gray-500 hidden group-open:inline">Click to collapse</span>
-              </summary>
-              <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-xs mt-4 border border-gray-200 font-mono">
-                {JSON.stringify(data, null, 2)}
-              </pre>
-            </details>
-          </div>
-        </Card>
-      )}
     </div>
   );
 };
