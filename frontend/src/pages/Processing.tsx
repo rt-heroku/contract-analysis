@@ -63,6 +63,7 @@ interface Document {
 export const Processing: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const rerunAnalysisId = searchParams.get('rerun'); // Get rerun parameter from URL
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [dataFile, setDataFile] = useState<File | null>(null);
   const [existingContractUpload, setExistingContractUpload] = useState<ExistingUpload | null>(null);
@@ -180,6 +181,13 @@ export const Processing: React.FC = () => {
       loadDocumentById(parseInt(contractId));
     }
   }, [searchParams]);
+
+  // Load failed analysis for reprocessing
+  useEffect(() => {
+    if (rerunAnalysisId) {
+      loadFailedAnalysis(parseInt(rerunAnalysisId));
+    }
+  }, [rerunAnalysisId]);
 
   const loadExistingUploads = async (jobId: string) => {
     try {
