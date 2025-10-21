@@ -232,6 +232,44 @@ export const Processing: React.FC = () => {
     }
   };
 
+  const loadFailedAnalysis = async (analysisId: number) => {
+    try {
+      setLoadingExistingUploads(true);
+      const response = await api.get(`/analysis/${analysisId}`);
+      const analysis = response.data;
+      
+      // Load contract upload
+      if (analysis.contractUpload) {
+        setExistingContractUpload({
+          id: analysis.contractUpload.id,
+          filename: analysis.contractUpload.filename,
+          uploadType: 'contract',
+          jobId: analysis.jobId,
+          createdAt: analysis.contractUpload.createdAt,
+        });
+      }
+      
+      // Load data upload if exists
+      if (analysis.dataUpload) {
+        setExistingDataUpload({
+          id: analysis.dataUpload.id,
+          filename: analysis.dataUpload.filename,
+          uploadType: 'data',
+          jobId: analysis.jobId,
+          createdAt: analysis.dataUpload.createdAt,
+        });
+      }
+
+      // IDP execution selection will use the default one loaded on mount
+      
+    } catch (error: any) {
+      console.error('Failed to load failed analysis:', error);
+      setError(error.response?.data?.error || 'Failed to load analysis data');
+    } finally {
+      setLoadingExistingUploads(false);
+    }
+  };
+
   const fetchDocuments = async () => {
     try {
       setLoadingDocuments(true);
