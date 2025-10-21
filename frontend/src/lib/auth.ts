@@ -1,12 +1,6 @@
 import api from './api';
 import { LoginCredentials, RegisterData, AuthResponse, User } from '@/types';
 
-// Helper to get the appropriate storage (localStorage for persistent, sessionStorage for temporary)
-const getStorage = (): Storage => {
-  const stayLoggedIn = localStorage.getItem('stayLoggedIn') === 'true';
-  return stayLoggedIn ? localStorage : sessionStorage;
-};
-
 export const authApi = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await api.post('/auth/login', credentials);
