@@ -1,9 +1,7 @@
 import React from 'react';
 import { Card } from '@/components/common/Card';
 import {
-  FileText, AlertCircle, Building, MapPin, Phone,
-  Package, Info, List, DollarSign, Mail,
-  Truck, Globe, User, Home, Flag
+  AlertCircle, Package, Info, List
 } from 'lucide-react';
 
 interface GenericIDPRendererProps {
@@ -65,26 +63,26 @@ const renderValue = (value: any, _key?: string): React.ReactNode => {
       if (value.length === 0) {
         return <span className="text-gray-400 text-sm italic">No data</span>;
       }
-      // If it's an array of objects, render as a styled table
+      // If it's an array of objects, render as a table
       if (typeof value[0] === 'object' && value[0] !== null) {
         const headers = Object.keys(value[0]).filter(h => h !== '__typename');
         return (
-          <div className="overflow-x-auto mt-3">
-            <table className="min-w-full divide-y divide-gray-200 rounded-lg overflow-hidden shadow-sm">
-              <thead className="bg-gradient-to-r from-blue-500 to-blue-600">
+          <div className="overflow-x-auto mt-2">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
                   {headers.map((header, idx) => (
-                    <th key={idx} className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    <th key={idx} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {formatKey(header)}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
+              <tbody className="bg-white divide-y divide-gray-200">
                 {value.map((row, rowIndex) => (
-                  <tr key={rowIndex} className="hover:bg-blue-50 transition-colors">
+                  <tr key={rowIndex} className="hover:bg-gray-50">
                     {headers.map((header, colIndex) => (
-                      <td key={colIndex} className="px-4 py-3 text-sm text-gray-900">
+                      <td key={colIndex} className="px-3 py-3 text-sm text-gray-700">
                         {renderValue(row[header], header)}
                       </td>
                     ))}
