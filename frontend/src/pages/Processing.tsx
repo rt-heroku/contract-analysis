@@ -637,7 +637,8 @@ export const Processing: React.FC = () => {
       </Card>
 
       {/* Data Upload - REMOVED: Now handled in AnalysisSetup page */}
-      {false && <Card title="Step 2: Upload Data File (Excel/CSV)">
+      {false && (
+      <Card title="Step 2: Upload Data File (Excel/CSV)">
         <div className="space-y-4">
           {existingDataUpload && !dataFile ? (
             <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4">
@@ -733,6 +734,7 @@ export const Processing: React.FC = () => {
           )}
         </div>
       </Card>
+      )}
 
       {/* IDP Execution Selection */}
       <Card title="Step 2: IDP Execution Configuration">
@@ -799,7 +801,8 @@ export const Processing: React.FC = () => {
       </Card>
 
       {/* Prompt Selection - REMOVED: Now handled in AnalysisSetup page */}
-      {false && <Card title="Step 4: AI Prompt (Optional)">
+      {false && (
+      <Card title="Step 4: AI Prompt (Optional)">
         <p className="text-sm text-gray-600 mb-4">
           Select an AI prompt to enhance the analysis with custom instructions and variables.
         </p>
@@ -946,6 +949,7 @@ export const Processing: React.FC = () => {
           </div>
         )}
       </Card>
+      )}
 
       {/* Process Button */}
       <div className="flex gap-4">
