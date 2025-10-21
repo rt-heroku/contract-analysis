@@ -102,7 +102,7 @@ export const Login: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             <Input
               label="Email Address"
               type="email"
@@ -110,6 +110,7 @@ export const Login: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               error={errors.email}
               placeholder="admin@demo.com"
+              autoComplete="email"
               required
             />
 
@@ -120,6 +121,7 @@ export const Login: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               error={errors.password}
               placeholder="Enter your password"
+              autoComplete="current-password"
               required
             />
 

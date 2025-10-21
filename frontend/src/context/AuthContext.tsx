@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: LoginCredentials) => {
     try {
       const response = await authApi.login(credentials);
-      authApi.storeAuth(response.token, response.user);
+      authApi.storeAuth(response.token, response.user, credentials.stayLoggedIn);
       setUser(response.user);
     } catch (error) {
       throw new Error(handleApiError(error));
