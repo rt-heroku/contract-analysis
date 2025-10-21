@@ -12,7 +12,7 @@
     "prisma:push": "prisma db push --skip-generate",
     "prisma:studio": "prisma studio",
     "seed": "ts-node src/utils/seed.ts",
-    "seed:once": "ts-node src/utils/seedOnce.ts",
+    "seed:once": "node dist/utils/seedOnce.js",
     "setup:demo": "prisma generate && prisma db push && npm run seed",
     "db:init": "psql $DATABASE_URL -f init-database.sql",
     "postdeploy": "npm run seed:once"
