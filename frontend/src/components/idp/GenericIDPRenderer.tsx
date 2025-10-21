@@ -87,18 +87,11 @@ const renderValue = (value: any, _key?: string): React.ReactNode => {
     
     // Regular object
     return (
-      <div className="space-y-3 pl-4 border-l-2 border-blue-200 mt-2">
+      <div className="space-y-3 mt-2">
         {Object.entries(value).map(([subKey, subValue]) => (
-          <div key={subKey}>
-            <div className="flex items-center gap-2 mb-1">
-              {getIcon(subKey)}
-              <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                {formatKey(subKey)}
-              </p>
-            </div>
-            <div className="text-sm text-gray-900 ml-6">
-              {renderValue(subValue, subKey)}
-            </div>
+          <div key={subKey} className="bg-gray-50 rounded-lg p-3">
+            <p className="text-sm text-gray-600 mb-1">{formatKey(subKey)}</p>
+            <div>{renderValue(subValue, subKey)}</div>
           </div>
         ))}
       </div>
