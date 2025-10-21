@@ -262,18 +262,19 @@ export const IDPResponse: React.FC = () => {
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-4">
+      <div className="flex gap-4 mt-8">
         <Button
           onClick={handleAnalyze}
           size="lg"
-          className="bg-primary-600 hover:bg-primary-700"
+          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all"
         >
           <ArrowRight className="w-5 h-5 mr-2" />
-          Analyze with AI
+          Continue to Analysis
         </Button>
         <Button
           variant="secondary"
           onClick={() => navigate('/processing')}
+          className="border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50"
         >
           Back to Processing
         </Button>
