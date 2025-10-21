@@ -57,6 +57,7 @@ export const ACTION_TYPES = {
 
 export const ANALYSIS_STATUS = {
   PROCESSING: 'processing',
+  IDP_COMPLETED: 'IDP_COMPLETED',
   COMPLETED: 'completed',
   FAILED: 'failed',
 } as const;

@@ -136,6 +136,8 @@ export const History: React.FC = () => {
     switch (status) {
       case 'completed':
         return 'success';
+      case 'IDP_COMPLETED':
+        return 'info';
       case 'processing':
         return 'warning';
       case 'failed':
@@ -156,8 +158,35 @@ export const History: React.FC = () => {
     });
   };
 
-  const handleViewAnalysis = (id: number) => {
-    navigate(`/analysis/${id}`);
+  const handleViewAnalysis = (analysis: Analysis) => {
+    // Smart routing based on analysis status to avoid unnecessary API calls
+    const status = analysis.status.toLowerCase();
+    
+    if (status === 'idp_completed') {
+      // IDP processing complete, show extraction results
+      navigate(`/idp-response/${analysis.id}`);
+    } else if (status === 'failed') {
+      // Failed processing, redirect to processing page with pre-loaded data
+      navigate(`/processing?rerun=${analysis.id}`);
+    } else if (status === 'completed') {
+      // Full analysis complete, show final results
+      navigate(`/analysis/${analysis.id}`);
+    } else if (status === 'processing') {
+      // Still processing, show the IDP response if available, otherwise show processing status
+      if (analysis.contractAnalysis) {
+        navigate(`/idp-response/${analysis.id}`);
+      } else {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Processing In Progress',
+          message: 'This analysis is still being processed. Please wait a moment and try again.',
+          type: 'info',
+        });
+      }
+    } else {
+      // Default fallback
+      navigate(`/analysis/${analysis.id}`);
+    }
   };
 
   const handleDownloadFile = async (analysisId: number, fileType: 'contract' | 'data') => {
@@ -496,7 +525,7 @@ export const History: React.FC = () => {
                 {/* Actions */}
                 <div className="ml-4 flex flex-col gap-2">
                   <Button
-                    onClick={() => handleViewAnalysis(analysis.id)}
+                    onClick={() => handleViewAnalysis(analysis)}
                     className="bg-primary-600 hover:bg-primary-700 flex items-center gap-2"
                   >
                     <Eye className="w-4 h-4" />
