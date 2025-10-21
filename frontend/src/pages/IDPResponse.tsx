@@ -8,7 +8,8 @@ import { GenericIDPRenderer } from '@/components/idp/GenericIDPRenderer';
 import { 
   ArrowRight, 
   CheckCircle, 
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 
 interface ContractAnalysis {
