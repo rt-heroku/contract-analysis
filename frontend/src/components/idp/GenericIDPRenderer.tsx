@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card } from '@/components/common/Card';
 import {
-  AlertCircle, Package, Info, List
+  AlertCircle, Package, List
 } from 'lucide-react';
 
 interface GenericIDPRendererProps {
