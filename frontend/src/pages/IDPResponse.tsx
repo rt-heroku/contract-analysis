@@ -228,7 +228,7 @@ export const IDPResponse: React.FC = () => {
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header with Logo */}
       <div className="flex items-center gap-4">
-        <img 
+        {/* <img 
           src="/images/logos/MuleSoft-RGB-icon.png" 
           alt="MuleSoft" 
           className="w-16 h-16 object-contain"
@@ -236,12 +236,40 @@ export const IDPResponse: React.FC = () => {
             // Fallback if logo doesn't exist
             e.currentTarget.style.display = 'none';
           }}
-        />
+        /> */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">MuleSoft's IDP Response</h1>
           <p className="text-gray-600 mt-1">
             Document processing completed successfully
           </p>
+        </div>
+      </div>
+
+      {/* Document Information Card */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Document Information</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Document Name</p>
+            <p className="font-medium text-gray-900">
+              {contractAnalysis.mulesoftResponse?.documentName || contractAnalysis.documentName || 'N/A'}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Document ID</p>
+            <p className="font-mono text-xs text-gray-700">
+              {contractAnalysis.mulesoftResponse?.id || contractAnalysis.jobId || 'N/A'}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">Processing Status</p>
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-orange-600" />
+              <span className="font-medium text-orange-600 text-sm">
+                {contractAnalysis.mulesoftResponse?.status || contractAnalysis.status || 'Processing'}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
