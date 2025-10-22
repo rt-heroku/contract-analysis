@@ -304,7 +304,7 @@ export const SystemEnvironment: React.FC = () => {
                       <td className="p-2 font-mono text-xs text-gray-900 font-semibold">{setting.key}</td>
                       <td className="p-2 font-mono text-xs text-gray-700 break-all">
                         {setting.isSecret ? (
-                          <span className="text-orange-600">{setting.value}</span>
+                          <span className="text-orange-600 font-semibold">{setting.value || '(empty)'}</span>
                         ) : (
                           setting.value || '(empty)'
                         )}

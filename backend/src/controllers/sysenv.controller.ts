@@ -43,7 +43,7 @@ export const sysenvController = {
         systemInfo,
         database: {
           status: dbStatus,
-          url: process.env.DATABASE_URL ? 'Set ✅' : 'Not Set ❌',
+          url: process.env.DATABASE_URL || 'Not Set ❌',
           userCount,
           roleCount,
           sessionCount,
@@ -51,27 +51,18 @@ export const sysenvController = {
         environmentVariables: Object.keys(envVars)
           .sort()
           .reduce((acc, key) => {
-            // Mask sensitive values
-            if (
-              key.includes('SECRET') ||
-              key.includes('PASSWORD') ||
-              key.includes('KEY') ||
-              key.includes('TOKEN')
-            ) {
-              acc[key] = '***MASKED***';
-            } else {
-              acc[key] = envVars[key];
-            }
+            // Show all values unmasked for debugging
+            acc[key] = envVars[key];
             return acc;
           }, {} as Record<string, string | undefined>),
         systemSettings: systemSettings.map((setting: any) => ({
           key: setting.settingKey,
-          value: setting.isSecret ? '***MASKED***' : setting.settingValue,
+          value: setting.settingValue, // Show all values unmasked
           description: setting.description,
           isSecret: setting.isSecret,
         })),
         jwt: {
-          secret: process.env.JWT_SECRET ? 'Set ✅' : 'Not Set ❌',
+          secret: process.env.JWT_SECRET || 'Not Set ❌',
           expiresIn: process.env.JWT_EXPIRES_IN || '24h',
         },
         cors: {
