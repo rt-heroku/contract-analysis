@@ -33,27 +33,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Check for stored auth on mount
+    console.log('🔐 [AuthContext] Initializing, checking for stored credentials...');
     const storedUser = authApi.getStoredUser();
     const storedToken = authApi.getStoredToken();
 
+    console.log('🔐 [AuthContext] Token found:', !!storedToken);
+    console.log('🔐 [AuthContext] User found:', storedUser ? storedUser.email : 'none');
+
     if (storedUser && storedToken) {
+      console.log('🔐 [AuthContext] Setting user as authenticated');
       setUser(storedUser);
+    } else {
+      console.log('🔐 [AuthContext] No valid credentials found');
     }
     setIsLoading(false);
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
     try {
+      console.log('🔐 [AuthContext] Login called for:', credentials.email);
       const response = await authApi.login(credentials);
+      console.log('🔐 [AuthContext] Login API response received:', response);
+      console.log('🔐 [AuthContext] Token length:', response.token?.length, 'User:', response.user?.email);
+      console.log('🔐 [AuthContext] Storing auth with stayLoggedIn:', credentials.stayLoggedIn);
       authApi.storeAuth(response.token, response.user, credentials.stayLoggedIn);
+      console.log('🔐 [AuthContext] Auth stored, setting state...');
       setUser(response.user);
+      console.log('🔐 [AuthContext] State updated, user is now authenticated');
     } catch (error) {
+      console.error('🔐 [AuthContext] Login error:', error);
       throw new Error(handleApiError(error));
     }
   };
 
   const register = async (data: RegisterData) => {
     try {
+      console.log('🔐 [AuthContext] Register called for:', data.email);
       await authApi.register(data);
       // After registration, automatically log in
       await login({
@@ -61,27 +76,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password: data.password,
       });
     } catch (error) {
+      console.error('🔐 [AuthContext] Register error:', error);
       throw new Error(handleApiError(error));
     }
   };
 
   const logout = async () => {
+    console.log('🔐 [AuthContext] Logout called');
+    console.trace('🔐 [AuthContext] Logout stack trace');
     try {
       await authApi.logout();
+      console.log('🔐 [AuthContext] Logout API call completed');
     } catch (error) {
+      console.error('🔐 [AuthContext] Logout error:', error);
       // Ignore error, clear auth anyway
     } finally {
       authApi.clearAuth();
       setUser(null);
+      console.log('🔐 [AuthContext] User logged out, state cleared');
     }
   };
 
   const refreshAuth = async () => {
+    console.log('🔐 [AuthContext] Refreshing auth...');
     try {
       const response = await authApi.getCurrentUser();
+      console.log('🔐 [AuthContext] Got current user:', response.user.email);
       setUser(response.user);
       authApi.storeAuth(authApi.getStoredToken() || '', response.user);
     } catch (error) {
+      console.error('🔐 [AuthContext] Refresh auth failed:', error);
       authApi.clearAuth();
       setUser(null);
     }
@@ -103,5 +127,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
 
