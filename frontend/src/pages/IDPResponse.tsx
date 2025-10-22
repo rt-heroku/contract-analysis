@@ -131,15 +131,11 @@ export const IDPResponse: React.FC = () => {
     };
 
     loadContractAnalysis();
-    
+
     // Load IDP execution ID from URL if available
-    // Try to get idpExecutionId from URL first, then from contractAnalysis
     const idpExecId = searchParams.get('idpExecutionId');
     if (idpExecId) {
       setIdpExecutionId(parseInt(idpExecId));
-    } else if (contractAnalysis?.idpExecutionId) {
-      // Fall back to stored idpExecutionId from contract analysis
-      setIdpExecutionId(contractAnalysis.idpExecutionId);
     }
 
     return () => {
@@ -148,7 +144,14 @@ export const IDPResponse: React.FC = () => {
         clearTimeout(timeoutId);
       }
     };
-  }, [analysisRecordId, searchParams, contractAnalysis]);
+  }, [analysisRecordId, searchParams]); // Removed contractAnalysis to prevent re-polling loop
+
+  // Separate effect to handle idpExecutionId fallback from contractAnalysis
+  useEffect(() => {
+    if (!idpExecutionId && contractAnalysis?.idpExecutionId) {
+      setIdpExecutionId(contractAnalysis.idpExecutionId);
+    }
+  }, [contractAnalysis, idpExecutionId]);
 
   const handleAnalyze = () => {
     // Navigate to analysis setup page
