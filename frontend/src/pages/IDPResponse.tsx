@@ -109,7 +109,7 @@ export const IDPResponse: React.FC = () => {
             if (errorMessage.includes('not yet available') || errorMessage.includes('Please wait')) {
               attempts++;
               if (attempts < maxAttempts && isMounted) {
-                timeoutId = setTimeout(poll, 2000);
+                timeoutId = setTimeout(poll, 10000); // Poll every 10 seconds
               } else if (isMounted) {
                 setError('Timeout: Contract processing is taking longer than expected. Please try again.');
                 setLoading(false);
