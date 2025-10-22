@@ -302,11 +302,18 @@ export const IDPResponse: React.FC = () => {
   // Check if we need to poll status on mount or when approved
   useEffect(() => {
     const approved = searchParams.get('approved');
-    if (approved === 'true' && contractAnalysis) {
+    const idpExecId = searchParams.get('idpExecutionId');
+    
+    if (approved === 'true' && contractAnalysis && idpExecId) {
+      // Set idpExecutionId if it's in the URL (from approval redirect)
+      if (!idpExecutionId) {
+        setIdpExecutionId(parseInt(idpExecId));
+      }
       // Reload status after approval
+      console.debug('[IDPResponse] Reloading status after approval');
       checkProcessingStatus();
     }
-  }, [searchParams, contractAnalysis]);
+  }, [searchParams, contractAnalysis, idpExecutionId]);
 
   // Detect document type and render appropriate component
   const detectDocumentType = (data: any): 'purchaseOrder' | 'invoice' | 'contract' | 'generic' => {
