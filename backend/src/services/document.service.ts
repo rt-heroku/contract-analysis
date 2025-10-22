@@ -291,6 +291,7 @@ class DocumentService {
           uploadId: contractUploadId,
           jobId,
           executionId,
+          idpExecutionId,
           documentName: contractResult.documentName || contractResult.document || 'Unknown Document',
           status: contractResult.status,
           terms: contractResult.terms || [],

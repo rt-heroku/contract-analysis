@@ -20,6 +20,7 @@ interface ContractAnalysis {
   uploadId: number;
   jobId: string;
   executionId?: string;
+  idpExecutionId?: number;
   documentName: string;
   status: string;
   terms: string[];
@@ -132,9 +133,13 @@ export const IDPResponse: React.FC = () => {
     loadContractAnalysis();
     
     // Load IDP execution ID from URL if available
+    // Try to get idpExecutionId from URL first, then from contractAnalysis
     const idpExecId = searchParams.get('idpExecutionId');
     if (idpExecId) {
       setIdpExecutionId(parseInt(idpExecId));
+    } else if (contractAnalysis?.idpExecutionId) {
+      // Fall back to stored idpExecutionId from contract analysis
+      setIdpExecutionId(contractAnalysis.idpExecutionId);
     }
 
     return () => {
@@ -143,7 +148,7 @@ export const IDPResponse: React.FC = () => {
         clearTimeout(timeoutId);
       }
     };
-  }, [analysisRecordId, searchParams, setIdpExecutionId]);
+  }, [analysisRecordId, searchParams, contractAnalysis]);
 
   const handleAnalyze = () => {
     // Navigate to analysis setup page
