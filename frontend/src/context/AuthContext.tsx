@@ -40,13 +40,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('🔐 [AuthContext] Token found:', !!storedToken);
     console.log('🔐 [AuthContext] User found:', storedUser ? storedUser.email : 'none');
 
-    if (storedUser && storedToken) {
-      console.log('🔐 [AuthContext] Setting user as authenticated');
-      setUser(storedUser);
-    } else {
-      console.log('🔐 [AuthContext] No valid credentials found');
-    }
-    setIsLoading(false);
+    // Use a small timeout to ensure state updates are batched correctly
+    // This prevents race conditions where components check auth before state is set
+    const timer = setTimeout(() => {
+      if (storedUser && storedToken) {
+        console.log('🔐 [AuthContext] Setting user as authenticated');
+        setUser(storedUser);
+      } else {
+        console.log('🔐 [AuthContext] No valid credentials found');
+      }
+      setIsLoading(false);
+    }, 0); // 0ms timeout ensures this runs after current execution stack
+
+    return () => clearTimeout(timer);
   }, []);
 
   const login = async (credentials: LoginCredentials) => {
