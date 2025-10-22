@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
 import { X, Maximize2, Minimize2 } from 'lucide-react';
 import api from '@/lib/api';
+import { createPortal } from 'react-dom';
 
 interface PDFViewerModalProps {
   isOpen: boolean;
@@ -17,8 +18,7 @@ export const PDFViewerModal: React.FC<PDFViewerModalProps> = ({
   documentName,
 }) => {
   const [isMaximized, setIsMaximized] = useState(false);
-  const [lastPosition, setLastPosition] = useState({ x: 100, y: 100 });
-  const [lastSize, setLastSize] = useState({ width: 900, height: 700 });
+  // Position and size managed internally by Rnd
   const [blobUrl, setBlobUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
@@ -63,21 +63,8 @@ export const PDFViewerModal: React.FC<PDFViewerModalProps> = ({
     }
   };
 
-  const modalStyle = isMaximized
-    ? {
-        width: '100vw',
-        height: '100vh',
-        x: 0,
-        y: 0,
-      }
-    : {
-        width: lastSize.width,
-        height: lastSize.height,
-        x: lastPosition.x,
-        y: lastPosition.y,
-      };
-
-  return (
+  // Render modal via React Portal at document body
+  return createPortal(
     <>
       {/* Overlay - non-blurred, allows interaction with background */}
       <div
@@ -91,12 +78,7 @@ export const PDFViewerModal: React.FC<PDFViewerModalProps> = ({
           zIndex: 99999,
           pointerEvents: 'auto',
         }}
-        default={{
-          x: 100,
-          y: 100,
-          width: 900,
-          height: 700,
-        }}
+        default={{ x: 100, y: 100, width: 900, height: 700 }}
         position={isMaximized ? { x: 0, y: 0 } : undefined}
         size={isMaximized ? { width: '100vw', height: '100vh' } : undefined}
         minWidth={400}
@@ -105,20 +87,7 @@ export const PDFViewerModal: React.FC<PDFViewerModalProps> = ({
         dragHandleClassName="drag-handle"
         enableResizing={!isMaximized}
         disableDragging={isMaximized}
-        onDragStop={(e, d) => {
-          if (!isMaximized) {
-            setLastPosition({ x: d.x, y: d.y });
-          }
-        }}
-        onResizeStop={(e, direction, ref, delta, position) => {
-          if (!isMaximized) {
-            setLastSize({
-              width: parseInt(ref.style.width),
-              height: parseInt(ref.style.height),
-            });
-            setLastPosition(position);
-          }
-        }}
+        // Optional: remove custom drag/resize handlers to let Rnd manage state
       >
         <div className="w-full h-full bg-white rounded-lg shadow-2xl border border-gray-300 flex flex-col overflow-hidden">
           {/* Header - Draggable */}
@@ -171,7 +140,8 @@ export const PDFViewerModal: React.FC<PDFViewerModalProps> = ({
           </div>
         </div>
       </Rnd>
-    </>
+    </>,
+    document.body
   );
 };
 
