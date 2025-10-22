@@ -9,10 +9,12 @@ import { PurchaseOrderRenderer } from '@/components/idp/PurchaseOrderRenderer';
 import { InvoiceRenderer } from '@/components/idp/InvoiceRenderer';
 import { AnypointCredentialsDialog } from '@/components/modals/AnypointCredentialsDialog';
 import { AlertDialog } from '@/components/common/AlertDialog';
+import { PDFViewerModal } from '@/components/modals/PDFViewerModal';
 import { 
   ArrowRight, 
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 
 interface ContractAnalysis {
@@ -41,6 +43,7 @@ export const IDPResponse: React.FC = () => {
   const [idpExecutionId, setIdpExecutionId] = useState<number | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
+  const [showPDFModal, setShowPDFModal] = useState(false);
   
   const [alertDialog, setAlertDialog] = useState({
     isOpen: false,
@@ -450,9 +453,12 @@ export const IDPResponse: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <p className="text-sm text-gray-600 mb-1">Document Name</p>
-            <p className="font-medium text-gray-900">
+            <button
+              onClick={() => setShowPDFModal(true)}
+              className="font-medium text-primary-600 hover:text-primary-700 underline text-left transition-colors"
+            >
               {contractAnalysis.mulesoftResponse?.documentName || contractAnalysis.documentName || 'N/A'}
-            </p>
+            </button>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Document ID</p>
@@ -530,6 +536,16 @@ export const IDPResponse: React.FC = () => {
           <ArrowRight className="w-5 h-5 mr-2" />
           Continue to Analysis
         </Button>
+        
+        <Button
+          onClick={() => window.open('https://anypoint.mulesoft.com/idp/tasks', '_blank')}
+          variant="secondary"
+          size="lg"
+          className="border-2 border-primary-300 text-primary-700 hover:bg-primary-50 shadow-md hover:shadow-lg transition-all"
+        >
+          <ExternalLink className="w-5 h-5 mr-2" />
+          Open in IDP
+        </Button>
         <Button
           variant="secondary"
           onClick={() => navigate('/processing')}
@@ -560,6 +576,15 @@ export const IDPResponse: React.FC = () => {
         message={alertDialog.message}
         type={alertDialog.type}
       />
+
+      {contractAnalysis && (
+        <PDFViewerModal
+          isOpen={showPDFModal}
+          onClose={() => setShowPDFModal(false)}
+          pdfUrl={`/api/documents/${contractAnalysis.uploadId}/file`}
+          documentName={contractAnalysis.mulesoftResponse?.documentName || contractAnalysis.documentName || 'Document'}
+        />
+      )}
     </div>
   );
 };
