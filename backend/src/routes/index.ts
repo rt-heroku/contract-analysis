@@ -15,6 +15,7 @@ import documentsRoutes from './documents.routes';
 import menuRoutes from './menu.routes';
 import roleRoutes from './role.routes';
 import idpExecutionRoutes from './idpExecution.routes';
+import idpStatusRoutes from './idpStatus.routes';
 
 const router = Router();
 
@@ -34,6 +35,7 @@ router.use('/documents', documentsRoutes);
 router.use('/menu', menuRoutes);
 router.use('/roles', roleRoutes);
 router.use('/idp-executions', idpExecutionRoutes);
+router.use('/idp-status', idpStatusRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {

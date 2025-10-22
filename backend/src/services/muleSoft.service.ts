@@ -4,6 +4,7 @@ import logger from '../utils/logger';
 import loggingService from './logging.service';
 import { MuleSoftContractResponse, MuleSoftDataResponse } from '../types';
 import { sanitizeHeaders } from '../utils/helpers';
+import { getSetting } from '../utils/getSettings';
 
 export interface IdpExecutionConfig {
   id?: number;
@@ -18,6 +19,8 @@ export interface IdpExecutionConfig {
 }
 
 class MuleSoftService {
+  private timeout = 300000; // 5 minutes default timeout for IDP operations
+
   private async makeRequest<T>(
     endpoint: string,
     jobId: string,
@@ -249,7 +252,7 @@ class MuleSoftService {
     jobId: string
   ): Promise<any> {
     try {
-      const mulesoftUrl = await getSettings('mulesoft_api_url');
+      const mulesoftUrl = await getSetting('mulesoft_api_url');
       const fullUrl = `${mulesoftUrl}/process/status`;
 
       const requestBody = {
@@ -301,7 +304,7 @@ class MuleSoftService {
     anypointPassword?: string
   ): Promise<any> {
     try {
-      const mulesoftUrl = await getSettings('mulesoft_api_url');
+      const mulesoftUrl = await getSetting('mulesoft_api_url');
       const fullUrl = `${mulesoftUrl}/process/review`;
 
       const requestBody: any = {
@@ -359,7 +362,7 @@ class MuleSoftService {
     approvedData: any
   ): Promise<any> {
     try {
-      const mulesoftUrl = await getSettings('mulesoft_api_url');
+      const mulesoftUrl = await getSetting('mulesoft_api_url');
       const fullUrl = `${mulesoftUrl}/process/approve`;
 
       const requestBody = {

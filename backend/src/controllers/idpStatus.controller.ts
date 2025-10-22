@@ -6,7 +6,7 @@ import prisma from '../config/database';
 import loggingService from '../services/logging.service';
 import { ACTION_TYPES } from '../utils/constants';
 import { getClientIp, getUserAgent } from '../utils/helpers';
-import { decrypt } from '../utils/encryption';
+import { encryption } from '../utils/encryption';
 
 export const idpStatusController = {
   /**
@@ -43,8 +43,8 @@ export const idpStatusController = {
         orgId: idpExecution.orgId,
         actionId: idpExecution.actionId,
         actionVersion: idpExecution.actionVersion,
-        authClientId: decrypt(idpExecution.authClientId),
-        authClientSecret: decrypt(idpExecution.authClientSecret),
+        authClientId: encryption.decrypt(idpExecution.authClientId),
+        authClientSecret: encryption.decrypt(idpExecution.authClientSecret),
       };
 
       // Get status from MuleSoft
@@ -55,14 +55,21 @@ export const idpStatusController = {
       );
 
       // Update contract analysis if status changed
-      await prisma.contractAnalysis.updateMany({
-        where: { jobId, executionId },
-        data: {
-          status: statusData.status || statusData.documentStatus || 'PROCESSING',
-          mulesoftResponse: statusData,
-          updatedAt: new Date(),
+      const contractAnalysis = await prisma.contractAnalysis.findFirst({
+        where: { 
+          jobId,
         },
       });
+
+      if (contractAnalysis) {
+        await prisma.contractAnalysis.update({
+          where: { id: contractAnalysis.id },
+          data: {
+            status: statusData.status || statusData.documentStatus || 'PROCESSING',
+            mulesoftResponse: statusData,
+          },
+        });
+      }
 
       // Log activity
       await loggingService.logActivity({
@@ -122,8 +129,8 @@ export const idpStatusController = {
         orgId: idpExecution.orgId,
         actionId: idpExecution.actionId,
         actionVersion: idpExecution.actionVersion,
-        authClientId: decrypt(idpExecution.authClientId),
-        authClientSecret: decrypt(idpExecution.authClientSecret),
+        authClientId: encryption.decrypt(idpExecution.authClientId),
+        authClientSecret: encryption.decrypt(idpExecution.authClientSecret),
       };
 
       // Use provided credentials or decrypt stored ones
@@ -131,10 +138,10 @@ export const idpStatusController = {
       let password = anypointPassword;
 
       if (!username && idpExecution.anypointUsername) {
-        username = decrypt(idpExecution.anypointUsername);
+        username = encryption.decrypt(idpExecution.anypointUsername);
       }
       if (!password && idpExecution.anypointPassword) {
-        password = decrypt(idpExecution.anypointPassword);
+        password = encryption.decrypt(idpExecution.anypointPassword);
       }
 
       if (!username || !password) {
@@ -155,12 +162,11 @@ export const idpStatusController = {
 
       // Save credentials if requested
       if (saveCredentials && anypointUsername && anypointPassword) {
-        const { encrypt } = await import('../utils/encryption');
         await prisma.idpExecution.update({
           where: { id: parseInt(idpExecutionId) },
           data: {
-            anypointUsername: encrypt(anypointUsername),
-            anypointPassword: encrypt(anypointPassword),
+            anypointUsername: encryption.encrypt(anypointUsername),
+            anypointPassword: encryption.encrypt(anypointPassword),
           },
         });
       }
@@ -216,8 +222,8 @@ export const idpStatusController = {
         orgId: idpExecution.orgId,
         actionId: idpExecution.actionId,
         actionVersion: idpExecution.actionVersion,
-        authClientId: decrypt(idpExecution.authClientId),
-        authClientSecret: decrypt(idpExecution.authClientSecret),
+        authClientId: encryption.decrypt(idpExecution.authClientId),
+        authClientSecret: encryption.decrypt(idpExecution.authClientSecret),
       };
 
       // Approve review in MuleSoft
@@ -229,14 +235,21 @@ export const idpStatusController = {
       );
 
       // Update contract analysis with approved data
-      await prisma.contractAnalysis.updateMany({
-        where: { jobId, executionId },
-        data: {
-          status: 'SUCCEEDED',
-          mulesoftResponse: approvalData,
-          updatedAt: new Date(),
+      const contractAnalysis = await prisma.contractAnalysis.findFirst({
+        where: { 
+          jobId,
         },
       });
+
+      if (contractAnalysis) {
+        await prisma.contractAnalysis.update({
+          where: { id: contractAnalysis.id },
+          data: {
+            status: 'SUCCEEDED',
+            mulesoftResponse: approvalData,
+          },
+        });
+      }
 
       // Log activity
       await loggingService.logActivity({
