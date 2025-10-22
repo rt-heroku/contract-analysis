@@ -214,6 +214,7 @@ model ContractAnalysis {
   id               Int      @id @default(autoincrement())
   uploadId         Int      @map("upload_id")
   jobId            String   @map("job_id") @db.VarChar(100)
+  executionId      String?  @map("execution_id") @db.VarChar(100)
   documentName     String   @map("document_name") @db.VarChar(255)
   status           String   @db.VarChar(50)
   terms            Json?
@@ -228,6 +229,7 @@ model ContractAnalysis {
 
   @@index([uploadId])
   @@index([jobId])
+  @@index([executionId])
   @@map("contract_analysis")
 }
 

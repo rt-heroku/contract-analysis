@@ -98,11 +98,20 @@ class DocumentService {
         throw error; // Re-throw to outer catch block
       }
 
+      // Extract executionId from MuleSoft response
+      const executionId = contractResult.execution_id || contractResult.executionId || null;
+      if (executionId) {
+        logger.info(`Extracted executionId: ${executionId} for jobId: ${jobId}`);
+      } else {
+        logger.warn(`No executionId found in MuleSoft response for jobId: ${jobId}`);
+      }
+
       // Save contract analysis
       const contractAnalysis = await prisma.contractAnalysis.create({
         data: {
           uploadId: contractUploadId,
           jobId,
+          executionId,
           documentName: contractResult.documentName || contractResult.document || 'Unknown Document',
           status: contractResult.status,
           terms: contractResult.terms || [],
@@ -268,11 +277,20 @@ class DocumentService {
         throw error;
       }
 
+      // Extract executionId from MuleSoft response
+      const executionId = contractResult.execution_id || contractResult.executionId || null;
+      if (executionId) {
+        logger.info(`Extracted executionId: ${executionId} for jobId: ${jobId}`);
+      } else {
+        logger.warn(`No executionId found in MuleSoft response for jobId: ${jobId}`);
+      }
+
       // Save contract analysis
       const contractAnalysis = await prisma.contractAnalysis.create({
         data: {
           uploadId: contractUploadId,
           jobId,
+          executionId,
           documentName: contractResult.documentName || contractResult.document || 'Unknown Document',
           status: contractResult.status,
           terms: contractResult.terms || [],
