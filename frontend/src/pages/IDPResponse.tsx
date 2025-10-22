@@ -75,7 +75,7 @@ export const IDPResponse: React.FC = () => {
 
       // Data doesn't exist yet, start polling
       const pollContractAnalysis = async () => {
-        const maxAttempts = 30; // 30 attempts * 2 seconds = 60 seconds max
+        const maxAttempts = 60; // 60 attempts * 10 seconds = 600 seconds (10 minutes) max
         let attempts = 0;
 
         const poll = async () => {
@@ -96,7 +96,7 @@ export const IDPResponse: React.FC = () => {
               // Still processing, try again
               attempts++;
               if (attempts < maxAttempts && isMounted) {
-                timeoutId = setTimeout(poll, 2000); // Poll every 2 seconds
+                timeoutId = setTimeout(poll, 10000); // Poll every 10 seconds
               } else if (isMounted) {
                 setError('Timeout: Contract processing is taking longer than expected. Please try again.');
                 setLoading(false);

@@ -252,7 +252,7 @@ class MuleSoftService {
     jobId: string
   ): Promise<any> {
     try {
-      const mulesoftUrl = await getSetting('mulesoft_api_url');
+      const mulesoftUrl = await getSetting('mulesoft_api_url', 'http://localhost:8081');
       const fullUrl = `${mulesoftUrl}/process/status`;
 
       const requestBody = {
@@ -304,7 +304,7 @@ class MuleSoftService {
     anypointPassword?: string
   ): Promise<any> {
     try {
-      const mulesoftUrl = await getSetting('mulesoft_api_url');
+      const mulesoftUrl = await getSetting('mulesoft_api_url', 'http://localhost:8081');
       const fullUrl = `${mulesoftUrl}/process/review`;
 
       const requestBody: any = {
@@ -362,7 +362,7 @@ class MuleSoftService {
     approvedData: any
   ): Promise<any> {
     try {
-      const mulesoftUrl = await getSetting('mulesoft_api_url');
+      const mulesoftUrl = await getSetting('mulesoft_api_url', 'http://localhost:8081');
       const fullUrl = `${mulesoftUrl}/process/approve`;
 
       const requestBody = {
