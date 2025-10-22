@@ -305,15 +305,27 @@ export const IDPResponse: React.FC = () => {
     const idpExecId = searchParams.get('idpExecutionId');
     
     if (approved === 'true' && contractAnalysis && idpExecId) {
+      console.debug('[IDPResponse] Approval detected, setting up status check');
+      
       // Set idpExecutionId if it's in the URL (from approval redirect)
       if (!idpExecutionId) {
         setIdpExecutionId(parseInt(idpExecId));
       }
-      // Reload status after approval
-      console.debug('[IDPResponse] Reloading status after approval');
-      checkProcessingStatus();
+      
+      // Only check status once by removing the approved param
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('approved');
+      
+      // Update URL without the approved flag to prevent re-triggering
+      navigate(`/idp-response/${analysisRecordId}?${newSearchParams.toString()}`, { replace: true });
+      
+      // Reload status after approval (with a small delay to ensure state is set)
+      setTimeout(() => {
+        console.debug('[IDPResponse] Checking status after approval');
+        checkProcessingStatus();
+      }, 100);
     }
-  }, [searchParams, contractAnalysis, idpExecutionId]);
+  }, [searchParams, contractAnalysis]); // Removed idpExecutionId from dependencies to prevent loop
 
   // Detect document type and render appropriate component
   const detectDocumentType = (data: any): 'purchaseOrder' | 'invoice' | 'contract' | 'generic' => {
