@@ -37,7 +37,6 @@ export const IDPResponse: React.FC = () => {
   const [contractAnalysis, setContractAnalysis] = useState<ContractAnalysis | null>(null);
   const [error, setError] = useState('');
   const [pollingAttempts, setPollingAttempts] = useState(0);
-  const [analysisRecord, setAnalysisRecord] = useState<any>(null);
   const [idpExecutionId, setIdpExecutionId] = useState<number | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
@@ -52,17 +51,6 @@ export const IDPResponse: React.FC = () => {
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let isMounted = true;
-
-    const loadAnalysisRecord = async () => {
-      try {
-        const response = await api.get(`/analysis/${analysisRecordId}`);
-        if (response.data.analysisRecord) {
-          setAnalysisRecord(response.data.analysisRecord);
-        }
-      } catch (err) {
-        console.error('Failed to load analysis record:', err);
-      }
-    };
 
     const loadContractAnalysis = async () => {
       // First, try to load immediately (in case data already exists)
@@ -142,6 +130,12 @@ export const IDPResponse: React.FC = () => {
     };
 
     loadContractAnalysis();
+    
+    // Load IDP execution ID from URL if available
+    const idpExecId = searchParams.get('idpExecutionId');
+    if (idpExecId) {
+      setIdpExecutionId(parseInt(idpExecId));
+    }
 
     return () => {
       isMounted = false;
@@ -149,7 +143,7 @@ export const IDPResponse: React.FC = () => {
         clearTimeout(timeoutId);
       }
     };
-  }, [analysisRecordId]);
+  }, [analysisRecordId, searchParams, setIdpExecutionId]);
 
   const handleAnalyze = () => {
     // Navigate to analysis setup page
@@ -407,6 +401,38 @@ export const IDPResponse: React.FC = () => {
         </div>
       </div>
 
+      {/* Status Banner for Manual Validation */}
+      {contractAnalysis && contractAnalysis.status === 'MANUAL_VALIDATION_REQUIRED' && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h3 className="font-semibold text-amber-900 mb-1">Manual Validation Required</h3>
+              <p className="text-sm text-amber-700">
+                This document requires manual review and approval before proceeding to analysis.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={checkProcessingStatus}
+                disabled={isCheckingStatus}
+                title="Refresh status"
+              >
+                <RefreshCw className={`w-4 h-4 ${isCheckingStatus ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleManualValidationClick}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                Review & Approve
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Smart Document Renderer */}
       {renderDocumentContent(contractAnalysis.mulesoftResponse)}
 
@@ -414,8 +440,10 @@ export const IDPResponse: React.FC = () => {
       <div className="flex gap-4 mt-8">
         <Button
           onClick={handleAnalyze}
+          disabled={contractAnalysis?.status !== 'SUCCEEDED'}
           size="lg"
-          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all"
+          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          title={contractAnalysis?.status !== 'SUCCEEDED' ? 'Processing must be completed successfully before analyzing' : ''}
         >
           <ArrowRight className="w-5 h-5 mr-2" />
           Continue to Analysis
@@ -428,6 +456,28 @@ export const IDPResponse: React.FC = () => {
           Back to Processing
         </Button>
       </div>
+
+      {contractAnalysis?.status !== 'SUCCEEDED' && (
+        <p className="text-sm text-gray-500 text-center mt-4">
+          {contractAnalysis?.status === 'MANUAL_VALIDATION_REQUIRED' 
+            ? 'Manual validation must be completed before proceeding to analysis.'
+            : 'Processing must complete successfully before proceeding to analysis.'}
+        </p>
+      )}
+
+      <AnypointCredentialsDialog
+        isOpen={showCredentialsDialog}
+        onClose={() => setShowCredentialsDialog(false)}
+        onSubmit={handleCredentialsSubmit}
+      />
+
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+      />
     </div>
   );
 };
