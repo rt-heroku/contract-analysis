@@ -444,10 +444,21 @@ export const IDPResponse: React.FC = () => {
           <div>
             <p className="text-sm text-gray-600 mb-1">Processing Status</p>
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-orange-600" />
-              <span className="font-medium text-orange-600 text-sm">
-                {contractAnalysis.mulesoftResponse?.status || contractAnalysis.status || 'Processing'}
-              </span>
+              {(contractAnalysis.mulesoftResponse?.status || contractAnalysis.status) === 'SUCCEEDED' ? (
+                <>
+                  <AlertCircle className="w-4 h-4 text-green-600" />
+                  <span className="font-medium text-green-600 text-sm">
+                    {contractAnalysis.mulesoftResponse?.status || contractAnalysis.status || 'Processing'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-4 h-4 text-orange-600" />
+                  <span className="font-medium text-orange-600 text-sm">
+                    {contractAnalysis.mulesoftResponse?.status || contractAnalysis.status || 'Processing'}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
