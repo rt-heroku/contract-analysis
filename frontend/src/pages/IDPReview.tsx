@@ -16,7 +16,7 @@ interface ReviewItem {
 
 export const IDPReview: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { analysisRecordId } = useParams<{ analysisRecordId: string }>();
   const [searchParams] = useSearchParams();
   
   const executionId = searchParams.get('executionId');
@@ -159,7 +159,7 @@ export const IDPReview: React.FC = () => {
 
       // Navigate back to IDP response page after a short delay
       setTimeout(() => {
-        navigate(`/idp-response/${id}?approved=true`);
+        navigate(`/idp-response/${analysisRecordId}?approved=true`);
       }, 1500);
     } catch (error: any) {
       setAlertDialog({
@@ -195,7 +195,7 @@ export const IDPReview: React.FC = () => {
           </p>
         </div>
         <Button
-          onClick={() => navigate(`/idp-response/${id}`)}
+          onClick={() => navigate(`/idp-response/${analysisRecordId}`)}
           variant="secondary"
         >
           Cancel
