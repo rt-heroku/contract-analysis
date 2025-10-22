@@ -581,7 +581,7 @@ export const IDPResponse: React.FC = () => {
         <PDFViewerModal
           isOpen={showPDFModal}
           onClose={() => setShowPDFModal(false)}
-          pdfUrl={`/api/documents/${contractAnalysis.uploadId}/file`}
+          pdfUrl={`/documents/${contractAnalysis.uploadId}/file`}
           documentName={contractAnalysis.mulesoftResponse?.documentName || contractAnalysis.documentName || 'Document'}
         />
       )}
