@@ -204,17 +204,20 @@ export const IDPReview: React.FC = () => {
 
       {/* Main Content - Split View */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* PDF Viewer */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Document</h2>
+        {/* PDF Viewer - Maximized with top navigation */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+            <h2 className="text-base font-semibold text-gray-900">Document</h2>
+          </div>
           {pdfUrl ? (
             <iframe
-              src={pdfUrl}
-              className="w-full h-[calc(100vh-16rem)] border border-gray-300 rounded-lg"
+              src={`${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+              className="w-full border-0"
+              style={{ height: 'calc(100vh - 16rem)' }}
               title="Document Preview"
             />
           ) : (
-            <div className="w-full h-[calc(100vh-16rem)] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+            <div className="w-full h-[calc(100vh-16rem)] flex items-center justify-center">
               <p className="text-gray-500">PDF not available</p>
             </div>
           )}
