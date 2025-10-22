@@ -240,6 +240,166 @@ class MuleSoftService {
       return false;
     }
   }
+  /**
+   * Get processing status from MuleSoft IDP
+   */
+  async getProcessingStatus(
+    executionId: string,
+    idpConfig: any,
+    jobId: string
+  ): Promise<any> {
+    try {
+      const mulesoftUrl = await getSettings('mulesoft_api_url');
+      const fullUrl = `${mulesoftUrl}/process/status`;
+
+      const requestBody = {
+        job_id: jobId,
+        execution_id: executionId,
+        idp_http_request: {
+          method: 'POST',
+          protocol: idpConfig.protocol,
+          host: idpConfig.host,
+          base_path: `${idpConfig.basePath}/${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          auth_client_id: idpConfig.authClientId,
+          auth_client_secret: idpConfig.authClientSecret,
+        },
+      };
+
+      logger.info('Calling MuleSoft /process/status', { 
+        url: fullUrl, 
+        executionId,
+        jobId 
+      });
+
+      const response = await axios.post(fullUrl, requestBody, {
+        timeout: this.timeout,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      return response.data;
+    } catch (error: any) {
+      logger.error('MuleSoft status check failed:', error.response?.data || error.message);
+      throw new Error(
+        error.response?.data?.error || 
+        error.response?.data?.message || 
+        'Failed to get processing status from MuleSoft'
+      );
+    }
+  }
+
+  /**
+   * Request manual review from MuleSoft IDP
+   */
+  async requestReview(
+    executionId: string,
+    idpConfig: any,
+    jobId: string,
+    anypointUsername?: string,
+    anypointPassword?: string
+  ): Promise<any> {
+    try {
+      const mulesoftUrl = await getSettings('mulesoft_api_url');
+      const fullUrl = `${mulesoftUrl}/process/review`;
+
+      const requestBody: any = {
+        job_id: jobId,
+        execution_id: executionId,
+        idp_http_request: {
+          method: 'GET',
+          protocol: idpConfig.protocol,
+          host: idpConfig.host,
+          base_path: `${idpConfig.basePath}/${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          auth_client_id: idpConfig.authClientId,
+          auth_client_secret: idpConfig.authClientSecret,
+        },
+      };
+
+      // Add Anypoint credentials if provided
+      if (anypointUsername && anypointPassword) {
+        requestBody.anypoint_username = anypointUsername;
+        requestBody.anypoint_password = anypointPassword;
+      }
+
+      logger.info('Calling MuleSoft /process/review', { 
+        url: fullUrl, 
+        executionId,
+        jobId,
+        hasCredentials: !!(anypointUsername && anypointPassword)
+      });
+
+      const response = await axios.post(fullUrl, requestBody, {
+        timeout: this.timeout,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      return response.data;
+    } catch (error: any) {
+      logger.error('MuleSoft review request failed:', error.response?.data || error.message);
+      throw new Error(
+        error.response?.data?.error || 
+        error.response?.data?.message || 
+        'Failed to request review from MuleSoft'
+      );
+    }
+  }
+
+  /**
+   * Approve manual review changes in MuleSoft IDP
+   */
+  async approveReview(
+    executionId: string,
+    idpConfig: any,
+    jobId: string,
+    approvedData: any
+  ): Promise<any> {
+    try {
+      const mulesoftUrl = await getSettings('mulesoft_api_url');
+      const fullUrl = `${mulesoftUrl}/process/approve`;
+
+      const requestBody = {
+        job_id: jobId,
+        execution_id: executionId,
+        approved_data: approvedData,
+        idp_http_request: {
+          method: 'PATCH',
+          protocol: idpConfig.protocol,
+          host: idpConfig.host,
+          base_path: `${idpConfig.basePath}/${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          auth_client_id: idpConfig.authClientId,
+          auth_client_secret: idpConfig.authClientSecret,
+        },
+      };
+
+      logger.info('Calling MuleSoft /process/approve', { 
+        url: fullUrl, 
+        executionId,
+        jobId 
+      });
+
+      const response = await axios.patch(fullUrl, requestBody, {
+        timeout: this.timeout,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      return response.data;
+    } catch (error: any) {
+      logger.error('MuleSoft approval failed:', error.response?.data || error.message);
+      throw new Error(
+        error.response?.data?.error || 
+        error.response?.data?.message || 
+        'Failed to approve review in MuleSoft'
+      );
+    }
+  }
 }
 
 export default new MuleSoftService();
