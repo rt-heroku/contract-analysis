@@ -39,9 +39,21 @@ export const IDPReview: React.FC = () => {
   });
 
   useEffect(() => {
-    loadReviewData();
-    loadPdf();
-  }, []);
+    let isMounted = true;
+    
+    const loadData = async () => {
+      if (isMounted) {
+        await loadReviewData();
+        await loadPdf();
+      }
+    };
+    
+    loadData();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [executionId, jobId, idpExecutionId, contractUploadId]);
 
   const loadReviewData = async () => {
     try {

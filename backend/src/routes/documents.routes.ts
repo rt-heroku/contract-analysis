@@ -12,6 +12,7 @@ router.post(
   documentsController.getUploadMiddleware(), 
   documentsController.uploadDocument
 );
+router.get('/:id/file', authenticate, documentsController.getDocumentFile);
 router.get('/:id/download', authenticate, documentsController.downloadDocument);
 router.delete('/:id', authenticate, documentsController.deleteDocument);
 

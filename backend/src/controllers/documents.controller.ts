@@ -152,6 +152,44 @@ class DocumentsController {
   }
 
   /**
+   * Get document file for viewing (inline)
+   */
+  async getDocumentFile(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const documentId = parseInt(req.params.id);
+      const isAdmin = req.user.roles.includes('admin');
+
+      const document = await prisma.upload.findUnique({
+        where: { id: documentId },
+      });
+
+      if (!document) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+
+      // Check permissions
+      if (!isAdmin && document.userId !== req.user.id) {
+        return res.status(403).json({ error: 'Not authorized to access this document' });
+      }
+
+      // Decode base64 file content
+      const fileBuffer = Buffer.from(document.fileContentBase64, 'base64');
+
+      // Set headers for inline viewing
+      res.setHeader('Content-Type', document.mimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${document.filename}"`);
+      res.send(fileBuffer);
+    } catch (error: any) {
+      console.error('Error getting document file:', error);
+      res.status(500).json({ error: 'Failed to get document file' });
+    }
+  }
+
+  /**
    * Download a document
    */
   async downloadDocument(req: AuthenticatedRequest, res: Response) {
