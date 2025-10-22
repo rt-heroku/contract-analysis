@@ -385,22 +385,24 @@ model Flow {
 }
 
 model IdpExecution {
-  id               Int      @id @default(autoincrement())
-  userId           Int      @map("user_id")
-  name             String   @db.VarChar(200)
-  description      String?  @db.Text
-  protocol         String   @db.VarChar(10)
-  host             String   @db.VarChar(255)
-  basePath         String   @map("base_path") @db.VarChar(255)
-  orgId            String   @map("org_id") @db.VarChar(100)
-  actionId         String   @map("action_id") @db.VarChar(100)
-  actionVersion    String   @map("action_version") @db.VarChar(50)
-  authClientId     String   @map("auth_client_id") @db.Text
-  authClientSecret String   @map("auth_client_secret") @db.Text
-  isActive         Boolean  @default(true) @map("is_active")
-  sharedWith       Json     @default("[]") @map("shared_with")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @map("user_id")
+  name               String   @db.VarChar(200)
+  description        String?  @db.Text
+  protocol           String   @db.VarChar(10)
+  host               String   @db.VarChar(255)
+  basePath           String   @map("base_path") @db.VarChar(255)
+  orgId              String   @map("org_id") @db.VarChar(100)
+  actionId           String   @map("action_id") @db.VarChar(100)
+  actionVersion      String   @map("action_version") @db.VarChar(50)
+  authClientId       String   @map("auth_client_id") @db.Text
+  authClientSecret   String   @map("auth_client_secret") @db.Text
+  anypointUsername   String?  @map("anypoint_username") @db.Text
+  anypointPassword   String?  @map("anypoint_password") @db.Text
+  isActive           Boolean  @default(true) @map("is_active")
+  sharedWith         Json     @default("[]") @map("shared_with")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
