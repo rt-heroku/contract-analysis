@@ -23,6 +23,7 @@ import { Logs } from './pages/admin/Logs';
 import { UserManagement } from './pages/admin/UserManagement';
 import { RoleManagement } from './pages/admin/RoleManagement';
 import { MenuManagement } from './pages/admin/MenuManagement';
+import { SystemEnvironment } from './pages/SystemEnvironment';
 
 const App = () => {
   return (
@@ -33,6 +34,7 @@ const App = () => {
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/sysenv" element={<SystemEnvironment />} />
 
             {/* Protected Routes */}
             <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />

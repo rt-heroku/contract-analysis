@@ -16,6 +16,7 @@ import menuRoutes from './menu.routes';
 import roleRoutes from './role.routes';
 import idpExecutionRoutes from './idpExecution.routes';
 import idpStatusRoutes from './idpStatus.routes';
+import sysenvRoutes from './sysenv.routes';
 
 const router = Router();
 
@@ -36,6 +37,7 @@ router.use('/menu', menuRoutes);
 router.use('/roles', roleRoutes);
 router.use('/idp-executions', idpExecutionRoutes);
 router.use('/idp-status', idpStatusRoutes);
+router.use('/sysenv', sysenvRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {
