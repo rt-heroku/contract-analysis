@@ -137,12 +137,24 @@ export const idpStatusController = {
       let username = anypointUsername;
       let password = anypointPassword;
 
+      console.log('[requestReview] Credentials check:', {
+        hasProvidedUsername: !!anypointUsername,
+        hasProvidedPassword: !!anypointPassword,
+        hasStoredUsername: !!idpExecution.anypointUsername,
+        hasStoredPassword: !!idpExecution.anypointPassword
+      });
+
       if (!username && idpExecution.anypointUsername) {
         username = encryption.decrypt(idpExecution.anypointUsername);
       }
       if (!password && idpExecution.anypointPassword) {
         password = encryption.decrypt(idpExecution.anypointPassword);
       }
+
+      console.log('[requestReview] Final credentials:', {
+        hasUsername: !!username,
+        hasPassword: !!password
+      });
 
       if (!username || !password) {
         return res.status(400).json({ 

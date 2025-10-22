@@ -262,7 +262,7 @@ class MuleSoftService {
           method: 'POST',
           protocol: idpConfig.protocol,
           host: idpConfig.host,
-          base_path: `${idpConfig.basePath}/${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
+          base_path: `${idpConfig.basePath}${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
           headers: {
             'Content-Type': 'application/json',
           },
@@ -314,7 +314,7 @@ class MuleSoftService {
           method: 'GET',
           protocol: idpConfig.protocol,
           host: idpConfig.host,
-          base_path: `${idpConfig.basePath}/${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
+          base_path: `${idpConfig.basePath}${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
           headers: {
             'Content-Type': 'application/json',
           },
@@ -373,7 +373,7 @@ class MuleSoftService {
           method: 'PATCH',
           protocol: idpConfig.protocol,
           host: idpConfig.host,
-          base_path: `${idpConfig.basePath}/${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
+          base_path: `${idpConfig.basePath}${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
           headers: {
             'Content-Type': 'application/json',
           },
