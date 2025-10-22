@@ -9,7 +9,6 @@ class SystemController {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      console.log('🔍 [Menu API] User ID:', req.user.id);
 
       // Get user roles
       const userRoles = await prisma.userRole.findMany({
@@ -18,11 +17,9 @@ class SystemController {
       });
 
       const roleIds = userRoles.map((ur) => ur.roleId);
-      console.log('🔍 [Menu API] Role IDs:', roleIds);
 
       // If no roles or no roleIds, return empty menu (frontend will use fallback)
       if (roleIds.length === 0) {
-        console.log('⚠️ [Menu API] No roles found for user');
         return res.json({ menu: [] });
       }
 
@@ -38,15 +35,12 @@ class SystemController {
         },
       });
 
-      console.log('🔍 [Menu API] Menu permissions count:', menuPermissions.length);
 
       // Get unique menu items
       const menuItemIds = [...new Set(menuPermissions.map((mp) => mp.menuItemId))];
-      console.log('🔍 [Menu API] Menu item IDs:', menuItemIds);
 
       // If no menu items, return empty menu (frontend will use fallback)
       if (menuItemIds.length === 0) {
-        console.log('⚠️ [Menu API] No menu items found for roles');
         return res.json({ menu: [] });
       }
 
@@ -62,19 +56,13 @@ class SystemController {
         },
       });
 
-      console.log('🔍 [Menu API] Active menu items count:', menuItems.length);
-      console.log('🔍 [Menu API] Menu items:', menuItems.map(m => ({ id: m.id, title: m.title, parentId: m.parentId })));
 
       // Build menu tree
       const menuTree = this.buildMenuTree(menuItems);
-      console.log('🔍 [Menu API] Menu tree count:', menuTree.length);
-      console.log('🔍 [Menu API] Menu tree:', menuTree.map(m => ({ id: m.id, title: m.title, children: m.children?.length })));
 
       res.json({ menu: menuTree });
     } catch (error: any) {
       // Log the error for debugging
-      console.error('❌ [Menu API] Error:', error.message);
-      console.error('❌ [Menu API] Stack:', error.stack);
       // Return empty menu on error (frontend will use fallback)
       res.json({ menu: [] });
     }
