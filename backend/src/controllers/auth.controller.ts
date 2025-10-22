@@ -9,7 +9,6 @@ import prisma from '../config/database';
 class AuthController {
   async register(req: AuthenticatedRequest, res: Response) {
     try {
-      console.debug('🔐 [Auth Controller] Register attempt for:', req.body.email);
       const user = await authService.register(req.body);
 
       // Log registration
@@ -21,7 +20,6 @@ class AuthController {
         userAgent: getUserAgent(req),
       });
 
-      console.debug('🔐 [Auth Controller] Registration successful for:', user.email);
       res.status(201).json({
         message: 'Registration successful',
         user,
@@ -37,7 +35,6 @@ class AuthController {
       const ipAddress = getClientIp(req);
       const userAgent = getUserAgent(req);
 
-      console.debug('🔐 [Auth Controller] Login attempt for:', req.body.email);
       const result = await authService.login(req.body, ipAddress, userAgent);
 
       // Log login
@@ -52,9 +49,6 @@ class AuthController {
         },
       });
 
-      console.debug('🔐 [Auth Controller] Login successful for:', result.user.email);
-      console.debug('🔐 [Auth Controller] Token generated, length:', result.token.length);
-      console.debug('🔐 [Auth Controller] Session expires at:', result.expiresAt);
 
       res.json({
         message: 'Login successful',
@@ -79,7 +73,6 @@ class AuthController {
 
   async logout(req: AuthenticatedRequest, res: Response) {
     try {
-      console.debug('🔐 [Auth Controller] Logout called');
       const token = req.headers.authorization?.substring(7);
 
       if (token) {
@@ -94,7 +87,6 @@ class AuthController {
             ipAddress: getClientIp(req),
             userAgent: getUserAgent(req),
           });
-          console.debug('🔐 [Auth Controller] User logged out:', req.user.email);
         }
       }
 
@@ -107,7 +99,6 @@ class AuthController {
 
   async getCurrentUser(req: AuthenticatedRequest, res: Response) {
     try {
-      console.debug('🔐 [Auth Controller] Get current user called for:', req.user?.id);
       if (!req.user) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
@@ -133,7 +124,6 @@ class AuthController {
       });
 
       if (!user) {
-        console.debug('🔐 [Auth Controller] User not found:', req.user.id);
         return res.status(404).json({ error: 'User not found' });
       }
 
@@ -145,7 +135,6 @@ class AuthController {
 
       const { passwordHash, ...userWithoutPassword } = user;
 
-      console.debug('🔐 [Auth Controller] Returning current user:', user.email);
       res.json({ 
         user: {
           ...userWithoutPassword,
@@ -166,7 +155,6 @@ class AuthController {
       }
 
       const { currentPassword, newPassword } = req.body;
-      console.debug('🔐 [Auth Controller] Change password called for user:', req.user.id);
 
       await authService.changePassword(req.user.id, currentPassword, newPassword);
 
@@ -179,7 +167,6 @@ class AuthController {
         userAgent: getUserAgent(req),
       });
 
-      console.debug('🔐 [Auth Controller] Password changed successfully for user:', req.user.id);
       res.json({ message: 'Password changed successfully' });
     } catch (error: any) {
       console.error('🔐 [Auth Controller] Change password error:', error);
