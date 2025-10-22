@@ -9,6 +9,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Processing } from './pages/Processing';
 import { AnalysisDetails } from './pages/AnalysisDetails';
 import { IDPResponse } from './pages/IDPResponse';
+import { IDPReview } from './pages/IDPReview';
 import { AnalysisSetup } from './pages/AnalysisSetup';
 import { Settings } from './pages/admin/Settings';
 import { Prompts } from './pages/Prompts';
@@ -43,6 +44,7 @@ const App = () => {
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
             <Route path="/history" element={<MainLayout><History /></MainLayout>} />
             <Route path="/idp-response/:analysisRecordId" element={<MainLayout><IDPResponse /></MainLayout>} />
+            <Route path="/idp-review/:analysisRecordId" element={<MainLayout><IDPReview /></MainLayout>} />
             <Route path="/analysis-setup/:analysisRecordId" element={<MainLayout><AnalysisSetup /></MainLayout>} />
             <Route path="/analysis/:id" element={<MainLayout><AnalysisDetails /></MainLayout>} />
             <Route path="/admin/settings" element={<MainLayout><Settings /></MainLayout>} />

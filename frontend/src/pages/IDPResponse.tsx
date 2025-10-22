@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { Loading } from '@/components/common/Loading';
@@ -7,15 +7,19 @@ import { GenericIDPRenderer } from '@/components/idp/GenericIDPRenderer';
 import { ContractRenderer } from '@/components/idp/ContractRenderer';
 import { PurchaseOrderRenderer } from '@/components/idp/PurchaseOrderRenderer';
 import { InvoiceRenderer } from '@/components/idp/InvoiceRenderer';
+import { AnypointCredentialsDialog } from '@/components/modals/AnypointCredentialsDialog';
+import { AlertDialog } from '@/components/common/AlertDialog';
 import { 
   ArrowRight, 
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 
 interface ContractAnalysis {
   id: number;
   uploadId: number;
   jobId: string;
+  executionId?: string;
   documentName: string;
   status: string;
   terms: string[];
@@ -27,14 +31,38 @@ interface ContractAnalysis {
 export const IDPResponse: React.FC = () => {
   const navigate = useNavigate();
   const { analysisRecordId } = useParams<{ analysisRecordId: string }>();
+  const [searchParams] = useSearchParams();
+  
   const [loading, setLoading] = useState(true);
   const [contractAnalysis, setContractAnalysis] = useState<ContractAnalysis | null>(null);
   const [error, setError] = useState('');
   const [pollingAttempts, setPollingAttempts] = useState(0);
+  const [analysisRecord, setAnalysisRecord] = useState<any>(null);
+  const [idpExecutionId, setIdpExecutionId] = useState<number | null>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
+  
+  const [alertDialog, setAlertDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info' as 'success' | 'error' | 'warning' | 'info',
+  });
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let isMounted = true;
+
+    const loadAnalysisRecord = async () => {
+      try {
+        const response = await api.get(`/analysis/${analysisRecordId}`);
+        if (response.data.analysisRecord) {
+          setAnalysisRecord(response.data.analysisRecord);
+        }
+      } catch (err) {
+        console.error('Failed to load analysis record:', err);
+      }
+    };
 
     const loadContractAnalysis = async () => {
       // First, try to load immediately (in case data already exists)
@@ -127,6 +155,112 @@ export const IDPResponse: React.FC = () => {
     // Navigate to analysis setup page
     navigate(`/analysis-setup/${analysisRecordId}`);
   };
+
+  const checkProcessingStatus = async () => {
+    if (!contractAnalysis || !contractAnalysis.executionId || !idpExecutionId) {
+      return;
+    }
+
+    try {
+      setIsCheckingStatus(true);
+      const response = await api.post('/idp-status/status', {
+        executionId: contractAnalysis.executionId,
+        jobId: contractAnalysis.jobId,
+        idpExecutionId: idpExecutionId,
+      });
+
+      if (response.data.status) {
+        // Update contract analysis with new status
+        setContractAnalysis(prev => prev ? {
+          ...prev,
+          status: response.data.status.status || response.data.status.documentStatus || prev.status,
+          mulesoftResponse: response.data.status,
+        } : null);
+      }
+    } catch (error: any) {
+      console.error('Failed to check status:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to check processing status',
+        type: 'error',
+      });
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
+  const handleManualValidationClick = async () => {
+    if (!contractAnalysis || !contractAnalysis.executionId) {
+      return;
+    }
+
+    // Try to request review (may need credentials)
+    try {
+      const response = await api.post('/idp-status/review', {
+        executionId: contractAnalysis.executionId,
+        jobId: contractAnalysis.jobId,
+        idpExecutionId: idpExecutionId,
+      });
+
+      if (response.data.review) {
+        // Navigate to review page with the data
+        navigate(`/idp-review/${analysisRecordId}?executionId=${contractAnalysis.executionId}&jobId=${contractAnalysis.jobId}&idpExecutionId=${idpExecutionId}&contractUploadId=${contractAnalysis.uploadId}`);
+      }
+    } catch (error: any) {
+      if (error.response?.data?.needsCredentials) {
+        // Show credentials dialog
+        setShowCredentialsDialog(true);
+      } else {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Error',
+          message: error.response?.data?.error || 'Failed to request review',
+          type: 'error',
+        });
+      }
+    }
+  };
+
+  const handleCredentialsSubmit = async (username: string, password: string, saveCredentials: boolean) => {
+    if (!contractAnalysis || !contractAnalysis.executionId) {
+      return;
+    }
+
+    try {
+      const response = await api.post('/idp-status/review', {
+        executionId: contractAnalysis.executionId,
+        jobId: contractAnalysis.jobId,
+        idpExecutionId: idpExecutionId,
+        anypointUsername: username,
+        anypointPassword: password,
+        saveCredentials: saveCredentials,
+      });
+
+      setShowCredentialsDialog(false);
+
+      if (response.data.review) {
+        // Navigate to review page
+        navigate(`/idp-review/${analysisRecordId}?executionId=${contractAnalysis.executionId}&jobId=${contractAnalysis.jobId}&idpExecutionId=${idpExecutionId}&contractUploadId=${contractAnalysis.uploadId}`);
+      }
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to request review with credentials',
+        type: 'error',
+      });
+    }
+  };
+
+  // Check if we need to poll status on mount or when approved
+  useEffect(() => {
+    const approved = searchParams.get('approved');
+    if (approved === 'true' && contractAnalysis) {
+      // Reload status after approval
+      checkProcessingStatus();
+    }
+  }, [searchParams, contractAnalysis]);
 
   // Detect document type and render appropriate component
   const detectDocumentType = (data: any): 'purchaseOrder' | 'invoice' | 'contract' | 'generic' => {
