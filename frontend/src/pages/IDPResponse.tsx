@@ -59,7 +59,7 @@ export const IDPResponse: React.FC = () => {
         
         if (response.data.contractAnalysis) {
           // Data already exists! Load it immediately (no polling needed)
-          console.log('IDP response already exists, loading immediately');
+          console.debug('[IDPResponse] Data already exists, loading immediately');
           if (isMounted) {
             setContractAnalysis(response.data.contractAnalysis);
             setLoading(false);
@@ -69,7 +69,7 @@ export const IDPResponse: React.FC = () => {
         }
       } catch (err: any) {
         // If data doesn't exist yet, we'll start polling below
-        console.log('IDP response not ready yet, starting polling...');
+        console.debug('[IDPResponse] Data not ready yet, starting polling...');
       }
 
       // Data doesn't exist yet, start polling
@@ -152,11 +152,28 @@ export const IDPResponse: React.FC = () => {
 
   const checkProcessingStatus = async () => {
     if (!contractAnalysis || !contractAnalysis.executionId || !idpExecutionId) {
+      console.debug('[IDPResponse] Cannot check status:', { 
+        hasContractAnalysis: !!contractAnalysis, 
+        hasExecutionId: !!contractAnalysis?.executionId, 
+        hasIdpExecutionId: !!idpExecutionId 
+      });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Missing Information',
+        message: 'Cannot check status: Missing execution ID or IDP configuration',
+        type: 'warning',
+      });
       return;
     }
 
     try {
       setIsCheckingStatus(true);
+      console.debug('[IDPResponse] Checking status for:', {
+        executionId: contractAnalysis.executionId,
+        jobId: contractAnalysis.jobId,
+        idpExecutionId,
+      });
+      
       const response = await api.post('/idp-status/status', {
         executionId: contractAnalysis.executionId,
         jobId: contractAnalysis.jobId,
@@ -164,12 +181,20 @@ export const IDPResponse: React.FC = () => {
       });
 
       if (response.data.status) {
+        console.debug('[IDPResponse] Status updated:', response.data.status);
         // Update contract analysis with new status
         setContractAnalysis(prev => prev ? {
           ...prev,
           status: response.data.status.status || response.data.status.documentStatus || prev.status,
           mulesoftResponse: response.data.status,
         } : null);
+        
+        setAlertDialog({
+          isOpen: true,
+          title: 'Status Updated',
+          message: 'Document processing status has been refreshed',
+          type: 'success',
+        });
       }
     } catch (error: any) {
       console.error('Failed to check status:', error);
@@ -186,11 +211,27 @@ export const IDPResponse: React.FC = () => {
 
   const handleManualValidationClick = async () => {
     if (!contractAnalysis || !contractAnalysis.executionId) {
+      console.debug('[IDPResponse] Cannot request review:', { 
+        hasContractAnalysis: !!contractAnalysis, 
+        hasExecutionId: !!contractAnalysis?.executionId 
+      });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Missing Information',
+        message: 'Cannot request review: Missing execution ID',
+        type: 'warning',
+      });
       return;
     }
 
     // Try to request review (may need credentials)
     try {
+      console.debug('[IDPResponse] Requesting review for:', {
+        executionId: contractAnalysis.executionId,
+        jobId: contractAnalysis.jobId,
+        idpExecutionId,
+      });
+      
       const response = await api.post('/idp-status/review', {
         executionId: contractAnalysis.executionId,
         jobId: contractAnalysis.jobId,
@@ -198,11 +239,14 @@ export const IDPResponse: React.FC = () => {
       });
 
       if (response.data.review) {
+        console.debug('[IDPResponse] Review data received, navigating to review page');
         // Navigate to review page with the data
         navigate(`/idp-review/${analysisRecordId}?executionId=${contractAnalysis.executionId}&jobId=${contractAnalysis.jobId}&idpExecutionId=${idpExecutionId}&contractUploadId=${contractAnalysis.uploadId}`);
       }
     } catch (error: any) {
+      console.error('[IDPResponse] Failed to request review:', error);
       if (error.response?.data?.needsCredentials) {
+        console.debug('[IDPResponse] Credentials required, showing dialog');
         // Show credentials dialog
         setShowCredentialsDialog(true);
       } else {

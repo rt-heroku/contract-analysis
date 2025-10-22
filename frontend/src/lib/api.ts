@@ -15,7 +15,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    console.log('🌐 [API] Request to:', config.url, '- Token:', token ? `${token.substring(0, 20)}...` : 'NONE');
+    console.debug('🌐 [API] Request to:', config.url, '- Token:', token ? `${token.substring(0, 20)}...` : 'NONE');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -30,7 +30,7 @@ api.interceptors.request.use(
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => {
-    console.log('🌐 [API] Response from:', response.config.url, '- Status:', response.status);
+    console.debug('🌐 [API] Response from:', response.config.url, '- Status:', response.status);
     return response;
   },
   (error: AxiosError) => {

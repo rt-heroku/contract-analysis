@@ -12,19 +12,19 @@ interface MainLayoutProps {
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const { user, isLoading } = useAuth();
 
-  console.log('🏗️ [MainLayout] Render - isLoading:', isLoading, 'user:', user?.email);
+  console.debug('🏗️ [MainLayout] Render - isLoading:', isLoading, 'user:', user?.email);
 
   if (isLoading) {
-    console.log('🏗️ [MainLayout] Still loading...');
+    console.debug('🏗️ [MainLayout] Still loading...');
     return <Loading fullScreen text="Loading..." />;
   }
 
   if (!user) {
-    console.log('🏗️ [MainLayout] No user found, redirecting to login');
+    console.debug('🏗️ [MainLayout] No user found, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
-  console.log('🏗️ [MainLayout] User authenticated, rendering layout');
+  console.debug('🏗️ [MainLayout] User authenticated, rendering layout');
 
   return (
     <div className="flex h-screen bg-gray-50">
