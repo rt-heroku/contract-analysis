@@ -9,6 +9,7 @@ import { Loading } from '@/components/common/Loading';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Modal } from '@/components/common/Modal';
+import { IconPicker } from '@/components/common/IconPicker';
 import { 
   Menu, Plus, Edit, Trash2, Save, X, GripVertical, 
   ExternalLink, ChevronRight, ChevronDown, FolderPlus, RefreshCw, RotateCcw
@@ -783,10 +784,10 @@ export const MenuManagement: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Icon
                   </label>
-                  <Input
-                    value={formData.icon}
-                    onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
-                    placeholder="Icon name (e.g., Home, Users)"
+                  <IconPicker
+                    value={formData.icon || ''}
+                    onChange={(iconName) => setFormData({ ...formData, icon: iconName })}
+                    placeholder="Select an icon"
                   />
                 </div>
 
