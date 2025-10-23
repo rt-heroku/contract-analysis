@@ -114,7 +114,7 @@ export const AnalysisSetup: React.FC = () => {
       setUploading(true);
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('fileType', 'data');
+      formData.append('uploadType', 'data');
       formData.append('analysisRecordId', analysisRecordId || '');
 
       const response = await api.post('/uploads', formData, {
