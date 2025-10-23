@@ -75,7 +75,8 @@ export const UPLOAD_TYPES = {
 } as const;
 
 export const FILE_SIZE_LIMITS = {
-  PDF: parseInt(process.env.MAX_FILE_SIZE_PDF || '10485760'), // 10MB
+  PDF: parseInt(process.env.MAX_FILE_SIZE_PDF || '8388608'), // 8MB
+  IMAGE: parseInt(process.env.MAX_FILE_SIZE_IMAGE || '8388608'), // 8MB
   EXCEL: parseInt(process.env.MAX_FILE_SIZE_EXCEL || '52428800'), // 50MB
 } as const;
 

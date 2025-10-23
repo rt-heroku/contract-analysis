@@ -27,14 +27,15 @@ class UploadController {
       if (!isValidFileType(req.file.mimetype, uploadType)) {
         return res.status(400).json({
           error: `Invalid file type for ${uploadType}. Expected ${
-            uploadType === 'contract' ? 'PDF' : 'Excel/CSV'
+            uploadType === 'contract' ? 'PDF, PNG, JPG, or TIFF' : 'Excel/CSV'
           }`,
         });
       }
 
-      // Validate file size
-      const maxSize =
-        uploadType === 'contract' ? FILE_SIZE_LIMITS.PDF : FILE_SIZE_LIMITS.EXCEL;
+      // Validate file size (8MB for images/PDFs, 10MB for Excel)
+      const maxSize = uploadType === 'contract' 
+        ? (req.file.mimetype.startsWith('image/') ? FILE_SIZE_LIMITS.IMAGE : FILE_SIZE_LIMITS.PDF)
+        : FILE_SIZE_LIMITS.EXCEL;
 
       if (req.file.size > maxSize) {
         return res.status(400).json({

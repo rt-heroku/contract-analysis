@@ -4,6 +4,7 @@ import authService from '../services/auth.service';
 import loggingService from '../services/logging.service';
 import { ACTION_TYPES } from '../utils/constants';
 import { getClientIp, getUserAgent } from '../utils/helpers';
+import prisma from '../config/database';
 
 class AuthController {
   async register(req: AuthenticatedRequest, res: Response) {
@@ -24,6 +25,7 @@ class AuthController {
         user,
       });
     } catch (error: any) {
+      console.error('🔐 [Auth Controller] Registration error:', error);
       res.status(400).json({ error: error.message });
     }
   }
@@ -47,6 +49,7 @@ class AuthController {
         },
       });
 
+
       res.json({
         message: 'Login successful',
         token: result.token,
@@ -54,6 +57,7 @@ class AuthController {
         user: result.user,
       });
     } catch (error: any) {
+      console.error('🔐 [Auth Controller] Login error:', error);
       // Log failed login
       await loggingService.logActivity({
         actionType: ACTION_TYPES.AUTH.LOGIN_FAILED,
@@ -88,41 +92,8 @@ class AuthController {
 
       res.json({ message: 'Logout successful' });
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  }
-
-  async refreshToken(req: AuthenticatedRequest, res: Response) {
-    try {
-      const oldToken = req.headers.authorization?.substring(7);
-
-      if (!oldToken) {
-        return res.status(401).json({ error: 'No token provided' });
-      }
-
-      const ipAddress = getClientIp(req);
-      const userAgent = getUserAgent(req);
-
-      const result = await authService.refreshToken(oldToken, ipAddress, userAgent);
-
-      // Log token refresh
-      if (req.user) {
-        await loggingService.logActivity({
-          userId: req.user.id,
-          actionType: ACTION_TYPES.AUTH.REFRESH,
-          actionDescription: `Token refreshed for user: ${req.user.email}`,
-          ipAddress,
-          userAgent,
-        });
-      }
-
-      res.json({
-        message: 'Token refreshed',
-        token: result.token,
-        expiresAt: result.expiresAt,
-      });
-    } catch (error: any) {
-      res.status(401).json({ error: error.message });
+      console.error('🔐 [Auth Controller] Logout error:', error);
+      res.status(500).json({ error: error.message });
     }
   }
 
@@ -132,13 +103,76 @@ class AuthController {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      res.json({ user: req.user });
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: {
+          userRoles: {
+            include: {
+              role: {
+                include: {
+                  rolePermissions: {
+                    include: {
+                      permission: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          profile: true,
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Extract roles and permissions
+      const roles = user.userRoles.map((ur) => ur.role.name);
+      const permissions = user.userRoles.flatMap((ur) =>
+        ur.role.rolePermissions.map((rp) => rp.permission.name)
+      );
+
+      const { passwordHash, ...userWithoutPassword } = user;
+
+      res.json({ 
+        user: {
+          ...userWithoutPassword,
+          roles,
+          permissions,
+        }
+      });
     } catch (error: any) {
+      console.error('🔐 [Auth Controller] Get current user error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async changePassword(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      await authService.changePassword(req.user.id, currentPassword, newPassword);
+
+      // Log password change
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: 'auth.change_password',
+        actionDescription: 'User changed password',
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.json({ message: 'Password changed successfully' });
+    } catch (error: any) {
+      console.error('🔐 [Auth Controller] Change password error:', error);
       res.status(400).json({ error: error.message });
     }
   }
 }
 
 export default new AuthController();
-
-

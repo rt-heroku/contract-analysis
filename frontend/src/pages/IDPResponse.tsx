@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { Loading } from '@/components/common/Loading';
@@ -7,15 +7,23 @@ import { GenericIDPRenderer } from '@/components/idp/GenericIDPRenderer';
 import { ContractRenderer } from '@/components/idp/ContractRenderer';
 import { PurchaseOrderRenderer } from '@/components/idp/PurchaseOrderRenderer';
 import { InvoiceRenderer } from '@/components/idp/InvoiceRenderer';
+import { AnypointCredentialsDialog } from '@/components/modals/AnypointCredentialsDialog';
+import { AlertDialog } from '@/components/common/AlertDialog';
+import { PDFViewerModal } from '@/components/modals/PDFViewerModal';
 import { 
   ArrowRight, 
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
+import { Card } from '@/components/common/Card';
 
 interface ContractAnalysis {
   id: number;
   uploadId: number;
   jobId: string;
+  executionId?: string;
+  idpExecutionId?: number;
   documentName: string;
   status: string;
   terms: string[];
@@ -27,10 +35,23 @@ interface ContractAnalysis {
 export const IDPResponse: React.FC = () => {
   const navigate = useNavigate();
   const { analysisRecordId } = useParams<{ analysisRecordId: string }>();
+  const [searchParams] = useSearchParams();
+  
   const [loading, setLoading] = useState(true);
   const [contractAnalysis, setContractAnalysis] = useState<ContractAnalysis | null>(null);
   const [error, setError] = useState('');
   const [pollingAttempts, setPollingAttempts] = useState(0);
+  const [idpExecutionId, setIdpExecutionId] = useState<number | null>(null);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
+  const [showPDFModal, setShowPDFModal] = useState(false);
+  
+  const [alertDialog, setAlertDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info' as 'success' | 'error' | 'warning' | 'info',
+  });
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -43,7 +64,7 @@ export const IDPResponse: React.FC = () => {
         
         if (response.data.contractAnalysis) {
           // Data already exists! Load it immediately (no polling needed)
-          console.log('IDP response already exists, loading immediately');
+          console.debug('[IDPResponse] Data already exists, loading immediately');
           if (isMounted) {
             setContractAnalysis(response.data.contractAnalysis);
             setLoading(false);
@@ -53,12 +74,12 @@ export const IDPResponse: React.FC = () => {
         }
       } catch (err: any) {
         // If data doesn't exist yet, we'll start polling below
-        console.log('IDP response not ready yet, starting polling...');
+        console.debug('[IDPResponse] Data not ready yet, starting polling...');
       }
 
       // Data doesn't exist yet, start polling
       const pollContractAnalysis = async () => {
-        const maxAttempts = 30; // 30 attempts * 2 seconds = 60 seconds max
+        const maxAttempts = 60; // 60 attempts * 10 seconds = 600 seconds (10 minutes) max
         let attempts = 0;
 
         const poll = async () => {
@@ -79,7 +100,7 @@ export const IDPResponse: React.FC = () => {
               // Still processing, try again
               attempts++;
               if (attempts < maxAttempts && isMounted) {
-                timeoutId = setTimeout(poll, 2000); // Poll every 2 seconds
+                timeoutId = setTimeout(poll, 10000); // Poll every 10 seconds
               } else if (isMounted) {
                 setError('Timeout: Contract processing is taking longer than expected. Please try again.');
                 setLoading(false);
@@ -92,7 +113,7 @@ export const IDPResponse: React.FC = () => {
             if (errorMessage.includes('not yet available') || errorMessage.includes('Please wait')) {
               attempts++;
               if (attempts < maxAttempts && isMounted) {
-                timeoutId = setTimeout(poll, 2000);
+                timeoutId = setTimeout(poll, 10000); // Poll every 10 seconds
               } else if (isMounted) {
                 setError('Timeout: Contract processing is taking longer than expected. Please try again.');
                 setLoading(false);
@@ -115,21 +136,207 @@ export const IDPResponse: React.FC = () => {
 
     loadContractAnalysis();
 
+    // Load IDP execution ID from URL if available
+    const idpExecId = searchParams.get('idpExecutionId');
+    if (idpExecId) {
+      setIdpExecutionId(parseInt(idpExecId));
+    }
+
     return () => {
       isMounted = false;
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
     };
-  }, [analysisRecordId]);
+  }, [analysisRecordId, searchParams]); // Removed contractAnalysis to prevent re-polling loop
+
+  // Separate effect to handle idpExecutionId fallback from contractAnalysis
+  useEffect(() => {
+    if (!idpExecutionId && contractAnalysis?.idpExecutionId) {
+      setIdpExecutionId(contractAnalysis.idpExecutionId);
+    }
+  }, [contractAnalysis, idpExecutionId]);
 
   const handleAnalyze = () => {
     // Navigate to analysis setup page
     navigate(`/analysis-setup/${analysisRecordId}`);
   };
 
+  const checkProcessingStatus = async () => {
+    if (!contractAnalysis || !contractAnalysis.executionId || !idpExecutionId) {
+      console.debug('[IDPResponse] Cannot check status:', { 
+        hasContractAnalysis: !!contractAnalysis, 
+        hasExecutionId: !!contractAnalysis?.executionId, 
+        hasIdpExecutionId: !!idpExecutionId 
+      });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Missing Information',
+        message: 'Cannot check status: Missing execution ID or IDP configuration',
+        type: 'warning',
+      });
+      return;
+    }
+
+    try {
+      setIsCheckingStatus(true);
+      console.debug('[IDPResponse] Checking status for:', {
+        executionId: contractAnalysis.executionId,
+        jobId: contractAnalysis.jobId,
+        idpExecutionId,
+      });
+      
+      const response = await api.post('/idp-status/status', {
+        executionId: contractAnalysis.executionId,
+        jobId: contractAnalysis.jobId,
+        idpExecutionId: idpExecutionId,
+      });
+
+      if (response.data.status) {
+        console.debug('[IDPResponse] Status updated:', response.data.status);
+        // Update contract analysis with new status
+        setContractAnalysis(prev => prev ? {
+          ...prev,
+          status: response.data.status.status || response.data.status.documentStatus || prev.status,
+          mulesoftResponse: response.data.status,
+        } : null);
+        
+        setAlertDialog({
+          isOpen: true,
+          title: 'Status Updated',
+          message: 'Document processing status has been refreshed',
+          type: 'success',
+        });
+      }
+    } catch (error: any) {
+      console.error('Failed to check status:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to check processing status',
+        type: 'error',
+      });
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
+  const handleManualValidationClick = async () => {
+    if (!contractAnalysis || !contractAnalysis.executionId) {
+      console.debug('[IDPResponse] Cannot request review:', { 
+        hasContractAnalysis: !!contractAnalysis, 
+        hasExecutionId: !!contractAnalysis?.executionId 
+      });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Missing Information',
+        message: 'Cannot request review: Missing execution ID',
+        type: 'warning',
+      });
+      return;
+    }
+
+    // Try to request review (may need credentials)
+    try {
+      console.debug('[IDPResponse] Requesting review for:', {
+        executionId: contractAnalysis.executionId,
+        jobId: contractAnalysis.jobId,
+        idpExecutionId,
+      });
+      
+      const response = await api.post('/idp-status/review', {
+        executionId: contractAnalysis.executionId,
+        jobId: contractAnalysis.jobId,
+        idpExecutionId: idpExecutionId,
+      });
+
+      if (response.data.review) {
+        console.debug('[IDPResponse] Review data received, navigating to review page');
+        // Navigate to review page with the data
+        navigate(`/idp-review/${analysisRecordId}?executionId=${contractAnalysis.executionId}&jobId=${contractAnalysis.jobId}&idpExecutionId=${idpExecutionId}&contractUploadId=${contractAnalysis.uploadId}`);
+      }
+    } catch (error: any) {
+      console.error('[IDPResponse] Failed to request review:', error);
+      if (error.response?.data?.needsCredentials) {
+        console.debug('[IDPResponse] Credentials required, showing dialog');
+        // Show credentials dialog
+        setShowCredentialsDialog(true);
+      } else {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Error',
+          message: error.response?.data?.error || 'Failed to request review',
+          type: 'error',
+        });
+      }
+    }
+  };
+
+  const handleCredentialsSubmit = async (username: string, password: string, saveCredentials: boolean) => {
+    if (!contractAnalysis || !contractAnalysis.executionId) {
+      return;
+    }
+
+    try {
+      const response = await api.post('/idp-status/review', {
+        executionId: contractAnalysis.executionId,
+        jobId: contractAnalysis.jobId,
+        idpExecutionId: idpExecutionId,
+        anypointUsername: username,
+        anypointPassword: password,
+        saveCredentials: saveCredentials,
+      });
+
+      setShowCredentialsDialog(false);
+
+      if (response.data.review) {
+        // Navigate to review page
+        navigate(`/idp-review/${analysisRecordId}?executionId=${contractAnalysis.executionId}&jobId=${contractAnalysis.jobId}&idpExecutionId=${idpExecutionId}&contractUploadId=${contractAnalysis.uploadId}`);
+      }
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to request review with credentials',
+        type: 'error',
+      });
+    }
+  };
+
+  // Check if we need to poll status on mount or when approved
+  useEffect(() => {
+    const approved = searchParams.get('approved');
+    const idpExecId = searchParams.get('idpExecutionId');
+    
+    if (approved === 'true' && contractAnalysis && idpExecId) {
+      console.debug('[IDPResponse] Approval detected, setting up status check');
+      
+      // Set idpExecutionId if it's in the URL (from approval redirect)
+      if (!idpExecutionId) {
+        setIdpExecutionId(parseInt(idpExecId));
+      }
+      
+      // Only check status once by removing the approved param
+      const newSearchParams = new URLSearchParams(searchParams);
+      newSearchParams.delete('approved');
+      
+      // Update URL without the approved flag to prevent re-triggering
+      navigate(`/idp-response/${analysisRecordId}?${newSearchParams.toString()}`, { replace: true });
+      
+      // Reload status after approval (with a small delay to ensure state is set)
+      setTimeout(() => {
+        console.debug('[IDPResponse] Checking status after approval');
+        checkProcessingStatus();
+      }, 100);
+    }
+  }, [searchParams, contractAnalysis]); // Removed idpExecutionId from dependencies to prevent loop
+
   // Detect document type and render appropriate component
   const detectDocumentType = (data: any): 'purchaseOrder' | 'invoice' | 'contract' | 'generic' => {
+    // If this is the generic IDP response (no specific fields), use generic renderer
+    if (data && typeof data === 'object' && Array.isArray(data.results)) {
+      return 'generic';
+    }
     if (!data) return 'generic';
     
     // Check if it's a paginated response
@@ -147,8 +354,8 @@ export const IDPResponse: React.FC = () => {
       }
     }
     
-    // Default to contract for non-paginated or unrecognized documents
-    return 'contract';
+    // Default to contract for paginated or recognized documents, otherwise generic
+    return Array.isArray(data.pages) ? 'contract' : 'generic';
   };
 
   const renderDocumentContent = (data: any) => {
@@ -247,13 +454,28 @@ export const IDPResponse: React.FC = () => {
 
       {/* Document Information Card */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Document Information</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-gray-900">Document Information</h2>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={checkProcessingStatus}
+            disabled={isCheckingStatus}
+            title="Refresh status"
+          >
+            <RefreshCw className={`w-4 h-4 ${isCheckingStatus ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <p className="text-sm text-gray-600 mb-1">Document Name</p>
-            <p className="font-medium text-gray-900">
+            <button
+              onClick={() => setShowPDFModal(true)}
+              className="font-medium text-primary-600 hover:text-primary-700 underline text-left transition-colors"
+            >
               {contractAnalysis.mulesoftResponse?.documentName || contractAnalysis.documentName || 'N/A'}
-            </p>
+            </button>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Document ID</p>
@@ -264,27 +486,87 @@ export const IDPResponse: React.FC = () => {
           <div>
             <p className="text-sm text-gray-600 mb-1">Processing Status</p>
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-orange-600" />
-              <span className="font-medium text-orange-600 text-sm">
-                {contractAnalysis.mulesoftResponse?.status || contractAnalysis.status || 'Processing'}
-              </span>
+              {(contractAnalysis.mulesoftResponse?.status || contractAnalysis.status) === 'SUCCEEDED' ? (
+                <>
+                  <AlertCircle className="w-4 h-4 text-green-600" />
+                  <span className="font-medium text-green-600 text-sm">
+                    {contractAnalysis.mulesoftResponse?.status || contractAnalysis.status || 'Processing'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-4 h-4 text-orange-600" />
+                  <span className="font-medium text-orange-600 text-sm">
+                    {contractAnalysis.mulesoftResponse?.status || contractAnalysis.status || 'Processing'}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
 
+      {/* Status Banner for Manual Validation */}
+      {contractAnalysis && contractAnalysis.status === 'MANUAL_VALIDATION_REQUIRED' && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h3 className="font-semibold text-amber-900 mb-1">Manual Validation Required</h3>
+              <p className="text-sm text-amber-700">
+                This document requires manual review and approval before proceeding to analysis.
+              </p>
+            </div>
+            <div>
+              <Button
+                size="sm"
+                onClick={handleManualValidationClick}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                Review & Approve
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Smart Document Renderer */}
       {renderDocumentContent(contractAnalysis.mulesoftResponse)}
+
+      {/* Full MuleSoft IDP Response (Raw JSON) - Collapsible */}
+      {contractAnalysis?.mulesoftResponse && (
+        <Card title="Full MuleSoft IDP Response (Raw JSON)">
+          <details className="cursor-pointer">
+            <summary className="text-sm font-medium text-gray-700 hover:text-gray-900 py-2">
+              Click to expand raw JSON response
+            </summary>
+            <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-xs mt-2 border border-gray-200 font-mono">
+              {JSON.stringify(contractAnalysis.mulesoftResponse, null, 2)}
+            </pre>
+          </details>
+        </Card>
+      )}
 
       {/* Action Buttons */}
       <div className="flex gap-4 mt-8">
         <Button
           onClick={handleAnalyze}
+          disabled={contractAnalysis?.status !== 'SUCCEEDED'}
           size="lg"
-          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all"
+          className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          title={contractAnalysis?.status !== 'SUCCEEDED' ? 'Processing must be completed successfully before analyzing' : ''}
         >
           <ArrowRight className="w-5 h-5 mr-2" />
           Continue to Analysis
+        </Button>
+        
+        <Button
+          onClick={() => window.open('https://anypoint.mulesoft.com/idp/tasks', '_blank')}
+          variant="secondary"
+          size="lg"
+          className="border-2 border-primary-300 text-primary-700 hover:bg-primary-50 shadow-md hover:shadow-lg transition-all"
+        >
+          <ExternalLink className="w-5 h-5 mr-2" />
+          Open in IDP
         </Button>
         <Button
           variant="secondary"
@@ -294,6 +576,37 @@ export const IDPResponse: React.FC = () => {
           Back to Processing
         </Button>
       </div>
+
+      {contractAnalysis?.status !== 'SUCCEEDED' && (
+        <p className="text-sm text-gray-500 text-center mt-4">
+          {contractAnalysis?.status === 'MANUAL_VALIDATION_REQUIRED' 
+            ? 'Manual validation must be completed before proceeding to analysis.'
+            : 'Processing must complete successfully before proceeding to analysis.'}
+        </p>
+      )}
+
+      <AnypointCredentialsDialog
+        isOpen={showCredentialsDialog}
+        onClose={() => setShowCredentialsDialog(false)}
+        onSubmit={handleCredentialsSubmit}
+      />
+
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+      />
+
+      {contractAnalysis && (
+        <PDFViewerModal
+          isOpen={showPDFModal}
+          onClose={() => setShowPDFModal(false)}
+          pdfUrl={`/documents/${contractAnalysis.uploadId}/file`}
+          documentName={contractAnalysis.mulesoftResponse?.documentName || contractAnalysis.documentName || 'Document'}
+        />
+      )}
     </div>
   );
 };

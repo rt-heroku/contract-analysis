@@ -14,25 +14,35 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    console.debug('🌐 [API] Request to:', config.url, '- Token:', token ? `${token.substring(0, 20)}...` : 'NONE');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => {
+    console.error('🌐 [API] Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
 
 // Response interceptor to handle errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.debug('🌐 [API] Response from:', response.config.url, '- Status:', response.status);
+    return response;
+  },
   (error: AxiosError) => {
+    console.error('🌐 [API] Response error:', error.response?.status, error.response?.data);
     if (error.response?.status === 401) {
       // Token expired or invalid
+      console.error('🌐 [API] 401 UNAUTHORIZED - Clearing auth and redirecting to login');
+      console.trace('🌐 [API] 401 stack trace');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -48,4 +58,3 @@ export const handleApiError = (error: any): string => {
 };
 
 export default api;
-

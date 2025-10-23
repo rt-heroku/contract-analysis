@@ -30,7 +30,15 @@ export const isValidFileType = (
   uploadType: 'contract' | 'data'
 ): boolean => {
   if (uploadType === 'contract') {
-    return mimetype === 'application/pdf';
+    const validTypes = [
+      'application/pdf',
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+      'image/tiff',
+      'image/tif'
+    ];
+    return validTypes.includes(mimetype);
   } else {
     return (
       mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||

@@ -50,6 +50,7 @@ export const authenticateToken = async (
 
     next();
   } catch (error: any) {
+    console.error('🔐 [Auth Middleware] Authentication error:', error);
     logger.error('Authentication error:', error);
     return res.status(401).json({ error: 'Authentication failed' });
   }
@@ -81,7 +82,9 @@ export const optionalAuthenticate = async (
 
       if (session) {
         req.user = payload;
+      } else {
       }
+    } else {
     }
 
     next();
@@ -90,4 +93,3 @@ export const optionalAuthenticate = async (
     next();
   }
 };
-

@@ -9,6 +9,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Processing } from './pages/Processing';
 import { AnalysisDetails } from './pages/AnalysisDetails';
 import { IDPResponse } from './pages/IDPResponse';
+import { IDPReview } from './pages/IDPReview';
 import { AnalysisSetup } from './pages/AnalysisSetup';
 import { Settings } from './pages/admin/Settings';
 import { Prompts } from './pages/Prompts';
@@ -22,6 +23,7 @@ import { Logs } from './pages/admin/Logs';
 import { UserManagement } from './pages/admin/UserManagement';
 import { RoleManagement } from './pages/admin/RoleManagement';
 import { MenuManagement } from './pages/admin/MenuManagement';
+import { SystemEnvironment } from './pages/SystemEnvironment';
 
 const App = () => {
   return (
@@ -32,6 +34,7 @@ const App = () => {
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/sysenv" element={<SystemEnvironment />} />
 
             {/* Protected Routes */}
             <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
@@ -43,6 +46,7 @@ const App = () => {
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
             <Route path="/history" element={<MainLayout><History /></MainLayout>} />
             <Route path="/idp-response/:analysisRecordId" element={<MainLayout><IDPResponse /></MainLayout>} />
+            <Route path="/idp-review/:analysisRecordId" element={<MainLayout><IDPReview /></MainLayout>} />
             <Route path="/analysis-setup/:analysisRecordId" element={<MainLayout><AnalysisSetup /></MainLayout>} />
             <Route path="/analysis/:id" element={<MainLayout><AnalysisDetails /></MainLayout>} />
             <Route path="/admin/settings" element={<MainLayout><Settings /></MainLayout>} />

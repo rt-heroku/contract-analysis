@@ -17,6 +17,7 @@ router.put('/password', authenticate, validate(changePasswordSchema), userContro
 router.get('/activity', authenticate, userController.getActivityLogs);
 router.post('/request-permissions', authenticate, userController.requestPermissions);
 router.get('/search', authenticate, userController.searchUsers);
+router.delete('/profile/anypoint', authenticate, userController.clearAnypoint);
 
 export default router;
 
