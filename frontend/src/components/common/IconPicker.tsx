@@ -39,7 +39,16 @@ export const IconPicker: React.FC<IconPickerProps> = ({
   // Get the icon component
   const getIconComponent = (iconName: string) => {
     const IconComponent = (LucideIcons as any)[iconName];
-    return IconComponent ? <IconComponent className="w-4 h-4" /> : null;
+    if (!IconComponent) {
+      console.warn(`Icon "${iconName}" not found in lucide-react`);
+      return <span className="w-4 h-4 inline-block bg-gray-200 rounded" title={iconName} />;
+    }
+    try {
+      return <IconComponent className="w-4 h-4" />;
+    } catch (error) {
+      console.error(`Error rendering icon "${iconName}":`, error);
+      return <span className="w-4 h-4 inline-block bg-gray-200 rounded" title={iconName} />;
+    }
   };
 
   // Close dropdown when clicking outside

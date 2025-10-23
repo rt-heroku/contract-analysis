@@ -91,16 +91,20 @@ export const AnalysisSetup: React.FC = () => {
           // Check for existing data uploads with this jobId
           try {
             const uploadsRes = await api.get(`/uploads/by-job/${recordJobId}`);
+            console.log('📦 All uploads for jobId:', uploadsRes.data.uploads);
             const dataUploads = uploadsRes.data.uploads?.filter((u: any) => u.uploadType === 'data');
+            console.log('📊 Data uploads filtered:', dataUploads);
             
             if (dataUploads && dataUploads.length > 0) {
               const latestDataUpload = dataUploads[0]; // Most recent
               setExistingDataUpload(latestDataUpload);
               setDataUploadId(latestDataUpload.id);
-              console.log('✅ Found existing data upload:', latestDataUpload.filename);
+              console.log('✅ Found existing data upload:', latestDataUpload.filename, 'ID:', latestDataUpload.id);
+            } else {
+              console.log('⚠️ No data uploads found for this jobId');
             }
-          } catch (uploadErr) {
-            console.log('No existing uploads found for this job');
+          } catch (uploadErr: any) {
+            console.error('❌ Error fetching uploads:', uploadErr.response?.data || uploadErr.message);
           }
         }
         
@@ -140,6 +144,7 @@ export const AnalysisSetup: React.FC = () => {
 
     const file = acceptedFiles[0];
     setDataFile(file);
+    setExistingDataUpload(null); // Clear existing upload when new file is selected
 
     // Upload immediately
     try {
