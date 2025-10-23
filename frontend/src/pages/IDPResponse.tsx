@@ -95,11 +95,13 @@ export const IDPResponse: React.FC = () => {
                 setContractAnalysis(response.data.contractAnalysis);
                 setLoading(false);
                 setError('');
+                console.debug('[IDPResponse] Contract analysis loaded successfully');
               }
             } else {
               // Still processing, try again
               attempts++;
               if (attempts < maxAttempts && isMounted) {
+                console.debug(`[IDPResponse] Polling attempt ${attempts}/${maxAttempts} - data not ready yet`);
                 timeoutId = setTimeout(poll, 10000); // Poll every 10 seconds
               } else if (isMounted) {
                 setError('Timeout: Contract processing is taking longer than expected. Please try again.');
@@ -108,11 +110,14 @@ export const IDPResponse: React.FC = () => {
             }
           } catch (err: any) {
             const errorMessage = err.response?.data?.error || '';
+            const is404 = err.response?.status === 404;
             
             // If it's still processing (404 or "not yet available"), keep polling
-            if (errorMessage.includes('not yet available') || errorMessage.includes('Please wait')) {
+            if (is404 || errorMessage.includes('not yet available') || errorMessage.includes('Please wait')) {
               attempts++;
               if (attempts < maxAttempts && isMounted) {
+                // Suppress console errors for expected 404s during polling
+                console.debug(`[IDPResponse] Polling attempt ${attempts}/${maxAttempts} - waiting for data (expected 404)`);
                 timeoutId = setTimeout(poll, 10000); // Poll every 10 seconds
               } else if (isMounted) {
                 setError('Timeout: Contract processing is taking longer than expected. Please try again.');
@@ -120,6 +125,7 @@ export const IDPResponse: React.FC = () => {
               }
             } else {
               // Real error - stop polling
+              console.error('[IDPResponse] Polling stopped due to error:', errorMessage);
               if (isMounted) {
                 setError(errorMessage || 'Failed to load contract analysis');
                 setLoading(false);

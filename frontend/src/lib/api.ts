@@ -34,8 +34,26 @@ api.interceptors.response.use(
     return response;
   },
   (error: AxiosError) => {
-    console.error('🌐 [API] Response error:', error.response?.status, error.response?.data);
-    if (error.response?.status === 401) {
+    const url = error.config?.url || '';
+    const status = error.response?.status;
+    const errorData = error.response?.data as any;
+    
+    // Suppress expected 404s during polling (contract analysis not ready yet)
+    const isExpectedPolling404 = 
+      status === 404 && 
+      url.includes('/analysis/') && 
+      url.includes('/contract') &&
+      (errorData?.error?.includes('not yet available') || errorData?.error?.includes('Please wait'));
+    
+    if (isExpectedPolling404) {
+      // Don't log expected 404s during polling - these are normal
+      console.debug('🌐 [API] Polling:', url, '- Data not ready yet (expected 404)');
+    } else {
+      // Log all other errors
+      console.error('🌐 [API] Response error:', status, errorData);
+    }
+    
+    if (status === 401) {
       // Token expired or invalid
       console.error('🌐 [API] 401 UNAUTHORIZED - Clearing auth and redirecting to login');
       console.trace('🌐 [API] 401 stack trace');
