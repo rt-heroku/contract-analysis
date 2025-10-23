@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
+import { ToastProvider } from './context/ToastContext';
 import { MainLayout } from './components/layout/MainLayout';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
@@ -29,7 +30,8 @@ const App = () => {
   return (
     <AuthProvider>
       <AppProvider>
-        <Router>
+        <ToastProvider>
+          <Router>
           <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
@@ -61,7 +63,8 @@ const App = () => {
             {/* Default Route */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
-        </Router>
+          </Router>
+        </ToastProvider>
       </AppProvider>
     </AuthProvider>
   );

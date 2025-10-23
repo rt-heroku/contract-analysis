@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import api from '@/lib/api';
 import { Menu, Bell, User, Settings, LogOut, Search, CheckCircle, AlertCircle, Info } from 'lucide-react';
 
@@ -18,17 +19,39 @@ export const TopBar: React.FC = () => {
   const navigate = useNavigate();
   const { toggleSidebar } = useApp();
   const { user, logout } = useAuth();
+  const { showToast } = useToast();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const previousUnreadCountRef = useRef<number>(0);
 
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
         const response = await api.get('/notifications/unread-count');
-        setUnreadCount(response.data.unreadCount);
+        const newUnreadCount = response.data.unreadCount;
+        
+        // Check if there are new notifications (count increased)
+        if (previousUnreadCountRef.current > 0 && newUnreadCount > previousUnreadCountRef.current) {
+          // Fetch the latest notification to show in toast
+          const notifResponse = await api.get('/notifications?page=1&limit=1');
+          const latestNotif = notifResponse.data.notifications?.[0];
+          
+          if (latestNotif && !latestNotif.isRead) {
+            // Show toast notification
+            showToast({
+              type: latestNotif.type as 'success' | 'error' | 'warning' | 'info',
+              title: latestNotif.title,
+              message: latestNotif.message,
+              duration: 5000,
+            });
+          }
+        }
+        
+        previousUnreadCountRef.current = newUnreadCount;
+        setUnreadCount(newUnreadCount);
       } catch (error) {
         // Ignore errors
       }
@@ -36,7 +59,8 @@ export const TopBar: React.FC = () => {
 
     const fetchRecentNotifications = async () => {
       try {
-        const response = await api.get('/notifications?page=1&limit=5');
+        // Only fetch unread notifications for the bell dropdown
+        const response = await api.get('/notifications?page=1&limit=5&unreadOnly=true');
         setNotifications(response.data.notifications || []);
       } catch (error) {
         // Ignore errors
@@ -52,7 +76,7 @@ export const TopBar: React.FC = () => {
       }, 10000); // Poll every 10s
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, showToast]);
 
   useEffect(() => {
     const fetchAvatar = async () => {

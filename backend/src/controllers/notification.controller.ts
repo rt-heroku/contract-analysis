@@ -15,16 +15,23 @@ class NotificationController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 20;
       const skip = (page - 1) * limit;
+      const unreadOnly = req.query.unreadOnly === 'true';
+
+      // Build where clause
+      const whereClause: any = { userId: req.user.id };
+      if (unreadOnly) {
+        whereClause.isRead = false;
+      }
 
       const [notifications, total] = await Promise.all([
         prisma.notification.findMany({
-          where: { userId: req.user.id },
+          where: whereClause,
           orderBy: { createdAt: 'desc' },
           skip,
           take: limit,
         }),
         prisma.notification.count({
-          where: { userId: req.user.id },
+          where: whereClause,
         }),
       ]);
 
