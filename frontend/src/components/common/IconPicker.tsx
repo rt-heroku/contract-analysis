@@ -29,10 +29,12 @@ export const IconPicker: React.FC<IconPickerProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const availableIcons = getAvailableIcons();
 
-  // Filter icons based on search term
-  const filteredIcons = availableIcons.filter((iconName) =>
-    iconName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter icons based on search term (show all if search is empty)
+  const filteredIcons = searchTerm
+    ? availableIcons.filter((iconName) =>
+        iconName.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : availableIcons;
 
   // Get the icon component
   const getIconComponent = (iconName: string) => {

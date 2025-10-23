@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/common/Card';
 import { Loading } from '@/components/common/Loading';
+import { Button } from '@/components/common/Button';
 import { useAuth } from '@/context/AuthContext';
 import { 
   Server, 
@@ -13,7 +15,8 @@ import {
   CheckCircle,
   XCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  ArrowLeft
 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -53,6 +56,7 @@ interface SystemInfo {
 
 export const SystemEnvironment: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [error, setError] = useState('');
@@ -63,6 +67,14 @@ export const SystemEnvironment: React.FC = () => {
   const isAdmin = user?.roles?.some((role: any) => 
     role.name === 'admin' || role === 'admin'
   );
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
 
   useEffect(() => {
     loadSystemInfo();
@@ -188,12 +200,25 @@ export const SystemEnvironment: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Settings className="w-8 h-8 text-primary-600" />
-            System Environment
-          </h1>
-          <p className="text-gray-600 mt-2">Debug information for system configuration</p>
+        <div className="flex items-center gap-4">
+          {user && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBack}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+          )}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <Settings className="w-8 h-8 text-primary-600" />
+              System Environment
+            </h1>
+            <p className="text-gray-600 mt-2">Debug information for system configuration</p>
+          </div>
         </div>
         <button
           onClick={loadSystemInfo}

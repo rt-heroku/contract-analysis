@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useAuth } from '@/context/AuthContext';
 import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
@@ -127,8 +128,10 @@ const TreeMenuItem: React.FC<{
   level: number;
   onDrop: (draggedId: number, targetId: number, dropPosition: 'on' | 'before' | 'after') => void;
   onRemove: (menuId: number) => void;
+  onEdit: (item: MenuItem) => void;
   roleId: number;
-}> = ({ item, level, onDrop, onRemove, roleId }) => {
+  isAdmin: boolean;
+}> = ({ item, level, onDrop, onRemove, onEdit, roleId, isAdmin }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [dropPosition, setDropPosition] = useState<'on' | 'before' | 'after' | null>(null);
 
@@ -231,14 +234,28 @@ const TreeMenuItem: React.FC<{
             <span className="text-sm font-medium text-gray-900">{item.title}</span>
             {item.isExternal && <ExternalLink className="w-3 h-3 text-blue-500" />}
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onRemove(item.id)}
-            className="p-1 text-red-600 hover:text-red-700 opacity-0 group-hover:opacity-100"
-          >
-            <X className="w-3 h-3" />
-          </Button>
+          <div className="flex items-center gap-1">
+            {isAdmin && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onEdit(item)}
+                className="p-1 text-blue-600 hover:text-blue-700 opacity-0 group-hover:opacity-100"
+                title="Edit menu item"
+              >
+                <Edit className="w-3 h-3" />
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onRemove(item.id)}
+              className="p-1 text-red-600 hover:text-red-700 opacity-0 group-hover:opacity-100"
+              title="Remove from role"
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -254,7 +271,9 @@ const TreeMenuItem: React.FC<{
                 level={level + 1}
                 onDrop={onDrop}
                 onRemove={onRemove}
+                onEdit={onEdit}
                 roleId={roleId}
+                isAdmin={isAdmin}
               />
             ))}
         </div>
@@ -264,6 +283,10 @@ const TreeMenuItem: React.FC<{
 };
 
 export const MenuManagement: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.roles?.some((role: any) => 
+    role.name === 'Admin' || role === 'Admin'
+  ) || false;
   const [loading, setLoading] = useState(true);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -931,7 +954,9 @@ export const MenuManagement: React.FC = () => {
                           level={0}
                           onDrop={handleDrop}
                           onRemove={handleRemoveFromRole}
+                          onEdit={handleEdit}
                           roleId={selectedRole!.id}
+                          isAdmin={isAdmin}
                         />
                       ))}
                       {/* Extra space at bottom for dropping */}
