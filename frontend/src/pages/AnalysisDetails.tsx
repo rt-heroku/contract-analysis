@@ -567,36 +567,36 @@ export const AnalysisDetails: React.FC = () => {
       </div>
 
       {/* Content */}
-      {activeTab === 'extraction' && displayExtraction.mulesoftResponse && (
+      {activeTab === 'extraction' && displayExtraction && (
         <div className="space-y-6">
           {/* Document Information */}
           <Card title="Document Information">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Document Name</p>
-                <p className="font-medium text-gray-900">{displayExtraction.mulesoftResponse.documentName || displayExtraction.document}</p>
+                <p className="font-medium text-gray-900">{displayExtraction.mulesoftResponse?.documentName || displayExtraction.document}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600 mb-1">Document ID</p>
-                <p className="font-mono text-xs text-gray-700">{displayExtraction.mulesoftResponse.id || 'N/A'}</p>
+                <p className="font-mono text-xs text-gray-700">{displayExtraction.mulesoftResponse?.id || 'N/A'}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600 mb-1">Processing Status</p>
                 <div className="flex items-center gap-2">
-                  {displayExtraction.mulesoftResponse.status?.toLowerCase().includes('success') ? (
+                  {displayExtraction.mulesoftResponse?.status?.toLowerCase().includes('success') || displayExtraction.status?.toLowerCase().includes('success') ? (
                     <>
                       <CheckCircle className="w-4 h-4 text-green-600" />
                       <span className="font-medium text-green-600">Success</span>
                     </>
-                  ) : displayExtraction.mulesoftResponse.status?.includes('VALIDATION') ? (
+                  ) : displayExtraction.mulesoftResponse?.status?.includes('VALIDATION') || displayExtraction.status?.includes('VALIDATION') ? (
                     <>
                       <AlertCircle className="w-4 h-4 text-yellow-600" />
-                      <span className="font-medium text-yellow-600 text-xs">{displayExtraction.mulesoftResponse.status}</span>
+                      <span className="font-medium text-yellow-600 text-xs">{displayExtraction.mulesoftResponse?.status || displayExtraction.status}</span>
                     </>
                   ) : (
                     <>
                       <AlertCircle className="w-4 h-4 text-blue-600" />
-                      <span className="font-medium text-blue-600 text-xs">{displayExtraction.mulesoftResponse.status}</span>
+                      <span className="font-medium text-blue-600 text-xs">{displayExtraction.mulesoftResponse?.status || displayExtraction.status}</span>
                     </>
                   )}
                 </div>
@@ -604,11 +604,11 @@ export const AnalysisDetails: React.FC = () => {
             </div>
 
             {/* Document Summary */}
-            {displayExtraction.mulesoftResponse.documentSummary && (
+            {displayExtraction.mulesoftResponse?.documentSummary && (
               <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm font-medium text-blue-900 mb-2">Document Summary</p>
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  {displayExtraction.mulesoftResponse.documentSummary.replace(/^NOT PARSED:\s*/i, '')}
+                  {displayExtraction.mulesoftResponse?.documentSummary.replace(/^NOT PARSED:\s*/i, '')}
                 </p>
               </div>
             )}
@@ -617,7 +617,7 @@ export const AnalysisDetails: React.FC = () => {
           {/* Parties Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Distributor */}
-            {displayExtraction.mulesoftResponse.distributor?.distributor && (
+            {displayExtraction.mulesoftResponse?.distributor?.distributor && (
               <Card title={
                 <div className="flex items-center gap-2">
                   <Building className="w-5 h-5 text-primary-600" />
@@ -627,24 +627,24 @@ export const AnalysisDetails: React.FC = () => {
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {displayExtraction.mulesoftResponse.distributor.distributor.name}
+                      {displayExtraction.mulesoftResponse?.distributor.distributor.name}
                     </p>
                   </div>
-                  {displayExtraction.mulesoftResponse.distributor.distributor.address && (
+                  {displayExtraction.mulesoftResponse?.distributor.distributor.address && (
                     <div className="flex items-start gap-2 text-sm text-gray-600">
                       <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p>{displayExtraction.mulesoftResponse.distributor.distributor.address.address}</p>
+                        <p>{displayExtraction.mulesoftResponse?.distributor.distributor.address.address}</p>
                         <p>
-                          {displayExtraction.mulesoftResponse.distributor.distributor.address.city}, {displayExtraction.mulesoftResponse.distributor.distributor.address.state} {displayExtraction.mulesoftResponse.distributor.distributor.address.zipcode}
+                          {displayExtraction.mulesoftResponse?.distributor.distributor.address.city}, {displayExtraction.mulesoftResponse?.distributor.distributor.address.state} {displayExtraction.mulesoftResponse?.distributor.distributor.address.zipcode}
                         </p>
                       </div>
                     </div>
                   )}
-                  {displayExtraction.mulesoftResponse.distributor.distributor.phone && (
+                  {displayExtraction.mulesoftResponse?.distributor.distributor.phone && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Phone className="w-4 h-4" />
-                      <span>{displayExtraction.mulesoftResponse.distributor.distributor.phone}</span>
+                      <span>{displayExtraction.mulesoftResponse?.distributor.distributor.phone}</span>
                     </div>
                   )}
                 </div>
@@ -652,7 +652,7 @@ export const AnalysisDetails: React.FC = () => {
             )}
 
             {/* Retailer */}
-            {displayExtraction.mulesoftResponse.retailer?.retailer && (
+            {displayExtraction.mulesoftResponse?.retailer?.retailer && (
               <Card title={
                 <div className="flex items-center gap-2">
                   <Building className="w-5 h-5 text-green-600" />
@@ -662,24 +662,24 @@ export const AnalysisDetails: React.FC = () => {
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {displayExtraction.mulesoftResponse.retailer.retailer.name}
+                      {displayExtraction.mulesoftResponse?.retailer.retailer.name}
                     </p>
                   </div>
-                  {displayExtraction.mulesoftResponse.retailer.retailer.address && (
+                  {displayExtraction.mulesoftResponse?.retailer.retailer.address && (
                     <div className="flex items-start gap-2 text-sm text-gray-600">
                       <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p>{displayExtraction.mulesoftResponse.retailer.retailer.address.address}</p>
+                        <p>{displayExtraction.mulesoftResponse?.retailer.retailer.address.address}</p>
                         <p>
-                          {displayExtraction.mulesoftResponse.retailer.retailer.address.city}, {displayExtraction.mulesoftResponse.retailer.retailer.address.state} {displayExtraction.mulesoftResponse.retailer.retailer.address.zipcode}
+                          {displayExtraction.mulesoftResponse?.retailer.retailer.address.city}, {displayExtraction.mulesoftResponse?.retailer.retailer.address.state} {displayExtraction.mulesoftResponse?.retailer.retailer.address.zipcode}
                         </p>
                       </div>
                     </div>
                   )}
-                  {displayExtraction.mulesoftResponse.retailer.retailer.phone && (
+                  {displayExtraction.mulesoftResponse?.retailer.retailer.phone && (
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Phone className="w-4 h-4" />
-                      <span>{displayExtraction.mulesoftResponse.retailer.retailer.phone}</span>
+                      <span>{displayExtraction.mulesoftResponse?.retailer.retailer.phone}</span>
                     </div>
                   )}
                 </div>
@@ -688,7 +688,7 @@ export const AnalysisDetails: React.FC = () => {
           </div>
 
           {/* Agreement Dates */}
-          {displayExtraction.mulesoftResponse.createdDates && (
+          {displayExtraction.mulesoftResponse?.createdDates && (
             <Card title={
               <div className="flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-purple-600" />
@@ -699,15 +699,15 @@ export const AnalysisDetails: React.FC = () => {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Agreement Date</p>
                   <p className="font-medium text-gray-900">
-                    {displayExtraction.mulesoftResponse.createdDates.agreedDate || 
-                     displayExtraction.mulesoftResponse.createdDates.agreed_date || 'N/A'}
+                    {displayExtraction.mulesoftResponse?.createdDates.agreedDate || 
+                     displayExtraction.mulesoftResponse?.createdDates.agreed_date || 'N/A'}
                   </p>
                 </div>
-                {displayExtraction.mulesoftResponse.createdDates.parties && Array.isArray(displayExtraction.mulesoftResponse.createdDates.parties) && displayExtraction.mulesoftResponse.createdDates.parties.length > 0 && (
+                {displayExtraction.mulesoftResponse?.createdDates.parties && Array.isArray(displayExtraction.mulesoftResponse?.createdDates.parties) && displayExtraction.mulesoftResponse?.createdDates.parties.length > 0 && (
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Parties</p>
                     <div className="space-y-1">
-                      {displayExtraction.mulesoftResponse.createdDates.parties.map((party: string, idx: number) => (
+                      {displayExtraction.mulesoftResponse?.createdDates.parties.map((party: string, idx: number) => (
                         <div key={idx} className="flex items-center gap-2">
                           <Users className="w-3 h-3 text-gray-500" />
                           <span className="text-sm text-gray-800">{party}</span>
@@ -744,51 +744,51 @@ export const AnalysisDetails: React.FC = () => {
           )}
 
           {/* Purpose */}
-          {displayExtraction.mulesoftResponse.purpose && (
+          {displayExtraction.mulesoftResponse?.purpose && (
             <Card title="Agreement Purpose">
               <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  {displayExtraction.mulesoftResponse.purpose.replace(/^NOT PARSED:\s*/i, '')}
+                  {displayExtraction.mulesoftResponse?.purpose.replace(/^NOT PARSED:\s*/i, '')}
                 </p>
               </div>
             </Card>
           )}
 
           {/* Promotional Math */}
-          {displayExtraction.mulesoftResponse.promotionalMath && (
+          {displayExtraction.mulesoftResponse?.promotionalMath && (
             <Card title="Promotional Mathematics">
               <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  {displayExtraction.mulesoftResponse.promotionalMath.replace(/^NOT PARSED:\s*/i, '')}
+                  {displayExtraction.mulesoftResponse?.promotionalMath.replace(/^NOT PARSED:\s*/i, '')}
                 </p>
               </div>
             </Card>
           )}
 
           {/* Display Requirements */}
-          {displayExtraction.mulesoftResponse.display && (
+          {displayExtraction.mulesoftResponse?.display && (
             <Card title="Display Requirements">
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  {displayExtraction.mulesoftResponse.display.replace(/^NOT PARSED:\s*/i, '')}
+                  {displayExtraction.mulesoftResponse?.display.replace(/^NOT PARSED:\s*/i, '')}
                 </p>
               </div>
             </Card>
           )}
 
           {/* Termination */}
-          {displayExtraction.mulesoftResponse.termination && (
+          {displayExtraction.mulesoftResponse?.termination && (
             <Card title="Termination Clause">
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-gray-700 leading-relaxed">
-                  {displayExtraction.mulesoftResponse.termination.replace(/^NOT PARSED:\s*/i, '')}
+                  {displayExtraction.mulesoftResponse?.termination.replace(/^NOT PARSED:\s*/i, '')}
                 </p>
               </div>
             </Card>
           )}
 
           {/* Compliance */}
-          {displayExtraction.mulesoftResponse.compliance && Array.isArray(displayExtraction.mulesoftResponse.compliance) && displayExtraction.mulesoftResponse.compliance.length > 0 && (
+          {displayExtraction.mulesoftResponse?.compliance && Array.isArray(displayExtraction.mulesoftResponse?.compliance) && displayExtraction.mulesoftResponse?.compliance.length > 0 && (
             <Card title={
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-green-600" />
@@ -796,7 +796,7 @@ export const AnalysisDetails: React.FC = () => {
               </div>
             }>
               <div className="space-y-2">
-                {displayExtraction.mulesoftResponse.compliance.map((item: string, index: number) => (
+                {displayExtraction.mulesoftResponse?.compliance.map((item: string, index: number) => (
                   <div key={index} className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
                     <p className="text-sm text-gray-800">{item}</p>
