@@ -130,7 +130,6 @@ const TreeMenuItem: React.FC<{
   roleId: number;
 }> = ({ item, level, onDrop, onRemove, roleId }) => {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [isOver, setIsOver] = useState(false);
   const [dropPosition, setDropPosition] = useState<'on' | 'before' | 'after' | null>(null);
 
   const [{ isDragging }, drag] = useDrag({
@@ -141,20 +140,31 @@ const TreeMenuItem: React.FC<{
     }),
   });
 
-  const [{ canDrop }, drop] = useDrop({
+  const [{ canDrop, isOver }, drop] = useDrop({
     accept: 'MENU_ITEM',
     hover: (_draggedItem: any, monitor) => {
-      if (!monitor.isOver({ shallow: true })) return;
+      if (!monitor.isOver({ shallow: true })) {
+        setDropPosition(null);
+        return;
+      }
       
-      const hoverBoundingRect = (monitor.getClientOffset() as any);
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) {
+        setDropPosition(null);
+        return;
+      }
+
       const targetElement = document.getElementById(`tree-item-${item.id}`);
-      if (!targetElement) return;
+      if (!targetElement) {
+        setDropPosition(null);
+        return;
+      }
       
       const targetRect = targetElement.getBoundingClientRect();
-      const hoverY = hoverBoundingRect.y - targetRect.top;
+      const hoverY = clientOffset.y - targetRect.top;
       const height = targetRect.height;
       
-      // Determine drop position
+      // Determine drop position based on hover location
       if (hoverY < height * 0.25) {
         setDropPosition('before');
       } else if (hoverY > height * 0.75) {
@@ -170,6 +180,7 @@ const TreeMenuItem: React.FC<{
     },
     collect: (monitor) => ({
       canDrop: monitor.canDrop(),
+      isOver: monitor.isOver({ shallow: true }),
     }),
   });
 
@@ -185,18 +196,13 @@ const TreeMenuItem: React.FC<{
         id={`tree-item-${item.id}`}
         ref={combinedRef}
         className={`group relative ${level > 0 ? 'ml-6' : ''} ${isDragging ? 'opacity-50' : ''}`}
-        onMouseEnter={() => setIsOver(true)}
-        onMouseLeave={() => {
-          setIsOver(false);
-          setDropPosition(null);
-        }}
       >
         {/* Drop indicators */}
         {canDrop && isOver && dropPosition === 'before' && (
-          <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 z-10" />
+          <div className="absolute -top-1 left-0 right-0 h-1 bg-blue-500 z-10 rounded-full shadow-lg" />
         )}
         {canDrop && isOver && dropPosition === 'after' && (
-          <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-500 z-10" />
+          <div className="absolute -bottom-1 left-0 right-0 h-1 bg-blue-500 z-10 rounded-full shadow-lg" />
         )}
         
         <div

@@ -256,7 +256,9 @@ class MuleSoftService {
     jobId: string
   ): Promise<any> {
     try {
-      const mulesoftUrl = await getSetting('mulesoft_api_url', 'http://localhost:8081');
+      // Priority: 1. Environment variable, 2. Database, 3. Default
+      const dbValue = await getSetting('mulesoft_api_url', null);
+      const mulesoftUrl = process.env.MULESOFT_API_BASE_URL || dbValue || 'http://localhost:8081';
       const fullUrl = `${mulesoftUrl}/process/status`;
 
       const requestBody = {
@@ -326,7 +328,9 @@ class MuleSoftService {
     anypointPassword?: string
   ): Promise<any> {
     try {
-      const mulesoftUrl = await getSetting('mulesoft_api_url', 'http://localhost:8081');
+      // Priority: 1. Environment variable, 2. Database, 3. Default
+      const dbValue = await getSetting('mulesoft_api_url', null);
+      const mulesoftUrl = process.env.MULESOFT_API_BASE_URL || dbValue || 'http://localhost:8081';
       const fullUrl = `${mulesoftUrl}/process/review`;
 
       const requestBody: any = {
@@ -385,7 +389,9 @@ class MuleSoftService {
     anypointPassword?: string
   ): Promise<any> {
     try {
-      const mulesoftUrl = await getSetting('mulesoft_api_url', 'http://localhost:8081');
+      // Priority: 1. Environment variable, 2. Database, 3. Default
+      const dbValue = await getSetting('mulesoft_api_url', null);
+      const mulesoftUrl = process.env.MULESOFT_API_BASE_URL || dbValue || 'http://localhost:8081';
       const fullUrl = `${mulesoftUrl}/process/approve`;
 
       const requestBody = {
