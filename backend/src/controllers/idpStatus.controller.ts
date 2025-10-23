@@ -196,6 +196,34 @@ export const idpStatusController = {
       res.json({ review: reviewData });
     } catch (error: any) {
       console.error('Error requesting review:', error);
+      
+      // Check if it's an authentication error
+      if (error.message && error.message.includes('ANYPOINT_AUTH_FAILED')) {
+        // Clear stored credentials from IDP execution
+        const { idpExecutionId } = req.body;
+        if (idpExecutionId) {
+          try {
+            await prisma.idpExecution.update({
+              where: { id: parseInt(idpExecutionId) },
+              data: {
+                anypointUsername: null,
+                anypointPassword: null,
+              },
+            });
+            console.log('[requestReview] Cleared invalid credentials from IDP execution');
+          } catch (clearError) {
+            console.error('[requestReview] Failed to clear credentials:', clearError);
+          }
+        }
+        
+        // Return error with flag to prompt for new credentials
+        return res.status(401).json({
+          error: error.message.replace('ANYPOINT_AUTH_FAILED: ', ''),
+          needsCredentials: true,
+          authFailed: true
+        });
+      }
+      
       res.status(500).json({ error: error.message });
     }
   },

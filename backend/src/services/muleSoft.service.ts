@@ -368,12 +368,39 @@ class MuleSoftService {
 
       return response.data;
     } catch (error: any) {
-      logger.error('MuleSoft review request failed:', error.response?.data || error.message);
-      throw new Error(
-        error.response?.data?.error || 
-        error.response?.data?.message || 
-        'Failed to request review from MuleSoft'
-      );
+      const responseData = error.response?.data;
+      let errorMessage = 'Failed to request review from MuleSoft';
+      
+      // Parse error message (might be garbled JSON object with character indices)
+      if (responseData && typeof responseData === 'object') {
+        // Check if it's a garbled object (keys are numeric indices)
+        const keys = Object.keys(responseData);
+        if (keys.length > 0 && keys.every(k => !isNaN(Number(k)))) {
+          // Reconstruct string from character indices
+          const reconstructed = keys
+            .sort((a, b) => Number(a) - Number(b))
+            .map(k => responseData[k])
+            .join('');
+          errorMessage = reconstructed;
+          logger.error('MuleSoft review request failed (reconstructed):', reconstructed);
+        } else {
+          // Normal error object
+          errorMessage = responseData.error || responseData.message || errorMessage;
+          logger.error('MuleSoft review request failed:', responseData);
+        }
+      } else if (typeof responseData === 'string') {
+        errorMessage = responseData;
+        logger.error('MuleSoft review request failed:', responseData);
+      } else {
+        logger.error('MuleSoft review request failed:', error.message);
+      }
+      
+      // Check if it's an authentication error
+      if (errorMessage.includes('unauthorized') || errorMessage.includes('401')) {
+        throw new Error('ANYPOINT_AUTH_FAILED: Your Anypoint credentials are incorrect. Please enter them again.');
+      }
+      
+      throw new Error(errorMessage);
     }
   }
 

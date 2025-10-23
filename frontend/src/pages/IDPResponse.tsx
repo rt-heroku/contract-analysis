@@ -263,15 +263,28 @@ export const IDPResponse: React.FC = () => {
       }
     } catch (error: any) {
       console.error('[IDPResponse] Failed to request review:', error);
-      if (error.response?.data?.needsCredentials) {
+      const errorData = error.response?.data;
+      
+      if (errorData?.needsCredentials) {
         console.debug('[IDPResponse] Credentials required, showing dialog');
+        
+        // If auth failed, show a more specific message
+        if (errorData?.authFailed) {
+          setAlertDialog({
+            isOpen: true,
+            title: 'Authentication Failed',
+            message: errorData.error || 'Your Anypoint credentials are incorrect. Please enter them again.',
+            type: 'error',
+          });
+        }
+        
         // Show credentials dialog
         setShowCredentialsDialog(true);
       } else {
         setAlertDialog({
           isOpen: true,
           title: 'Error',
-          message: error.response?.data?.error || 'Failed to request review',
+          message: errorData?.error || 'Failed to request review',
           type: 'error',
         });
       }
