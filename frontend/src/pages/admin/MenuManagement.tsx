@@ -287,6 +287,9 @@ export const MenuManagement: React.FC = () => {
   const isAdmin = user?.roles?.some((role: any) => 
     role.name === 'Admin' || role === 'Admin'
   ) || false;
+  
+  console.log('[MenuManagement] isAdmin:', isAdmin, 'user:', user, 'roles:', user?.roles);
+  
   const [loading, setLoading] = useState(true);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -582,12 +585,35 @@ export const MenuManagement: React.FC = () => {
           }
         }
       } else if (dropPosition === 'before' || dropPosition === 'after') {
-        // Drop before/after - make it a sibling
+        // Drop before/after - make it a sibling and reorder all siblings
         const newOrderIndex = dropPosition === 'before' ? targetItem.orderIndex : targetItem.orderIndex + 1;
+        
+        // Get all siblings (items with the same parent)
+        const siblings = menuItems.filter((item) => 
+          item.parentId === targetItem.parentId && 
+          item.id !== draggedId
+        ).sort((a, b) => a.orderIndex - b.orderIndex);
+        
+        // Update dragged item first
         await api.put(`/menu/${draggedId}`, {
           parentId: targetItem.parentId,
           orderIndex: newOrderIndex,
         });
+        
+        // Reorder all siblings
+        let currentIndex = 0;
+        for (const sibling of siblings) {
+          if (currentIndex === newOrderIndex) {
+            currentIndex++; // Skip the spot for the dragged item
+          }
+          if (sibling.orderIndex !== currentIndex) {
+            await api.put(`/menu/${sibling.id}`, {
+              parentId: sibling.parentId,
+              orderIndex: currentIndex,
+            });
+          }
+          currentIndex++;
+        }
       }
 
       await fetchData();
