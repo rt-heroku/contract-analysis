@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/common/Card';
 import { Loading } from '@/components/common/Loading';
+import { useAuth } from '@/context/AuthContext';
 import { 
   Server, 
   Database, 
@@ -10,7 +11,9 @@ import {
   Activity,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -49,9 +52,17 @@ interface SystemInfo {
 }
 
 export const SystemEnvironment: React.FC = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
   const [error, setError] = useState('');
+  const [revealedSections, setRevealedSections] = useState<Record<string, boolean>>({});
+  const [revealedEnvVars, setRevealedEnvVars] = useState<Record<string, boolean>>({});
+  const [revealedSettings, setRevealedSettings] = useState<Record<string, boolean>>({});
+
+  const isAdmin = user?.roles?.some((role: any) => 
+    role.name === 'admin' || role === 'admin'
+  );
 
   useEffect(() => {
     loadSystemInfo();
@@ -90,6 +101,60 @@ export const SystemEnvironment: React.FC = () => {
       return <XCircle className="w-5 h-5 text-red-600" />;
     }
     return <AlertCircle className="w-5 h-5 text-yellow-600" />;
+  };
+
+  const maskValue = (value: string, key?: string): string => {
+    if (!value) return '(empty)';
+    // Mask sensitive values
+    const sensitiveKeys = ['password', 'secret', 'key', 'token', 'auth', 'credential', 'database_url'];
+    const isSensitive = sensitiveKeys.some(k => key?.toLowerCase().includes(k));
+    
+    if (isSensitive) {
+      return '••••••••••••••••';
+    }
+    return value;
+  };
+
+  const toggleReveal = (section: string) => {
+    setRevealedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const toggleEnvVar = (key: string) => {
+    setRevealedEnvVars(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleSetting = (key: string) => {
+    setRevealedSettings(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const renderValue = (value: string, key: string, revealed: boolean, onToggle: () => void) => {
+    const sensitiveKeys = ['password', 'secret', 'key', 'token', 'auth', 'credential', 'database_url'];
+    const isSensitive = sensitiveKeys.some(k => key.toLowerCase().includes(k));
+
+    if (!isSensitive) {
+      return <span className="font-mono text-sm">{value || '(empty)'}</span>;
+    }
+
+    return (
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-sm">
+          {revealed ? value || '(empty)' : maskValue(value, key)}
+        </span>
+        {isAdmin && (
+          <button
+            onClick={onToggle}
+            className="p-1 hover:bg-gray-200 rounded transition-colors"
+            title={revealed ? 'Hide value' : 'Reveal value'}
+          >
+            {revealed ? (
+              <EyeOff className="w-4 h-4 text-gray-600" />
+            ) : (
+              <Eye className="w-4 h-4 text-gray-600" />
+            )}
+          </button>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -198,7 +263,9 @@ export const SystemEnvironment: React.FC = () => {
                 {getStatusIcon(systemInfo.database.url)}
                 <p className="text-sm text-gray-600">Database URL</p>
               </div>
-              <p className="font-mono text-sm font-semibold">{systemInfo.database.url}</p>
+              <div className="font-semibold">
+                {renderValue(systemInfo.database.url, 'database_url', revealedSections['database_url'], () => toggleReveal('database_url'))}
+              </div>
             </div>
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-1">
@@ -231,7 +298,9 @@ export const SystemEnvironment: React.FC = () => {
                   {getStatusIcon(systemInfo.jwt.secret)}
                   <p className="text-sm text-gray-600">JWT Secret</p>
                 </div>
-                <p className="font-mono text-sm font-semibold">{systemInfo.jwt.secret}</p>
+                <div className="font-semibold">
+                  {renderValue(systemInfo.jwt.secret, 'jwt_secret', revealedSections['jwt_secret'], () => toggleReveal('jwt_secret'))}
+                </div>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-600 mb-1">Expires In</p>
@@ -273,7 +342,9 @@ export const SystemEnvironment: React.FC = () => {
                 {Object.entries(systemInfo.environmentVariables).map(([key, value]) => (
                   <tr key={key} className="border-t border-gray-200">
                     <td className="p-2 font-mono text-xs text-gray-900 font-semibold">{key}</td>
-                    <td className="p-2 font-mono text-xs text-gray-700 break-all">{value || '(empty)'}</td>
+                    <td className="p-2 text-xs text-gray-700 break-all">
+                      {renderValue(value, key, revealedEnvVars[key], () => toggleEnvVar(key))}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -302,11 +373,11 @@ export const SystemEnvironment: React.FC = () => {
                   {systemInfo.systemSettings.map((setting) => (
                     <tr key={setting.key} className="border-t border-gray-200">
                       <td className="p-2 font-mono text-xs text-gray-900 font-semibold">{setting.key}</td>
-                      <td className="p-2 font-mono text-xs text-gray-700 break-all">
+                      <td className="p-2 text-xs text-gray-700 break-all">
                         {setting.isSecret ? (
-                          <span className="text-orange-600 font-semibold">{setting.value || '(empty)'}</span>
+                          renderValue(setting.value, setting.key, revealedSettings[setting.key], () => toggleSetting(setting.key))
                         ) : (
-                          setting.value || '(empty)'
+                          <span className="font-mono text-sm">{setting.value || '(empty)'}</span>
                         )}
                       </td>
                       <td className="p-2 text-xs text-gray-600">{setting.description || '-'}</td>
@@ -321,18 +392,34 @@ export const SystemEnvironment: React.FC = () => {
         </div>
       </Card>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-semibold text-amber-900">Security Warning</h3>
-            <p className="text-sm text-amber-700 mt-1">
-              This page is currently public and displays sensitive system information. 
-              Secure this endpoint before deploying to production.
-            </p>
+      {!isAdmin && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-blue-900">Limited Access</h3>
+              <p className="text-sm text-blue-700 mt-1">
+                Sensitive information is masked. Admin access required to reveal values.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+      
+      {isAdmin && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-amber-900">Admin Access</h3>
+              <p className="text-sm text-amber-700 mt-1">
+                You have admin access. Click the eye icons to reveal sensitive values.
+                Use this information responsibly and secure this endpoint in production.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
