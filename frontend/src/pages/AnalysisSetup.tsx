@@ -34,10 +34,11 @@ interface Prompt {
   isDefault?: boolean;
   variables: Array<{
     id: number;
-    name: string;
+    variableName: string;
+    displayName: string;
     defaultValue: string | null;
-    isMandatory: boolean;
-    isFromFlow: boolean;
+    isRequired: boolean;
+    isFlowVariable: boolean;
   }>;
 }
 
@@ -51,6 +52,7 @@ export const AnalysisSetup: React.FC = () => {
   const [dataUploadId, setDataUploadId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [existingDataUpload, setExistingDataUpload] = useState<any>(null);
   
   const [flows, setFlows] = useState<Flow[]>([]);
   const [selectedFlow, setSelectedFlow] = useState<Flow | null>(null);
@@ -81,9 +83,25 @@ export const AnalysisSetup: React.FC = () => {
         setPrompts(promptsRes.data.prompts || []);
         
         // Get jobId from analysis record
-        if (analysisRes.data.analysisRecord?.jobId) {
-          setJobId(analysisRes.data.analysisRecord.jobId);
-          console.log('📋 Using jobId from analysis record:', analysisRes.data.analysisRecord.jobId);
+        const recordJobId = analysisRes.data.analysisRecord?.jobId;
+        if (recordJobId) {
+          setJobId(recordJobId);
+          console.log('📋 Using jobId from analysis record:', recordJobId);
+          
+          // Check for existing data uploads with this jobId
+          try {
+            const uploadsRes = await api.get(`/uploads/by-job/${recordJobId}`);
+            const dataUploads = uploadsRes.data.uploads?.filter((u: any) => u.uploadType === 'data');
+            
+            if (dataUploads && dataUploads.length > 0) {
+              const latestDataUpload = dataUploads[0]; // Most recent
+              setExistingDataUpload(latestDataUpload);
+              setDataUploadId(latestDataUpload.id);
+              console.log('✅ Found existing data upload:', latestDataUpload.filename);
+            }
+          } catch (uploadErr) {
+            console.log('No existing uploads found for this job');
+          }
         }
         
         // Auto-select default prompt if available
@@ -111,7 +129,7 @@ export const AnalysisSetup: React.FC = () => {
   const initializeVariables = (prompt: Prompt) => {
     const initialValues: Record<string, string> = {};
     prompt.variables?.forEach(variable => {
-      initialValues[variable.name] = variable.defaultValue || '';
+      initialValues[variable.variableName] = variable.defaultValue || '';
     });
     setVariableValues(initialValues);
   };
@@ -181,6 +199,11 @@ export const AnalysisSetup: React.FC = () => {
     setDataUploadId(null);
   };
 
+  const handleRemoveExistingUpload = () => {
+    setExistingDataUpload(null);
+    setDataUploadId(null);
+  };
+
   const handlePromptChange = (promptId: number) => {
     const prompt = prompts.find(p => p.id === promptId);
     if (prompt) {
@@ -211,14 +234,14 @@ export const AnalysisSetup: React.FC = () => {
 
     // Check mandatory variables
     if (selectedPrompt) {
-      const mandatoryVars = selectedPrompt.variables?.filter(v => v.isMandatory) || [];
-      const missingVars = mandatoryVars.filter(v => !variableValues[v.name]);
+      const mandatoryVars = selectedPrompt.variables?.filter(v => v.isRequired) || [];
+      const missingVars = mandatoryVars.filter(v => !variableValues[v.variableName]);
       
       if (missingVars.length > 0) {
         setAlertDialog({
           isOpen: true,
           title: 'Missing Variables',
-          message: `Please provide values for: ${missingVars.map(v => v.name).join(', ')}`,
+          message: `Please provide values for: ${missingVars.map(v => v.displayName).join(', ')}`,
           type: 'warning',
         });
         return;
@@ -285,7 +308,31 @@ export const AnalysisSetup: React.FC = () => {
 
       {/* Step 1: Upload Data File */}
       <Card title="Step 1: Upload Data File (Excel/CSV)">
-        {!dataFile ? (
+        {existingDataUpload && !dataFile ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <FileSpreadsheet className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="text-left">
+                  <p className="font-medium text-gray-900">{existingDataUpload.filename}</p>
+                  <p className="text-sm text-blue-600">Existing file from previous upload</p>
+                </div>
+              </div>
+              <button
+                onClick={handleRemoveExistingUpload}
+                className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                disabled={analyzing}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600">
+              This file will be used unless you upload a new one
+            </p>
+          </div>
+        ) : !dataFile ? (
           <div
             {...getDataRootProps()}
             className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
@@ -413,9 +460,9 @@ export const AnalysisSetup: React.FC = () => {
                 {selectedPrompt.variables.map(variable => (
                   <div key={variable.id}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {variable.name}
-                      {variable.isMandatory && <span className="text-red-600 ml-1">*</span>}
-                      {variable.isFromFlow && (
+                      {variable.displayName}
+                      {variable.isRequired && <span className="text-red-600 ml-1">*</span>}
+                      {variable.isFlowVariable && (
                         <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
                           From Flow
                         </span>
@@ -423,14 +470,14 @@ export const AnalysisSetup: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      value={variableValues[variable.name] || ''}
+                      value={variableValues[variable.variableName] || ''}
                       onChange={(e) => setVariableValues({
                         ...variableValues,
-                        [variable.name]: e.target.value,
+                        [variable.variableName]: e.target.value,
                       })}
-                      placeholder={variable.defaultValue || `Enter ${variable.name}`}
+                      placeholder={variable.defaultValue || `Enter ${variable.displayName}`}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      disabled={analyzing || (variable.isFromFlow && !variable.isMandatory)}
+                      disabled={analyzing || (variable.isFlowVariable && !variable.isRequired)}
                     />
                   </div>
                 ))}
