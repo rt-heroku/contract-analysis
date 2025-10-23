@@ -15,9 +15,15 @@ import {
 } from 'lucide-react';
 
 interface Flow {
-  id: number;
   name: string;
-  definition: any;
+  description?: string;
+  url: string;
+  method: string;
+  vars?: Array<{
+    name: string;
+    type: string;
+    mandatory: boolean;
+  }>;
 }
 
 interface Prompt {
@@ -208,6 +214,14 @@ export const AnalysisSetup: React.FC = () => {
         dataUploadId,
       };
 
+      if (selectedFlow) {
+        payload.flow = {
+          name: selectedFlow.name,
+          url: selectedFlow.url,
+          method: selectedFlow.method,
+        };
+      }
+
       if (selectedPrompt) {
         payload.prompt = {
           id: selectedPrompt.id,
@@ -299,30 +313,50 @@ export const AnalysisSetup: React.FC = () => {
         )}
       </Card>
 
-      {/* Step 2: Select Flow (Optional) */}
+      {/* Step 2: Select MuleSoft Flow */}
       {flows.length > 0 && (
-        <Card title="Step 2: Select Flow (Optional)">
+        <Card title="Step 2: Select MuleSoft Flow">
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
               <GitBranch className="w-4 h-4" />
-              <span>Choose a predefined workflow</span>
+              <span>Choose a MuleSoft flow to process the data</span>
             </div>
             <select
-              value={selectedFlow?.id || ''}
+              value={selectedFlow?.name || ''}
               onChange={(e) => {
-                const flow = flows.find(f => f.id === Number(e.target.value));
+                const flow = flows.find(f => f.name === e.target.value);
                 setSelectedFlow(flow || null);
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               disabled={analyzing}
             >
-              <option value="">-- No Flow Selected --</option>
+              <option value="">-- Select a Flow --</option>
               {flows.map(flow => (
-                <option key={flow.id} value={flow.id}>
-                  {flow.name}
+                <option key={flow.name} value={flow.name}>
+                  {flow.name} {flow.description && `- ${flow.description}`}
                 </option>
               ))}
             </select>
+            
+            {selectedFlow && selectedFlow.description && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-900">
+                  <span className="font-medium">Description:</span> {selectedFlow.description}
+                </p>
+                {selectedFlow.vars && selectedFlow.vars.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-medium text-blue-900 mb-1">Flow Variables:</p>
+                    <ul className="text-xs text-blue-800 space-y-1">
+                      {selectedFlow.vars.map((v, idx) => (
+                        <li key={idx}>
+                          • {v.name} ({v.type}){v.mandatory && <span className="text-red-600"> *required</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </Card>
       )}
