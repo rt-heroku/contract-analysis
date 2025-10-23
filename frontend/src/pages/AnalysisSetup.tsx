@@ -50,6 +50,7 @@ export const AnalysisSetup: React.FC = () => {
   const [dataFile, setDataFile] = useState<File | null>(null);
   const [dataUploadId, setDataUploadId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [jobId, setJobId] = useState<string | null>(null);
   
   const [flows, setFlows] = useState<Flow[]>([]);
   const [selectedFlow, setSelectedFlow] = useState<Flow | null>(null);
@@ -66,17 +67,24 @@ export const AnalysisSetup: React.FC = () => {
     type: 'info' as 'success' | 'error' | 'warning' | 'info',
   });
 
-  // Load flows and prompts
+  // Load flows, prompts, and analysis record
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [flowsRes, promptsRes] = await Promise.all([
+        const [flowsRes, promptsRes, analysisRes] = await Promise.all([
           api.get('/flows'),
-          api.get('/prompts')
+          api.get('/prompts'),
+          api.get(`/analysis/${analysisRecordId}`)
         ]);
         
         setFlows(flowsRes.data.flows || []);
         setPrompts(promptsRes.data.prompts || []);
+        
+        // Get jobId from analysis record
+        if (analysisRes.data.analysisRecord?.jobId) {
+          setJobId(analysisRes.data.analysisRecord.jobId);
+          console.log('📋 Using jobId from analysis record:', analysisRes.data.analysisRecord.jobId);
+        }
         
         // Auto-select default prompt if available
         const defaultPrompt = promptsRes.data.prompts?.find((p: Prompt) => p.isDefault);
@@ -98,7 +106,7 @@ export const AnalysisSetup: React.FC = () => {
     };
 
     loadData();
-  }, []);
+  }, [analysisRecordId]);
 
   const initializeVariables = (prompt: Prompt) => {
     const initialValues: Record<string, string> = {};
@@ -122,12 +130,22 @@ export const AnalysisSetup: React.FC = () => {
       formData.append('file', file);
       formData.append('uploadType', 'data');
       formData.append('analysisRecordId', analysisRecordId || '');
+      
+      // IMPORTANT: Use the same jobId as the contract to link them together
+      if (jobId) {
+        formData.append('jobId', jobId);
+        console.log('📋 Uploading Excel with jobId:', jobId);
+      } else {
+        console.warn('⚠️ No jobId found - Excel upload will get a new jobId');
+      }
 
       const response = await api.post('/uploads', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       setDataUploadId(response.data.upload.id);
+      console.log('✅ Excel uploaded with jobId:', response.data.upload.jobId);
+      
       setAlertDialog({
         isOpen: true,
         title: 'Success',
