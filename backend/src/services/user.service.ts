@@ -219,6 +219,16 @@ class UserService {
       where: { userId },
     });
   }
+
+  /**
+   * Clear Anypoint credentials for a user
+   */
+  async clearAnypointCredentials(userId: number) {
+    return prisma.userProfile.update({
+      where: { userId },
+      data: { anypointUsername: null, anypointPassword: null },
+    });
+  }
 }
 
 export default new UserService();

@@ -159,7 +159,8 @@ export const IDPReview: React.FC = () => {
 
       // Navigate back to IDP response page after a short delay
       setTimeout(() => {
-        navigate(`/idp-response/${analysisRecordId}?approved=true&idpExecutionId=${idpExecutionId}`);
+        // Redirect to response page, without triggering auto-refresh
+        navigate(`/idp-response/${analysisRecordId}?idpExecutionId=${idpExecutionId}`);
       }, 1500);
     } catch (error: any) {
       setAlertDialog({

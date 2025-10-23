@@ -16,6 +16,7 @@ import {
   RefreshCw,
   ExternalLink
 } from 'lucide-react';
+import { Card } from '@/components/common/Card';
 
 interface ContractAnalysis {
   id: number;
@@ -332,6 +333,10 @@ export const IDPResponse: React.FC = () => {
 
   // Detect document type and render appropriate component
   const detectDocumentType = (data: any): 'purchaseOrder' | 'invoice' | 'contract' | 'generic' => {
+    // If this is the generic IDP response (no specific fields), use generic renderer
+    if (data && typeof data === 'object' && Array.isArray(data.results)) {
+      return 'generic';
+    }
     if (!data) return 'generic';
     
     // Check if it's a paginated response
@@ -349,8 +354,8 @@ export const IDPResponse: React.FC = () => {
       }
     }
     
-    // Default to contract for non-paginated or unrecognized documents
-    return 'contract';
+    // Default to contract for paginated or recognized documents, otherwise generic
+    return Array.isArray(data.pages) ? 'contract' : 'generic';
   };
 
   const renderDocumentContent = (data: any) => {
@@ -449,7 +454,19 @@ export const IDPResponse: React.FC = () => {
 
       {/* Document Information Card */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Document Information</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-gray-900">Document Information</h2>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={checkProcessingStatus}
+            disabled={isCheckingStatus}
+            title="Refresh status"
+          >
+            <RefreshCw className={`w-4 h-4 ${isCheckingStatus ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <p className="text-sm text-gray-600 mb-1">Document Name</p>
@@ -499,16 +516,7 @@ export const IDPResponse: React.FC = () => {
                 This document requires manual review and approval before proceeding to analysis.
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={checkProcessingStatus}
-                disabled={isCheckingStatus}
-                title="Refresh status"
-              >
-                <RefreshCw className={`w-4 h-4 ${isCheckingStatus ? 'animate-spin' : ''}`} />
-              </Button>
+            <div>
               <Button
                 size="sm"
                 onClick={handleManualValidationClick}
@@ -523,6 +531,20 @@ export const IDPResponse: React.FC = () => {
 
       {/* Smart Document Renderer */}
       {renderDocumentContent(contractAnalysis.mulesoftResponse)}
+
+      {/* Full MuleSoft IDP Response (Raw JSON) - Collapsible */}
+      {contractAnalysis?.mulesoftResponse && (
+        <Card title="Full MuleSoft IDP Response (Raw JSON)">
+          <details className="cursor-pointer">
+            <summary className="text-sm font-medium text-gray-700 hover:text-gray-900 py-2">
+              Click to expand raw JSON response
+            </summary>
+            <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-xs mt-2 border border-gray-200 font-mono">
+              {JSON.stringify(contractAnalysis.mulesoftResponse, null, 2)}
+            </pre>
+          </details>
+        </Card>
+      )}
 
       {/* Action Buttons */}
       <div className="flex gap-4 mt-8">

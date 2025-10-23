@@ -250,12 +250,28 @@ export const idpStatusController = {
         authClientSecret: encryption.decrypt(idpExecution.authClientSecret),
       };
 
-      // Approve review in MuleSoft
+      // Get user's stored Anypoint credentials
+      const userProfile = await prisma.userProfile.findUnique({
+        where: { userId: req.user.id }
+      });
+      let username: string | undefined;
+      let password: string | undefined;
+      if (userProfile?.anypointUsername && userProfile?.anypointPassword) {
+        username = encryption.decrypt(userProfile.anypointUsername);
+        password = encryption.decrypt(userProfile.anypointPassword);
+      }
+      console.log('[approveReview] Credentials check:', { hasUsername: !!username, hasPassword: !!password });
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Anypoint credentials are required', needsCredentials: true });
+      }
+      // Approve review in MuleSoft with credentials
       const approvalData = await muleSoftService.approveReview(
         executionId,
         idpConfig,
         jobId,
-        approvedData
+        approvedData,
+        username,
+        password
       );
 
       // Update contract analysis with approved data

@@ -75,6 +75,10 @@ class MuleSoftService {
           host: idpConfig.host,
           base_path: `${idpConfig.basePath}${idpConfig.orgId}/`,
           executions_path: `actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
+          action_id: idpConfig.actionId,
+          action_version: idpConfig.actionVersion,
+          execution_id: '',
+          org_id: idpConfig.orgId,
           protocol: idpConfig.protocol,
         },
       };
@@ -258,16 +262,21 @@ class MuleSoftService {
       const requestBody = {
         job_id: jobId,
         execution_id: executionId,
+        auth_client_id: idpConfig.authClientId,
+        auth_client_secret: idpConfig.authClientSecret,
+        anypoint_username: '',
+        anypoint_password: '',
         idp_http_request: {
           method: 'POST',
           protocol: idpConfig.protocol,
           host: idpConfig.host,
           base_path: `${idpConfig.basePath}${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
+          action_id: idpConfig.actionId,
+          action_version: idpConfig.actionVersion,
+          org_id: idpConfig.orgId,
           headers: {
             'Content-Type': 'application/json',
           },
-          auth_client_id: idpConfig.authClientId,
-          auth_client_secret: idpConfig.authClientSecret,
         },
       };
 
@@ -284,12 +293,25 @@ class MuleSoftService {
 
       return response.data;
     } catch (error: any) {
-      logger.error('MuleSoft status check failed:', error.response?.data || error.message);
-      throw new Error(
-        error.response?.data?.error || 
-        error.response?.data?.message || 
-        'Failed to get processing status from MuleSoft'
-      );
+      // Make response data readable
+      const responseData = error.response?.data;
+      let errorMsg: string;
+      if (responseData) {
+        errorMsg = typeof responseData === 'string'
+          ? responseData
+          : JSON.stringify(responseData, null, 2);
+      } else {
+        errorMsg = error.message;
+      }
+      logger.error(`MuleSoft status check failed: ${errorMsg}`);
+      // Determine thrown message
+      let thrownMsg = 'Failed to get processing status from MuleSoft';
+      if (responseData && typeof responseData === 'object') {
+        thrownMsg = responseData.error || responseData.message || thrownMsg;
+      } else if (typeof responseData === 'string') {
+        thrownMsg = responseData;
+      }
+      throw new Error(thrownMsg);
     }
   }
 
@@ -315,19 +337,18 @@ class MuleSoftService {
           protocol: idpConfig.protocol,
           host: idpConfig.host,
           base_path: `${idpConfig.basePath}${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
+          action_id: idpConfig.actionId,
+          action_version: idpConfig.actionVersion,
+          org_id: idpConfig.orgId,
           headers: {
             'Content-Type': 'application/json',
           },
-          auth_client_id: idpConfig.authClientId,
-          auth_client_secret: idpConfig.authClientSecret,
         },
+        auth_client_id: idpConfig.authClientId,
+        auth_client_secret: idpConfig.authClientSecret,
+        anypoint_username: anypointUsername,
+        anypoint_password: anypointPassword
       };
-
-      // Add Anypoint credentials if provided
-      if (anypointUsername && anypointPassword) {
-        requestBody.anypoint_username = anypointUsername;
-        requestBody.anypoint_password = anypointPassword;
-      }
 
       logger.info('Calling MuleSoft /process/review', { 
         url: fullUrl, 
@@ -359,7 +380,9 @@ class MuleSoftService {
     executionId: string,
     idpConfig: any,
     jobId: string,
-    approvedData: any
+    approvedData: any,
+    anypointUsername?: string,
+    anypointPassword?: string
   ): Promise<any> {
     try {
       const mulesoftUrl = await getSetting('mulesoft_api_url', 'http://localhost:8081');
@@ -374,12 +397,17 @@ class MuleSoftService {
           protocol: idpConfig.protocol,
           host: idpConfig.host,
           base_path: `${idpConfig.basePath}${idpConfig.orgId}/actions/${idpConfig.actionId}/versions/${idpConfig.actionVersion}/executions`,
+          action_id: idpConfig.actionId,
+          action_version: idpConfig.actionVersion,
+          org_id: idpConfig.orgId,
           headers: {
             'Content-Type': 'application/json',
           },
-          auth_client_id: idpConfig.authClientId,
-          auth_client_secret: idpConfig.authClientSecret,
         },
+        auth_client_id: idpConfig.authClientId,
+        auth_client_secret: idpConfig.authClientSecret,
+        anypoint_username: anypointUsername,
+        anypoint_password: anypointPassword
       };
 
       logger.info('Calling MuleSoft /process/approve', { 

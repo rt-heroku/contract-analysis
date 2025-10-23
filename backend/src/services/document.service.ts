@@ -98,8 +98,11 @@ class DocumentService {
         throw error; // Re-throw to outer catch block
       }
 
-      // Extract executionId from MuleSoft response
-      const executionId = contractResult.execution_id || contractResult.executionId || null;
+      // Extract executionId from MuleSoft response (id, execution_id, or executionId)
+      const executionId =
+        contractResult.id != null
+          ? String(contractResult.id)
+          : contractResult.execution_id || contractResult.executionId || null;
       if (executionId) {
         logger.info(`Extracted executionId: ${executionId} for jobId: ${jobId}`);
       } else {
