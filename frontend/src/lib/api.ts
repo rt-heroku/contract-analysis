@@ -54,14 +54,25 @@ api.interceptors.response.use(
     }
     
     if (status === 401) {
-      // Token expired or invalid
-      console.error('🌐 [API] 401 UNAUTHORIZED - Clearing auth and redirecting to login');
-      console.trace('🌐 [API] 401 stack trace');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      sessionStorage.removeItem('token');
-      sessionStorage.removeItem('user');
-      window.location.href = '/login';
+      // Check if it's an Anypoint credentials failure (not a session expiry)
+      const isAnypointAuthFailure = 
+        errorData?.authFailed || 
+        errorData?.needsCredentials ||
+        url.includes('/idp-status/');
+      
+      if (isAnypointAuthFailure) {
+        // Don't redirect - let the component handle the credentials dialog
+        console.debug('🌐 [API] 401 - Anypoint auth failure, component will handle');
+      } else {
+        // Token expired or invalid - redirect to login
+        console.error('🌐 [API] 401 UNAUTHORIZED - Clearing auth and redirecting to login');
+        console.trace('🌐 [API] 401 stack trace');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

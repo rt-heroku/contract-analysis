@@ -370,6 +370,7 @@ class MuleSoftService {
     } catch (error: any) {
       const responseData = error.response?.data;
       let errorMessage = 'Failed to request review from MuleSoft';
+      let isGarbled = false;
       
       // Parse error message (might be garbled JSON object with character indices)
       if (responseData && typeof responseData === 'object') {
@@ -377,12 +378,14 @@ class MuleSoftService {
         const keys = Object.keys(responseData);
         if (keys.length > 0 && keys.every(k => !isNaN(Number(k)))) {
           // Reconstruct string from character indices
+          isGarbled = true;
           const reconstructed = keys
             .sort((a, b) => Number(a) - Number(b))
             .map(k => responseData[k])
             .join('');
           errorMessage = reconstructed;
-          logger.error('MuleSoft review request failed (reconstructed):', reconstructed);
+          // Log the readable version, not the garbled one
+          logger.error('MuleSoft review request failed:', reconstructed);
         } else {
           // Normal error object
           errorMessage = responseData.error || responseData.message || errorMessage;

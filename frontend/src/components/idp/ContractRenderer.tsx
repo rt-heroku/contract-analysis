@@ -3,7 +3,6 @@ import { Card } from '@/components/common/Card';
 import {
   FileText,
   CheckCircle,
-  AlertCircle,
   Building,
   MapPin,
   Phone,
@@ -33,53 +32,22 @@ export const ContractRenderer: React.FC<ContractRendererProps> = ({ data }) => {
   };
 
   const fields = getFields();
+  
+  // Get document summary from either root level or fields
+  const documentSummary = data.documentSummary || fields.documentSummary;
 
   return (
     <div className="space-y-4">
-      {/* Document Information */}
-      <Card title="Document Information">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Document Name</p>
-            <p className="font-medium text-gray-900">{data.documentName || 'N/A'}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Document ID</p>
-            <p className="font-mono text-xs text-gray-700">{data.id || 'N/A'}</p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 mb-1">Processing Status</p>
-            <div className="flex items-center gap-2">
-              {data.status?.toLowerCase().includes('success') ? (
-                <>
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  <span className="font-medium text-green-600">Success</span>
-                </>
-              ) : data.status?.includes('VALIDATION') ? (
-                <>
-                  <AlertCircle className="w-4 h-4 text-yellow-600" />
-                  <span className="font-medium text-yellow-600 text-xs">{data.status}</span>
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-blue-600 text-xs">{data.status || 'Processing'}</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Document Summary */}
-        {data.documentSummary && (
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm font-medium text-blue-900 mb-2">Document Summary</p>
+      {/* Document Summary */}
+      {documentSummary && (
+        <Card title="Document Summary">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-gray-700 leading-relaxed">
-              {data.documentSummary.replace(/^NOT PARSED:\s*/i, '')}
+              {documentSummary.replace(/^NOT PARSED:\s*/i, '')}
             </p>
           </div>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {/* Parties Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -343,20 +311,6 @@ export const ContractRenderer: React.FC<ContractRendererProps> = ({ data }) => {
               </table>
             </div>
           </div>
-        </Card>
-      )}
-
-      {/* Full Response (JSON) - Collapsible */}
-      {data && (
-        <Card title="Full MuleSoft IDP Response (Raw JSON)">
-          <details className="cursor-pointer">
-            <summary className="text-sm font-medium text-gray-700 hover:text-gray-900 py-2">
-              Click to expand raw JSON response
-            </summary>
-            <pre className="bg-gray-50 p-4 rounded-lg overflow-x-auto text-xs mt-2 border border-gray-200 font-mono">
-              {JSON.stringify(data, null, 2)}
-            </pre>
-          </details>
         </Card>
       )}
     </div>
