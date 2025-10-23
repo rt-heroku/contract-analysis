@@ -64,9 +64,13 @@ export const SystemEnvironment: React.FC = () => {
   const [revealedEnvVars, setRevealedEnvVars] = useState<Record<string, boolean>>({});
   const [revealedSettings, setRevealedSettings] = useState<Record<string, boolean>>({});
 
-  const isAdmin = user?.roles?.some((role: any) => 
-    role.name === 'admin' || role === 'admin'
-  );
+  // roles can be either string[] or object[]
+  const isAdmin = user?.roles?.some((role: any) => {
+    if (typeof role === 'string') {
+      return role.toLowerCase() === 'admin';
+    }
+    return role.name?.toLowerCase() === 'admin';
+  }) || false;
 
   const handleBack = () => {
     if (window.history.length > 1) {

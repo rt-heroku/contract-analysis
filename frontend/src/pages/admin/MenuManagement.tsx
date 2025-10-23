@@ -284,9 +284,13 @@ const TreeMenuItem: React.FC<{
 
 export const MenuManagement: React.FC = () => {
   const { user } = useAuth();
-  const isAdmin = user?.roles?.some((role: any) => 
-    role.name === 'Admin' || role === 'Admin'
-  ) || false;
+  // roles can be either string[] or object[]
+  const isAdmin = user?.roles?.some((role: any) => {
+    if (typeof role === 'string') {
+      return role.toLowerCase() === 'admin';
+    }
+    return role.name?.toLowerCase() === 'admin';
+  }) || false;
   
   console.log('[MenuManagement] isAdmin:', isAdmin, 'user:', user, 'roles:', user?.roles);
   
