@@ -7,7 +7,7 @@ import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { User, Mail, Calendar, Upload, X, Camera, Save, Send, Lock, Key, Trash2 } from 'lucide-react';
+import { User, Mail, Calendar, Upload, X, Camera, Save, Send, Lock, Key } from 'lucide-react';
 
 interface UserProfile {
   id: number;
@@ -550,36 +550,6 @@ export const Profile: React.FC = () => {
                 </div>
               </div>
             )}
-          </div>
-        </Card>
-      )}
-
-      {/* Clear Anypoint Credentials */}
-      {profile && profile.anypointUsername && (
-        <Card title="Anypoint Credentials">
-          <div className="space-y-4">
-            <p className="text-gray-900">
-              Anypoint Username: <span className="font-semibold">{profile.anypointUsername}</span>
-            </p>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={async () => {
-                if (!window.confirm('Clear stored Anypoint credentials?')) return;
-                try {
-                  await api.delete('/users/profile/anypoint');
-                  alert('Anypoint credentials cleared');
-                  await fetchProfile();
-                } catch (err: any) {
-                  console.error('Failed to clear credentials:', err);
-                  alert(err.response?.data?.error || 'Failed to clear credentials');
-                }
-              }}
-              className="flex items-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Clear Anypoint Credentials
-            </Button>
           </div>
         </Card>
       )}

@@ -133,34 +133,22 @@ export const idpStatusController = {
         authClientSecret: encryption.decrypt(idpExecution.authClientSecret),
       };
 
-      // Get user's profile to check for stored credentials
-      let userProfile = await prisma.userProfile.findUnique({
-        where: { userId: req.user!.id }
-      });
-
-      // If profile doesn't exist, create it
-      if (!userProfile) {
-        userProfile = await prisma.userProfile.create({
-          data: { userId: req.user!.id }
-        });
-      }
-
-      // Use provided credentials or decrypt stored ones from user profile
+      // Use provided credentials or decrypt stored ones from IDP execution
       let username = anypointUsername;
       let password = anypointPassword;
 
       console.log('[requestReview] Credentials check:', {
         hasProvidedUsername: !!anypointUsername,
         hasProvidedPassword: !!anypointPassword,
-        hasStoredUsername: !!userProfile.anypointUsername,
-        hasStoredPassword: !!userProfile.anypointPassword
+        hasStoredUsername: !!idpExecution.anypointUsername,
+        hasStoredPassword: !!idpExecution.anypointPassword
       });
 
-      if (!username && userProfile.anypointUsername) {
-        username = encryption.decrypt(userProfile.anypointUsername);
+      if (!username && idpExecution.anypointUsername) {
+        username = encryption.decrypt(idpExecution.anypointUsername);
       }
-      if (!password && userProfile.anypointPassword) {
-        password = encryption.decrypt(userProfile.anypointPassword);
+      if (!password && idpExecution.anypointPassword) {
+        password = encryption.decrypt(idpExecution.anypointPassword);
       }
 
       console.log('[requestReview] Final credentials:', {
@@ -184,10 +172,10 @@ export const idpStatusController = {
         password
       );
 
-      // Save credentials to user profile if requested
+      // Save credentials to IDP execution if requested
       if (saveCredentials && anypointUsername && anypointPassword) {
-        await prisma.userProfile.update({
-          where: { userId: req.user!.id },
+        await prisma.idpExecution.update({
+          where: { id: parseInt(idpExecutionId) },
           data: {
             anypointUsername: encryption.encrypt(anypointUsername),
             anypointPassword: encryption.encrypt(anypointPassword),
@@ -250,15 +238,12 @@ export const idpStatusController = {
         authClientSecret: encryption.decrypt(idpExecution.authClientSecret),
       };
 
-      // Get user's stored Anypoint credentials
-      const userProfile = await prisma.userProfile.findUnique({
-        where: { userId: req.user.id }
-      });
+      // Get Anypoint credentials from IDP execution
       let username: string | undefined;
       let password: string | undefined;
-      if (userProfile?.anypointUsername && userProfile?.anypointPassword) {
-        username = encryption.decrypt(userProfile.anypointUsername);
-        password = encryption.decrypt(userProfile.anypointPassword);
+      if (idpExecution.anypointUsername && idpExecution.anypointPassword) {
+        username = encryption.decrypt(idpExecution.anypointUsername);
+        password = encryption.decrypt(idpExecution.anypointPassword);
       }
       console.log('[approveReview] Credentials check:', { hasUsername: !!username, hasPassword: !!password });
       if (!username || !password) {

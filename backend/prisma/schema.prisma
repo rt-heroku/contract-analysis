@@ -52,15 +52,13 @@ model User {
 }
 
 model UserProfile {
-  id               Int      @id @default(autoincrement())
-  userId           Int      @unique @map("user_id")
-  avatarBase64     String?  @map("avatar_base64") @db.Text
-  phone            String?  @db.VarChar(20)
-  bio              String?  @db.Text
-  anypointUsername String?  @map("anypoint_username") @db.Text
-  anypointPassword String?  @map("anypoint_password") @db.Text
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique @map("user_id")
+  avatarBase64 String?  @map("avatar_base64") @db.Text
+  phone        String?  @db.VarChar(20)
+  bio          String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

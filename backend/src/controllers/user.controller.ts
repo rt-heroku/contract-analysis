@@ -280,20 +280,6 @@ class UserController {
     }
   }
 
-  /**
-   * Clear Anypoint credentials
-   */
-  async clearAnypoint(req: AuthenticatedRequest, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-      await userService.clearAnypointCredentials(req.user.id);
-      res.json({ message: 'Anypoint credentials cleared' });
-    } catch (error: any) {
-      res.status(400).json({ error: error.message });
-    }
-  }
 }
 
 export default new UserController();
