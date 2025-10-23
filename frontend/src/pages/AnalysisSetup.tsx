@@ -117,7 +117,7 @@ export const AnalysisSetup: React.FC = () => {
       formData.append('fileType', 'data');
       formData.append('analysisRecordId', analysisRecordId || '');
 
-      const response = await api.post('/upload', formData, {
+      const response = await api.post('/uploads', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
