@@ -5,7 +5,7 @@ import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { Plus, Play, Edit, Trash2, Copy } from 'lucide-react';
+import { Plus, Play, Edit, Trash2, Copy, FormInput } from 'lucide-react';
 import api from '@/lib/api';
 
 interface Process {
@@ -14,6 +14,7 @@ interface Process {
   description: string | null;
   category: string | null;
   executionMode: string;
+  triggerType: string;
   isActive: boolean;
   createdAt: string;
   creator: {
@@ -191,7 +192,17 @@ export const Processes: React.FC = () => {
               <div className="space-y-2 mb-4 text-sm text-gray-600">
                 <div className="flex justify-between">
                   <span>Mode:</span>
-                  <span className="font-medium">{process.executionMode}</span>
+                  <span className="font-medium capitalize">{process.executionMode}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Trigger:</span>
+                  <span className="font-medium">
+                    {process.triggerType === 'manual' && '🖱️ Manual'}
+                    {process.triggerType === 'ui_form' && '📋 UI Form'}
+                    {process.triggerType === 'api' && '🔗 API'}
+                    {process.triggerType === 'schedule' && '⏰ Schedule'}
+                    {process.triggerType === 'event' && '⚡ Event'}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Executions:</span>
@@ -206,13 +217,23 @@ export const Processes: React.FC = () => {
               </div>
 
               <div className="flex space-x-2">
-                <Button
-                  onClick={() => handleExecute(process.id, process.name)}
-                  className="flex-1 flex items-center justify-center space-x-1 bg-green-600 hover:bg-green-700 text-white text-sm py-2"
-                >
-                  <Play className="w-4 h-4" />
-                  <span>Run</span>
-                </Button>
+                {process.triggerType === 'ui_form' ? (
+                  <Button
+                    onClick={() => navigate(`/process/trigger/${process.id}`)}
+                    className="flex-1 flex items-center justify-center space-x-1 bg-purple-600 hover:bg-purple-700 text-white text-sm py-2"
+                  >
+                    <FormInput className="w-4 h-4" />
+                    <span>Open Form</span>
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => handleExecute(process.id, process.name)}
+                    className="flex-1 flex items-center justify-center space-x-1 bg-green-600 hover:bg-green-700 text-white text-sm py-2"
+                  >
+                    <Play className="w-4 h-4" />
+                    <span>Run</span>
+                  </Button>
+                )}
                 <Button
                   onClick={() => navigate(`/process-designer/${process.id}`)}
                   className="flex items-center justify-center px-3 bg-blue-600 hover:bg-blue-700 text-white"

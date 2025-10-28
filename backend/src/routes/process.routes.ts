@@ -37,5 +37,11 @@ router.post('/import', processController.importProcess);
 // POST /api/processes/:id/clone - Clone process
 router.post('/:id/clone', processController.cloneProcess);
 
+// GET /api/processes/:id/trigger-config - Get trigger configuration
+router.get('/:id/trigger-config', processController.getTriggerConfig);
+
+// POST /api/processes/:id/trigger - Trigger process execution
+router.post('/:id/trigger', processController.triggerProcess);
+
 export default router;
 

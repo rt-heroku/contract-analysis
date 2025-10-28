@@ -27,6 +27,7 @@ import { MenuManagement } from './pages/admin/MenuManagement';
 import { SystemEnvironment } from './pages/SystemEnvironment';
 import { Processes } from './pages/Processes';
 import { ProcessDesigner } from './pages/ProcessDesigner';
+import { ProcessTriggerForm } from './pages/ProcessTriggerForm';
 import { Actions } from './pages/Actions';
 import { Executions } from './pages/Executions';
 import { Connectors } from './pages/Connectors';
@@ -57,6 +58,7 @@ const App = () => {
             <Route path="/processes" element={<MainLayout><Processes /></MainLayout>} />
             <Route path="/process-designer" element={<MainLayout><ProcessDesigner /></MainLayout>} />
             <Route path="/process-designer/:id" element={<MainLayout><ProcessDesigner /></MainLayout>} />
+            <Route path="/process/trigger/:id" element={<MainLayout><ProcessTriggerForm /></MainLayout>} />
             <Route path="/actions" element={<MainLayout><Actions /></MainLayout>} />
             <Route path="/actions/new" element={<MainLayout><ActionCreator /></MainLayout>} />
             <Route path="/actions/edit/:id" element={<MainLayout><ActionCreator /></MainLayout>} />

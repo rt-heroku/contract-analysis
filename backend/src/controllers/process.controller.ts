@@ -278,5 +278,67 @@ export const processController = {
       res.status(500).json({ error: error.message });
     }
   },
+
+  /**
+   * Get trigger configuration (for UI form rendering)
+   */
+  async getTriggerConfig(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const processId = parseInt(req.params.id);
+      const process = await processService.getProcessById(processId, req.user.id);
+
+      const triggerInfo = {
+        id: process.id,
+        name: process.name,
+        description: process.description,
+        triggerType: process.triggerType,
+        triggerConfig: process.triggerConfig,
+      };
+
+      res.json({ trigger: triggerInfo });
+    } catch (error: any) {
+      console.error('Error fetching trigger config:', error);
+      res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
+    }
+  },
+
+  /**
+   * Trigger process execution (via UI form, API, etc.)
+   */
+  async triggerProcess(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const processId = parseInt(req.params.id);
+      const executionContext = req.body.executionContext || req.body || {};
+
+      // Execute process
+      const executionId = await processExecutor.execute(processId, req.user.id, executionContext);
+
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: 'process.trigger',
+        actionDescription: `Triggered process execution: ${processId}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.json({
+        success: true,
+        executionId,
+        status: 'running',
+        message: 'Process execution started successfully',
+      });
+    } catch (error: any) {
+      console.error('Error triggering process:', error);
+      res.status(500).json({ error: error.message });
+    }
+  },
 };
 
