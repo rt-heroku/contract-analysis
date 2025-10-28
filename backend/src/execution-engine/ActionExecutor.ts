@@ -15,6 +15,7 @@ import { ParallelAction } from './actions/ParallelAction';
 import { ValidateAction } from './actions/ValidateAction';
 import { MergeAction } from './actions/MergeAction';
 import { ScriptAction } from './actions/ScriptAction';
+import connectorExecutor from './connectors/ConnectorExecutor';
 
 export interface ActionHandler {
   execute(inputData: any, config: any, context: ExecutionContext): Promise<any>;
@@ -98,6 +99,9 @@ export class ActionExecutor {
       } else if (action.executorType === 'script') {
         // Execute script (TODO: implement sandboxed script execution)
         output = await this.executeScript(action, inputData, config, context);
+      } else if (action.executorType === 'connector') {
+        // Execute connector action
+        output = await this.executeConnectorAction(action, inputData, config, context);
       } else {
         throw new Error(`Unknown executor type: ${action.executorType}`);
       }
@@ -187,6 +191,44 @@ export class ActionExecutor {
     // TODO: Implement sandboxed script execution using vm2
     // For now, throw error
     throw new Error('Script execution not yet implemented');
+  }
+
+  /**
+   * Execute connector action
+   */
+  private async executeConnectorAction(
+    action: any,
+    inputData: any,
+    config: any,
+    context: ExecutionContext
+  ): Promise<any> {
+    try {
+      if (!action.connectorId) {
+        throw new Error('Connector ID not specified for connector action');
+      }
+
+      if (!action.connectorOperation) {
+        throw new Error('Connector operation not specified for connector action');
+      }
+
+      // Load connector and connector action
+      const connector = await connectorExecutor.loadConnector(action.connectorId);
+      const connectorAction = await connectorExecutor.loadConnectorAction(
+        action.connectorId,
+        action.connectorOperation
+      );
+
+      // Execute connector action
+      return await connectorExecutor.execute({
+        connector,
+        connectorAction,
+        inputData,
+        executionContext: context,
+      });
+    } catch (error: any) {
+      logger.error('Connector action execution error:', error);
+      throw error;
+    }
   }
 
   /**

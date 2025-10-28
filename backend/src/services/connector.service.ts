@@ -1,11 +1,15 @@
 import prisma from '../config/database';
 import logger from '../utils/logger';
+import openApiImporter from './openapi-importer.service';
+import predefinedActionsService from './predefined-connector-actions.service';
 
 export interface CreateConnectorInput {
   name: string;
   connectorType: 'rest' | 'database' | 's3' | 'ftp' | 'file';
+  version?: string;
   config: any;
   authType?: string;
+  openApiSpec?: any;
   createdBy: number;
   sharedWith?: number[];
 }
@@ -105,8 +109,10 @@ class ConnectorService {
         data: {
           name: data.name,
           connectorType: data.connectorType,
+          version: data.version || '1.0.0',
           config: encryptedConfig,
           authType: data.authType,
+          openApiSpec: data.openApiSpec || null,
           createdBy: data.createdBy,
           sharedWith: data.sharedWith || [],
         },
@@ -122,6 +128,17 @@ class ConnectorService {
         },
       });
 
+      // Initialize predefined actions for connector type
+      if (data.connectorType !== 'rest' || !data.openApiSpec) {
+        // For non-REST or REST without OpenAPI, create predefined actions
+        await predefinedActionsService.initializeForConnector(connector.id);
+      }
+
+      // If OpenAPI spec provided, import it
+      if (data.openApiSpec && data.connectorType === 'rest') {
+        await openApiImporter.importFromSpec(connector.id, data.openApiSpec);
+      }
+
       logger.info(`Connector created: ${connector.name} by user ${data.createdBy}`);
       return {
         ...connector,
@@ -130,6 +147,75 @@ class ConnectorService {
     } catch (error: any) {
       logger.error('Error creating connector:', error);
       throw new Error(`Failed to create connector: ${error.message}`);
+    }
+  }
+
+  /**
+   * Import OpenAPI spec for existing connector
+   */
+  async importOpenApiSpec(connectorId: number, userId: number, spec: any) {
+    try {
+      // Verify ownership
+      const connector = await prisma.connector.findFirst({
+        where: { id: connectorId, createdBy: userId },
+      });
+
+      if (!connector) {
+        throw new Error('Connector not found or access denied');
+      }
+
+      if (connector.connectorType !== 'rest') {
+        throw new Error('OpenAPI import is only supported for REST connectors');
+      }
+
+      const result = await openApiImporter.importFromSpec(connectorId, spec);
+      logger.info(`OpenAPI imported for connector ${connectorId}: ${result.actionsCreated} actions created`);
+      return result;
+    } catch (error: any) {
+      logger.error('Error importing OpenAPI spec:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Import OpenAPI from URL
+   */
+  async importOpenApiFromUrl(connectorId: number, userId: number, url: string) {
+    try {
+      const connector = await prisma.connector.findFirst({
+        where: { id: connectorId, createdBy: userId },
+      });
+
+      if (!connector) {
+        throw new Error('Connector not found or access denied');
+      }
+
+      const result = await openApiImporter.importFromUrl(connectorId, url);
+      return result;
+    } catch (error: any) {
+      logger.error('Error importing OpenAPI from URL:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get connector actions
+   */
+  async getConnectorActions(connectorId: number, userId: number) {
+    try {
+      // Verify access
+      const connector = await prisma.connector.findFirst({
+        where: { id: connectorId, createdBy: userId },
+      });
+
+      if (!connector) {
+        throw new Error('Connector not found or access denied');
+      }
+
+      return await openApiImporter.getConnectorActions(connectorId);
+    } catch (error: any) {
+      logger.error('Error getting connector actions:', error);
+      throw error;
     }
   }
 

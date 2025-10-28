@@ -129,5 +129,54 @@ export const connectorController = {
       res.status(500).json({ error: error.message });
     }
   },
+
+  async importOpenApi(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const connectorId = parseInt(req.params.id);
+      const { openApiSpec, url } = req.body;
+
+      let result;
+      if (url) {
+        result = await connectorService.importOpenApiFromUrl(connectorId, req.user.id, url);
+      } else if (openApiSpec) {
+        result = await connectorService.importOpenApiSpec(connectorId, req.user.id, openApiSpec);
+      } else {
+        return res.status(400).json({ error: 'Either openApiSpec or url is required' });
+      }
+
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: 'connector.import_openapi',
+        actionDescription: `Imported OpenAPI spec for connector ${connectorId}: ${result.actionsCreated} actions created`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error importing OpenAPI:', error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  async getConnectorActions(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const connectorId = parseInt(req.params.id);
+      const actions = await connectorService.getConnectorActions(connectorId, req.user.id);
+
+      res.json({ actions });
+    } catch (error: any) {
+      console.error('Error fetching connector actions:', error);
+      res.status(500).json({ error: error.message });
+    }
+  },
 };
 

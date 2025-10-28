@@ -61,6 +61,12 @@ export const Connectors: React.FC = () => {
     onConfirm: () => {},
   });
 
+  const [showOpenApiModal, setShowOpenApiModal] = useState(false);
+  const [selectedConnector, setSelectedConnector] = useState<Connector | null>(null);
+  const [openApiSpec, setOpenApiSpec] = useState('');
+  const [openApiUrl, setOpenApiUrl] = useState('');
+  const [importingOpenApi, setImportingOpenApi] = useState(false);
+
   useEffect(() => {
     loadConnectors();
   }, []);
@@ -173,6 +179,57 @@ export const Connectors: React.FC = () => {
         type: 'error',
       });
     }
+  };
+
+  const handleImportOpenApi = async () => {
+    if (!selectedConnector) return;
+
+    try {
+      setImportingOpenApi(true);
+      
+      const payload: any = {};
+      if (openApiUrl) {
+        payload.url = openApiUrl;
+      } else if (openApiSpec) {
+        payload.openApiSpec = JSON.parse(openApiSpec);
+      } else {
+        setAlertDialog({
+          isOpen: true,
+          title: 'Error',
+          message: 'Please provide either an OpenAPI spec or URL',
+          type: 'error',
+        });
+        return;
+      }
+
+      const response = await api.post(`/connectors/${selectedConnector.id}/import-openapi`, payload);
+      
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Successfully imported OpenAPI spec. Created ${response.data.actionsCreated} connector actions.`,
+        type: 'success',
+      });
+      
+      setShowOpenApiModal(false);
+      setOpenApiSpec('');
+      setOpenApiUrl('');
+      setSelectedConnector(null);
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to import OpenAPI spec',
+        type: 'error',
+      });
+    } finally {
+      setImportingOpenApi(false);
+    }
+  };
+
+  const openImportModal = (connector: Connector) => {
+    setSelectedConnector(connector);
+    setShowOpenApiModal(true);
   };
 
   const resetForm = () => {
@@ -304,6 +361,15 @@ export const Connectors: React.FC = () => {
                   <TestTube className="w-4 h-4" />
                   <span>Test</span>
                 </Button>
+                {connector.connectorType === 'rest' && (
+                  <Button
+                    onClick={() => openImportModal(connector)}
+                    className="flex-1 flex items-center justify-center space-x-1 text-sm py-2 bg-purple-600 hover:bg-purple-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Import OpenAPI</span>
+                  </Button>
+                )}
                 <Button
                   onClick={() => handleEdit(connector)}
                   className="flex items-center justify-center px-3 bg-blue-600 hover:bg-blue-700 text-white"
@@ -514,6 +580,77 @@ export const Connectors: React.FC = () => {
         title={confirmDialog.title}
         message={confirmDialog.message}
       />
+
+      {/* OpenAPI Import Modal */}
+      {showOpenApiModal && selectedConnector && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-2xl font-bold mb-4">
+                Import OpenAPI Spec for {selectedConnector.name}
+              </h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    OpenAPI Spec URL
+                  </label>
+                  <input
+                    type="text"
+                    value={openApiUrl}
+                    onChange={(e) => setOpenApiUrl(e.target.value)}
+                    placeholder="https://api.example.com/openapi.json"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Provide a URL to fetch the OpenAPI spec from
+                  </p>
+                </div>
+
+                <div className="text-center text-gray-500 font-medium">OR</div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Paste OpenAPI Spec (JSON/YAML)
+                  </label>
+                  <textarea
+                    value={openApiSpec}
+                    onChange={(e) => setOpenApiSpec(e.target.value)}
+                    placeholder='{ "openapi": "3.0.0", "info": { ... }, "paths": { ... } }'
+                    rows={12}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Paste your OpenAPI 3.0 specification here
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <Button
+                  onClick={() => {
+                    setShowOpenApiModal(false);
+                    setOpenApiSpec('');
+                    setOpenApiUrl('');
+                    setSelectedConnector(null);
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300"
+                  disabled={importingOpenApi}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleImportOpenApi}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white"
+                  disabled={importingOpenApi || (!openApiUrl && !openApiSpec)}
+                >
+                  {importingOpenApi ? 'Importing...' : 'Import'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

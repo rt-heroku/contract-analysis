@@ -25,5 +25,11 @@ router.delete('/:id', connectorController.deleteConnector);
 // POST /api/connectors/:id/test - Test connector connection
 router.post('/:id/test', connectorController.testConnection);
 
+// POST /api/connectors/:id/import-openapi - Import OpenAPI spec
+router.post('/:id/import-openapi', connectorController.importOpenApi);
+
+// GET /api/connectors/:id/actions - Get connector actions
+router.get('/:id/actions', connectorController.getConnectorActions);
+
 export default router;
 
