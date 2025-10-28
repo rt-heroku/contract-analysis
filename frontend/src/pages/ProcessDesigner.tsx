@@ -19,6 +19,10 @@ import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { Play, Save, Download, ArrowLeft } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
+import { StartNode, EndNode } from '@/components/process-designer/StartEndNodes';
+import { CollapsibleActionPalette } from '@/components/process-designer/CollapsibleActionPalette';
+import { NodeContextMenu } from '@/components/process-designer/NodeContextMenu';
+import { NodeEditModal } from '@/components/process-designer/NodeEditModal';
 
 interface Action {
   id: number;
@@ -28,7 +32,7 @@ interface Action {
   category: string;
   icon: string;
   color: string;
-  actionType?: 'system' | 'user_defined' | 'connector';
+  actionType?: 'system' | 'user_defined' | 'connector' | 'start' | 'end';
 }
 
 export const ProcessDesigner: React.FC = () => {
@@ -43,6 +47,17 @@ export const ProcessDesigner: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    nodeId: string;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  
   const [alertDialog, setAlertDialog] = useState({
     isOpen: false,
     title: '',
@@ -50,9 +65,11 @@ export const ProcessDesigner: React.FC = () => {
     type: 'info' as 'success' | 'error' | 'warning' | 'info',
   });
 
-  // Define custom node types
+  // Define custom node types (including Start/End)
   const nodeTypes: NodeTypes = useMemo(() => ({
     actionNode: ActionNode,
+    start: StartNode,
+    end: EndNode,
   }), []);
 
   useEffect(() => {
@@ -81,7 +98,15 @@ export const ProcessDesigner: React.FC = () => {
       setProcessDescription(process.description || '');
       
       if (process.flowDefinition?.nodes) {
-        setNodes(process.flowDefinition.nodes);
+        // Re-wire onEdit callbacks when loading nodes
+        const nodesWithCallbacks = process.flowDefinition.nodes.map((node: Node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            onEdit: node.type === 'actionNode' ? () => handleEditNode(node.id) : undefined,
+          },
+        }));
+        setNodes(nodesWithCallbacks);
       }
       if (process.flowDefinition?.edges) {
         setEdges(process.flowDefinition.edges);
@@ -97,6 +122,25 @@ export const ProcessDesigner: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Handle node editing
+  const handleEditNode = useCallback((nodeId: string) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (node) {
+      setSelectedNode(node);
+      setEditModalOpen(true);
+    }
+  }, [nodes]);
+
+  // Handle context menu
+  const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+    setContextMenu({
+      nodeId: node.id,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  }, []);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge({
@@ -125,8 +169,35 @@ export const ProcessDesigner: React.FC = () => {
         y: event.clientY - 150,
       };
 
+      const nodeId = `node-${Date.now()}`;
+
+      // Handle Start node
+      if (action.actionType === 'start' || action.name === 'start_node') {
+        const newNode: Node = {
+          id: nodeId,
+          type: 'start',
+          position,
+          data: {},
+        };
+        setNodes((nds) => nds.concat(newNode));
+        return;
+      }
+
+      // Handle End node
+      if (action.actionType === 'end' || action.name === 'end_node') {
+        const newNode: Node = {
+          id: nodeId,
+          type: 'end',
+          position,
+          data: {},
+        };
+        setNodes((nds) => nds.concat(newNode));
+        return;
+      }
+
+      // Handle regular action nodes
       const newNode: Node = {
-        id: `node-${Date.now()}`,
+        id: nodeId,
         type: 'actionNode',
         position,
         data: {
@@ -139,23 +210,33 @@ export const ProcessDesigner: React.FC = () => {
           actionId: action.id,
           actionName: action.name,
           config: {},
+          onEdit: () => handleEditNode(nodeId), // Wire up edit callback
         },
       };
 
       setNodes((nds) => nds.concat(newNode));
     },
-    []
+    [handleEditNode]
   );
 
   const handleSave = async () => {
     try {
       setSaving(true);
       
+      // Remove onEdit callbacks before saving (they're functions and can't be serialized)
+      const nodesToSave = nodes.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          onEdit: undefined,
+        },
+      }));
+
       const processData = {
         name: processName,
         description: processDescription,
         flowDefinition: {
-          nodes,
+          nodes: nodesToSave,
           edges,
           executionMode: 'sequential',
         },
@@ -298,26 +379,15 @@ export const ProcessDesigner: React.FC = () => {
       </div>
 
       <div className="flex-1 flex">
-        {/* Action Palette */}
-        <div className="w-64 bg-white border-r p-4 overflow-y-auto">
-          <h3 className="text-lg font-semibold mb-4">Actions</h3>
-          <div className="space-y-2">
-            {actions.map((action) => (
-              <div
-                key={action.id}
-                draggable
-                onDragStart={(event) => {
-                  event.dataTransfer.setData('application/json', JSON.stringify(action));
-                  event.dataTransfer.effectAllowed = 'move';
-                }}
-                className="p-3 rounded-lg cursor-move hover:shadow-md transition-shadow border"
-                style={{ borderLeft: `4px solid ${action.color}`, backgroundColor: '#f9fafb' }}
-              >
-                <div className="font-medium text-sm">{action.displayName}</div>
-                <div className="text-xs text-gray-500 mt-1">{action.category}</div>
-              </div>
-            ))}
-          </div>
+        {/* Collapsible Action Palette */}
+        <div className="w-64">
+          <CollapsibleActionPalette
+            actions={actions}
+            onDragStart={(event, action) => {
+              event.dataTransfer.setData('application/json', JSON.stringify(action));
+              event.dataTransfer.effectAllowed = 'move';
+            }}
+          />
         </div>
 
         {/* Canvas */}
@@ -330,18 +400,89 @@ export const ProcessDesigner: React.FC = () => {
             onConnect={onConnect}
             onDrop={onDrop}
             onDragOver={onDragOver}
+            onNodeContextMenu={onNodeContextMenu}
             nodeTypes={nodeTypes}
             fitView
           >
             <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e2e8f0" />
             <Controls />
             <MiniMap
-              nodeColor={(node) => node.data?.color as string || '#3b82f6'}
+              nodeColor={(node) => {
+                if (node.type === 'start') return '#22c55e';
+                if (node.type === 'end') return '#ef4444';
+                return node.data?.color as string || '#3b82f6';
+              }}
               maskColor="rgba(0, 0, 0, 0.1)"
             />
           </ReactFlow>
         </div>
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <NodeContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onEdit={() => {
+            handleEditNode(contextMenu.nodeId);
+            setContextMenu(null);
+          }}
+          onDelete={() => {
+            setNodes((nds) => nds.filter((n) => n.id !== contextMenu.nodeId));
+            setEdges((eds) => eds.filter((e) => e.source !== contextMenu.nodeId && e.target !== contextMenu.nodeId));
+            setContextMenu(null);
+          }}
+          onDuplicate={() => {
+            const node = nodes.find((n) => n.id === contextMenu.nodeId);
+            if (node) {
+              const newNodeId = `node-${Date.now()}`;
+              const newNode = {
+                ...node,
+                id: newNodeId,
+                position: {
+                  x: node.position.x + 50,
+                  y: node.position.y + 50,
+                },
+                data: {
+                  ...node.data,
+                  onEdit: node.type === 'actionNode' ? () => handleEditNode(newNodeId) : undefined,
+                },
+              };
+              setNodes((nds) => nds.concat(newNode));
+            }
+            setContextMenu(null);
+          }}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      <NodeEditModal
+        isOpen={editModalOpen}
+        node={selectedNode}
+        onClose={() => {
+          setEditModalOpen(false);
+          setSelectedNode(null);
+        }}
+        onSave={(nodeId, data) => {
+          setNodes((nds) =>
+            nds.map((n) =>
+              n.id === nodeId
+                ? {
+                    ...n,
+                    data: {
+                      ...n.data,
+                      config: data,
+                      label: data.nodeLabel || n.data.label,
+                    },
+                  }
+                : n
+            )
+          );
+          setEditModalOpen(false);
+          setSelectedNode(null);
+        }}
+      />
 
       <AlertDialog
         isOpen={alertDialog.isOpen}
@@ -353,4 +494,3 @@ export const ProcessDesigner: React.FC = () => {
     </div>
   );
 };
-
