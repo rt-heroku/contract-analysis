@@ -197,6 +197,205 @@ export async function seedSystemActions() {
         executorType: 'builtin',
         executorConfig: {},
       },
+      {
+        name: 'for_each',
+        displayName: 'For Each',
+        description: 'Iterate over an array and execute an action for each item',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'RotateCw',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            array: { type: 'string', description: 'Path to array property in input' },
+            batchSize: { type: 'number', default: 1, description: 'Number of items to process in parallel' },
+            stopOnError: { type: 'boolean', default: false, description: 'Stop if any iteration fails' },
+            subAction: { type: 'object', description: 'Action to execute for each item' },
+          },
+          required: ['array'],
+        },
+        inputSchema: {
+          type: 'object',
+          properties: {
+            items: { type: 'array', description: 'Array of items to iterate over' },
+          },
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            total: { type: 'number' },
+            processed: { type: 'number' },
+            results: { type: 'array' },
+            errors: { type: 'array' },
+            hasErrors: { type: 'boolean' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'while',
+        displayName: 'While Loop',
+        description: 'Execute an action repeatedly while a condition is true',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'Repeat',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            condition: { type: 'string', description: 'JavaScript condition to evaluate' },
+            maxIterations: { type: 'number', default: 100, description: 'Maximum iterations' },
+            delayBetweenIterations: { type: 'number', default: 0, description: 'Delay in ms between iterations' },
+            subAction: { type: 'object', description: 'Action to execute in each iteration' },
+          },
+          required: ['condition'],
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            iterations: { type: 'number' },
+            results: { type: 'array' },
+            completed: { type: 'boolean' },
+            maxIterationsReached: { type: 'boolean' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'parallel',
+        displayName: 'Parallel Execution',
+        description: 'Execute multiple actions simultaneously',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'Layers',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            actions: { type: 'array', description: 'Array of actions to execute in parallel' },
+            failFast: { type: 'boolean', default: false, description: 'Stop all on first error' },
+            timeout: { type: 'number', default: 30000, description: 'Timeout per action in ms' },
+          },
+          required: ['actions'],
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            total: { type: 'number' },
+            successful: { type: 'number' },
+            failed: { type: 'number' },
+            results: { type: 'array' },
+            errors: { type: 'array' },
+            duration: { type: 'number' },
+            hasErrors: { type: 'boolean' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'validate',
+        displayName: 'Validate Data',
+        description: 'Validate data against a JSON schema',
+        actionType: 'system',
+        category: 'data',
+        icon: 'CheckCircle',
+        color: '#10b981',
+        configSchema: {
+          type: 'object',
+          properties: {
+            schema: { type: 'object', description: 'JSON Schema to validate against' },
+            dataPath: { type: 'string', description: 'Path to data to validate (optional)' },
+            throwOnError: { type: 'boolean', default: false, description: 'Throw error if validation fails' },
+          },
+          required: ['schema'],
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            valid: { type: 'boolean' },
+            errors: { type: 'array' },
+            data: { description: 'Validated data' },
+            schema: { type: 'object' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'merge',
+        displayName: 'Merge Data',
+        description: 'Merge multiple data sources into one',
+        actionType: 'system',
+        category: 'data',
+        icon: 'Merge',
+        color: '#10b981',
+        configSchema: {
+          type: 'object',
+          properties: {
+            sources: { type: 'array', description: 'Array of paths to data sources' },
+            strategy: { type: 'string', enum: ['shallow', 'deep', 'concat', 'override'], default: 'deep' },
+            arrayMergeStrategy: { type: 'string', enum: ['concat', 'replace', 'unique'], default: 'concat' },
+          },
+          required: ['sources'],
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            result: { description: 'Merged data' },
+            sourcesCount: { type: 'number' },
+            strategy: { type: 'string' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'script',
+        displayName: 'Run Script',
+        description: 'Execute custom JavaScript in a sandboxed environment',
+        actionType: 'system',
+        category: 'script',
+        icon: 'Code',
+        color: '#f59e0b',
+        configSchema: {
+          type: 'object',
+          properties: {
+            script: { type: 'string', description: 'JavaScript code to execute' },
+            timeout: { type: 'number', default: 5000, description: 'Execution timeout in ms' },
+            allowAsync: { type: 'boolean', default: true, description: 'Allow async/await' },
+            sandbox: { type: 'object', description: 'Additional sandbox variables' },
+          },
+          required: ['script'],
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            result: { description: 'Script result' },
+            executed: { type: 'boolean' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
     ];
 
     // Create or update system actions

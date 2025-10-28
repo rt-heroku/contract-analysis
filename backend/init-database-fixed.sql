@@ -3,7 +3,7 @@
 -- This is a replacement for the menu section in init-database.sql
 -- Properly checks for existence before inserting
 -- ============================================
-
+TRUNCATE TABLE "menu_items" CASCADE;
 DO $$
 DECLARE
   admin_role_id INT;
@@ -148,18 +148,42 @@ BEGIN
       ON CONFLICT (menu_item_id, role_id) DO NOTHING;
     END IF;
 
-    -- Beta Features > Executions
-    IF NOT EXISTS (SELECT 1 FROM "menu_items" WHERE title = 'Executions' AND parent_id = beta_features_id) THEN
-      INSERT INTO "menu_items" (parent_id, title, icon, route, order_index, is_active, is_external, created_at, updated_at)
-      VALUES (beta_features_id, 'Executions', 'activity', '/executions', 3, TRUE, FALSE, NOW(), NOW());
-    END IF;
-    SELECT id INTO menu_id FROM "menu_items" WHERE title = 'Executions' AND parent_id = beta_features_id LIMIT 1;
-    IF menu_id IS NOT NULL THEN
-      INSERT INTO "menu_permissions" (menu_item_id, role_id, created_at)
-      VALUES (menu_id, admin_role_id, NOW())
-      ON CONFLICT (menu_item_id, role_id) DO NOTHING;
-    END IF;
-  END IF;
+          -- Beta Features > Executions
+          IF NOT EXISTS (SELECT 1 FROM "menu_items" WHERE title = 'Executions' AND parent_id = beta_features_id) THEN
+            INSERT INTO "menu_items" (parent_id, title, icon, route, order_index, is_active, is_external, created_at, updated_at)
+            VALUES (beta_features_id, 'Executions', 'activity', '/executions', 3, TRUE, FALSE, NOW(), NOW());
+          END IF;
+          SELECT id INTO menu_id FROM "menu_items" WHERE title = 'Executions' AND parent_id = beta_features_id LIMIT 1;
+          IF menu_id IS NOT NULL THEN
+            INSERT INTO "menu_permissions" (menu_item_id, role_id, created_at)
+            VALUES (menu_id, admin_role_id, NOW())
+            ON CONFLICT (menu_item_id, role_id) DO NOTHING;
+          END IF;
+
+          -- Beta Features > Connectors
+          IF NOT EXISTS (SELECT 1 FROM "menu_items" WHERE title = 'Connectors' AND parent_id = beta_features_id) THEN
+            INSERT INTO "menu_items" (parent_id, title, icon, route, order_index, is_active, is_external, created_at, updated_at)
+            VALUES (beta_features_id, 'Connectors', 'plug', '/connectors', 4, TRUE, FALSE, NOW(), NOW());
+          END IF;
+          SELECT id INTO menu_id FROM "menu_items" WHERE title = 'Connectors' AND parent_id = beta_features_id LIMIT 1;
+          IF menu_id IS NOT NULL THEN
+            INSERT INTO "menu_permissions" (menu_item_id, role_id, created_at)
+            VALUES (menu_id, admin_role_id, NOW())
+            ON CONFLICT (menu_item_id, role_id) DO NOTHING;
+          END IF;
+
+          -- Beta Features > Stores
+          IF NOT EXISTS (SELECT 1 FROM "menu_items" WHERE title = 'Stores' AND parent_id = beta_features_id) THEN
+            INSERT INTO "menu_items" (parent_id, title, icon, route, order_index, is_active, is_external, created_at, updated_at)
+            VALUES (beta_features_id, 'Stores', 'database', '/stores', 5, TRUE, FALSE, NOW(), NOW());
+          END IF;
+          SELECT id INTO menu_id FROM "menu_items" WHERE title = 'Stores' AND parent_id = beta_features_id LIMIT 1;
+          IF menu_id IS NOT NULL THEN
+            INSERT INTO "menu_permissions" (menu_item_id, role_id, created_at)
+            VALUES (menu_id, admin_role_id, NOW())
+            ON CONFLICT (menu_item_id, role_id) DO NOTHING;
+          END IF;
+        END IF;
 
   -- Admin Panel (parent menu)
   IF NOT EXISTS (SELECT 1 FROM "menu_items" WHERE title = 'Admin Panel' AND parent_id IS NULL) THEN

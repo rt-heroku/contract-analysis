@@ -29,6 +29,9 @@ import { Processes } from './pages/Processes';
 import { ProcessDesigner } from './pages/ProcessDesigner';
 import { Actions } from './pages/Actions';
 import { Executions } from './pages/Executions';
+import { Connectors } from './pages/Connectors';
+import { Stores } from './pages/Stores';
+import { ActionCreator } from './pages/ActionCreator';
 import { FirstTimeSetup } from './pages/FirstTimeSetup';
 
 const App = () => {
@@ -55,7 +58,11 @@ const App = () => {
             <Route path="/process-designer" element={<MainLayout><ProcessDesigner /></MainLayout>} />
             <Route path="/process-designer/:id" element={<MainLayout><ProcessDesigner /></MainLayout>} />
             <Route path="/actions" element={<MainLayout><Actions /></MainLayout>} />
+            <Route path="/actions/new" element={<MainLayout><ActionCreator /></MainLayout>} />
+            <Route path="/actions/edit/:id" element={<MainLayout><ActionCreator /></MainLayout>} />
             <Route path="/executions" element={<MainLayout><Executions /></MainLayout>} />
+            <Route path="/connectors" element={<MainLayout><Connectors /></MainLayout>} />
+            <Route path="/stores" element={<MainLayout><Stores /></MainLayout>} />
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
             <Route path="/history" element={<MainLayout><History /></MainLayout>} />
             <Route path="/idp-response/:analysisRecordId" element={<MainLayout><IDPResponse /></MainLayout>} />

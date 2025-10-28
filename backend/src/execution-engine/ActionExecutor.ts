@@ -9,6 +9,12 @@ import { RestApiCallAction } from './actions/RestApiCallAction';
 import { SaveFileAction } from './actions/SaveFileAction';
 import { IfThenElseAction } from './actions/IfThenElseAction';
 import { TransformAction } from './actions/TransformAction';
+import { ForEachAction } from './actions/ForEachAction';
+import { WhileAction } from './actions/WhileAction';
+import { ParallelAction } from './actions/ParallelAction';
+import { ValidateAction } from './actions/ValidateAction';
+import { MergeAction } from './actions/MergeAction';
+import { ScriptAction } from './actions/ScriptAction';
 
 export interface ActionHandler {
   execute(inputData: any, config: any, context: ExecutionContext): Promise<any>;
@@ -31,6 +37,27 @@ export class ActionExecutor {
     this.actionHandlers.set('save_file', new SaveFileAction());
     this.actionHandlers.set('if_then_else', new IfThenElseAction());
     this.actionHandlers.set('transform', new TransformAction());
+    this.actionHandlers.set('for_each', new ForEachAction(this));
+    this.actionHandlers.set('while', new WhileAction(this));
+    this.actionHandlers.set('parallel', new ParallelAction(this));
+    this.actionHandlers.set('validate', new ValidateAction());
+    this.actionHandlers.set('merge', new MergeAction());
+    this.actionHandlers.set('script', new ScriptAction());
+  }
+
+  /**
+   * Execute a sub-action (used by control flow actions)
+   */
+  async executeAction(action: any, inputData: any, context: ExecutionContext): Promise<any> {
+    if (typeof action === 'number') {
+      // Action ID passed
+      return await this.execute(action, inputData, {}, context);
+    } else if (typeof action === 'object' && action.actionId) {
+      // Action config with actionId
+      return await this.execute(action.actionId, inputData, action.config || {}, context);
+    } else {
+      throw new Error('Invalid action reference');
+    }
   }
 
   /**
