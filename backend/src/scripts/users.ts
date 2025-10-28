@@ -60,6 +60,7 @@ async function createUser(email: string, password?: string): Promise<void> {
         isActive: true,
         firstName: email.split('@')[0],
         lastName: '',
+        defaultMenuItem: isFirstUser ? 'dashboard' : 'history', // Admins to dashboard, users to history
       },
     });
 

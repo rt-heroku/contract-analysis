@@ -244,13 +244,13 @@ class AuthController {
         return res.status(400).json({ error: 'Email and password are required' });
       }
 
-      // Create user
+      // Create user without default role (we'll assign admin role instead)
       const user = await authService.register({
         email,
         password,
         firstName: firstName || email.split('@')[0],
         lastName: lastName || '',
-      });
+      }, true); // skipDefaultRole = true
 
       // Assign admin role
       await prisma.userRole.create({
@@ -258,12 +258,6 @@ class AuthController {
           userId: user.id,
           roleId: adminRole.id,
         },
-      });
-
-      // Update default menu item for admin
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { defaultMenuItem: 'dashboard' },
       });
 
       // Log the first admin creation
