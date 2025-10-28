@@ -423,33 +423,37 @@ model IdpExecution {
 // ==================== ACTION SYSTEM MODELS ====================
 
 model Action {
-  id              Int      @id @default(autoincrement())
-  name            String   @unique @db.VarChar(200)
-  displayName     String   @map("display_name") @db.VarChar(200)
-  description     String?  @db.Text
-  actionType      String   @map("action_type") @db.VarChar(50) // 'system', 'user_defined', 'connector'
-  category        String   @db.VarChar(100) // 'control_flow', 'data', 'api', 'storage', 'idp'
-  icon            String?  @db.VarChar(50)
-  color           String?  @db.VarChar(20)
-  configSchema    Json     @map("config_schema") // JSON schema for action configuration
-  inputSchema     Json     @map("input_schema") // JSON schema for expected inputs
-  outputSchema    Json     @map("output_schema") // JSON schema for outputs
-  executorType    String   @map("executor_type") @db.VarChar(50) // 'builtin', 'rest_api', 'script'
-  executorConfig  Json     @map("executor_config") // Execution configuration
-  isSystem        Boolean  @default(false) @map("is_system")
-  isActive        Boolean  @default(true) @map("is_active")
-  createdBy       Int      @map("created_by")
-  sharedWith      Json     @default("[]") @map("shared_with")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id                 Int      @id @default(autoincrement())
+  name               String   @unique @db.VarChar(200)
+  displayName        String   @map("display_name") @db.VarChar(200)
+  description        String?  @db.Text
+  actionType         String   @map("action_type") @db.VarChar(50) // 'system', 'user_defined', 'connector'
+  category           String   @db.VarChar(100) // 'control_flow', 'data', 'api', 'storage', 'idp'
+  connectorId        Int?     @map("connector_id") // For connector actions
+  connectorOperation String?  @map("connector_operation") @db.VarChar(200) // Operation name for connector actions
+  icon               String?  @db.VarChar(50)
+  color              String?  @db.VarChar(20)
+  configSchema       Json     @map("config_schema") // JSON schema for action configuration
+  inputSchema        Json     @map("input_schema") // JSON schema for expected inputs
+  outputSchema       Json     @map("output_schema") // JSON schema for outputs
+  executorType       String   @map("executor_type") @db.VarChar(50) // 'builtin', 'rest_api', 'script', 'connector'
+  executorConfig     Json     @map("executor_config") // Execution configuration
+  isSystem           Boolean  @default(false) @map("is_system")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdBy          Int      @map("created_by")
+  sharedWith         Json     @default("[]") @map("shared_with")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   creator          User               @relation("ActionCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  connector        Connector?         @relation("ConnectorActions", fields: [connectorId], references: [id], onDelete: SetNull)
   actionExecutions ActionExecution[]
 
   @@index([category])
   @@index([createdBy])
   @@index([isActive])
   @@index([actionType])
+  @@index([connectorId])
   @@map("actions")
 }
 
@@ -533,20 +537,48 @@ model Connector {
   id            Int      @id @default(autoincrement())
   name          String   @db.VarChar(200)
   connectorType String   @map("connector_type") @db.VarChar(50) // 'rest', 'database', 's3', 'ftp', 'file'
+  version       String   @default("1.0.0") @db.VarChar(20)
   config        Json // Encrypted credentials, connection details
   authType      String?  @map("auth_type") @db.VarChar(50) // 'basic', 'bearer', 'oauth2', 'api_key'
+  openApiSpec   Json?    @map("open_api_spec") // For REST connectors - OpenAPI/Swagger spec
   isActive      Boolean  @default(true) @map("is_active")
   createdBy     Int      @map("created_by")
   sharedWith    Json     @default("[]") @map("shared_with")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  creator User @relation("ConnectorCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  creator          User              @relation("ConnectorCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  connectorActions ConnectorAction[]
+  actions          Action[]          @relation("ConnectorActions")
 
   @@index([createdBy])
   @@index([connectorType])
   @@index([isActive])
+  @@index([version])
   @@map("connectors")
+}
+
+model ConnectorAction {
+  id          Int      @id @default(autoincrement())
+  connectorId Int      @map("connector_id")
+  operation   String   @db.VarChar(200) // e.g., "GET /users", "query", "insert", "read_file"
+  operationId String?  @map("operation_id") @db.VarChar(200) // From OpenAPI operationId
+  displayName String   @map("display_name") @db.VarChar(200)
+  description String?  @db.Text
+  method      String?  @db.VarChar(10) // For REST: GET, POST, PUT, DELETE, PATCH
+  path        String?  @db.VarChar(500) // For REST: /api/users/{id}
+  parameters  Json     @default("{}") // Operation-specific parameters
+  requestBody Json?    @map("request_body") // For REST: request body schema
+  responses   Json?    // Expected responses
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  connector Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@unique([connectorId, operation])
+  @@index([connectorId])
+  @@index([isActive])
+  @@map("connector_actions")
 }
 
 model Store {
