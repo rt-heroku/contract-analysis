@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -10,6 +10,7 @@ import ReactFlow, {
   Node,
   BackgroundVariant,
   MarkerType,
+  NodeTypes,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -17,6 +18,7 @@ import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { Play, Save, Download, ArrowLeft } from 'lucide-react';
+import { ActionNode } from '@/components/process-designer/ActionNode';
 
 interface Action {
   id: number;
@@ -26,6 +28,7 @@ interface Action {
   category: string;
   icon: string;
   color: string;
+  actionType?: 'system' | 'user_defined' | 'connector';
 }
 
 export const ProcessDesigner: React.FC = () => {
@@ -46,6 +49,11 @@ export const ProcessDesigner: React.FC = () => {
     message: '',
     type: 'info' as 'success' | 'error' | 'warning' | 'info',
   });
+
+  // Define custom node types
+  const nodeTypes: NodeTypes = useMemo(() => ({
+    actionNode: ActionNode,
+  }), []);
 
   useEffect(() => {
     loadActions();
@@ -119,23 +127,18 @@ export const ProcessDesigner: React.FC = () => {
 
       const newNode: Node = {
         id: `node-${Date.now()}`,
-        type: 'default',
+        type: 'actionNode',
         position,
         data: {
           label: action.displayName,
+          description: action.description,
+          category: action.category,
+          icon: action.icon,
+          color: action.color,
+          actionType: action.actionType,
           actionId: action.id,
           actionName: action.name,
           config: {},
-        },
-        style: {
-          background: action.color || '#3b82f6',
-          color: 'white',
-          border: 'none',
-          borderRadius: '12px',
-          padding: '16px 24px',
-          fontSize: '14px',
-          fontWeight: '500',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         },
       };
 
@@ -327,12 +330,13 @@ export const ProcessDesigner: React.FC = () => {
             onConnect={onConnect}
             onDrop={onDrop}
             onDragOver={onDragOver}
+            nodeTypes={nodeTypes}
             fitView
           >
             <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e2e8f0" />
             <Controls />
             <MiniMap
-              nodeColor={(node) => node.style?.background as string || '#3b82f6'}
+              nodeColor={(node) => node.data?.color as string || '#3b82f6'}
               maskColor="rgba(0, 0, 0, 0.1)"
             />
           </ReactFlow>

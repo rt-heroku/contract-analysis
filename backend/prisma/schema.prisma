@@ -468,6 +468,8 @@ model Process {
   retryPolicy     Json?    @map("retry_policy")
   isActive        Boolean  @default(true) @map("is_active")
   isTemplate      Boolean  @default(false) @map("is_template")
+  triggerType     String   @default("manual") @map("trigger_type") @db.VarChar(50) // 'manual', 'ui_form', 'api', 'schedule', 'event'
+  triggerConfig   Json?    @map("trigger_config") // Configuration for trigger (form fields, schedule, etc.)
   createdBy       Int      @map("created_by")
   sharedWith      Json     @default("[]") @map("shared_with")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -479,6 +481,7 @@ model Process {
   @@index([createdBy])
   @@index([isActive])
   @@index([category])
+  @@index([triggerType])
   @@map("processes")
 }
 
