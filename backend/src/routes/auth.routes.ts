@@ -12,6 +12,10 @@ router.post('/logout', authenticate, authController.logout);
 // router.post('/refresh', authenticate, authController.refreshToken); // TODO: Implement if needed
 router.get('/me', authenticate, authController.getCurrentUser);
 
+// First-time setup routes
+router.get('/check-admin', authController.checkAdminExists);
+router.post('/enroll-first-admin', validate(registerSchema), authController.enrollFirstAdmin);
+
 export default router;
 
 

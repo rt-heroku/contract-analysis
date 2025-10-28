@@ -13,9 +13,11 @@
     "prisma:studio": "prisma studio",
     "seed": "ts-node src/utils/seed.ts",
     "seed:once": "node dist/utils/seedOnce.js",
+    "seed:actions": "ts-node src/utils/seedActions.ts",
     "setup:demo": "prisma generate && prisma db push && npm run seed",
     "db:init": "psql $DATABASE_URL -f init-database.sql",
-    "postdeploy": "npm run seed:once"
+    "postdeploy": "npm run seed:once",
+    "users": "ts-node src/scripts/users.ts"
   },
   "keywords": [
     "document-processing",

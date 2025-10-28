@@ -173,6 +173,122 @@ class AuthController {
       res.status(400).json({ error: error.message });
     }
   }
+
+  /**
+   * Check if any admin users exist in the system
+   * Used to determine if first-time setup is needed
+   */
+  async checkAdminExists(req: AuthenticatedRequest, res: Response) {
+    try {
+      const adminRole = await prisma.role.findUnique({
+        where: { name: 'admin' },
+      });
+
+      if (!adminRole) {
+        return res.json({ adminExists: false, needsSetup: true });
+      }
+
+      const adminCount = await prisma.userRole.count({
+        where: {
+          roleId: adminRole.id,
+          user: {
+            isActive: true,
+          },
+        },
+      });
+
+      res.json({
+        adminExists: adminCount > 0,
+        needsSetup: adminCount === 0,
+      });
+    } catch (error: any) {
+      console.error('🔐 [Auth Controller] Check admin error:', error);
+      res.status(500).json({ error: 'Failed to check admin status' });
+    }
+  }
+
+  /**
+   * First-time enrollment - creates the first admin user
+   * Only works if no admin users exist
+   */
+  async enrollFirstAdmin(req: AuthenticatedRequest, res: Response) {
+    try {
+      // Check if any admin users exist
+      const adminRole = await prisma.role.findUnique({
+        where: { name: 'admin' },
+        include: {
+          userRoles: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+
+      if (!adminRole) {
+        return res.status(500).json({ error: 'Admin role not found in database' });
+      }
+
+      const activeAdmins = adminRole.userRoles.filter(ur => ur.user.isActive);
+
+      if (activeAdmins.length > 0) {
+        return res.status(400).json({
+          error: 'Admin users already exist. Use regular registration.',
+        });
+      }
+
+      // Register the first admin user
+      const { email, password, firstName, lastName } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+
+      // Create user
+      const user = await authService.register({
+        email,
+        password,
+        firstName: firstName || email.split('@')[0],
+        lastName: lastName || '',
+      });
+
+      // Assign admin role
+      await prisma.userRole.create({
+        data: {
+          userId: user.id,
+          roleId: adminRole.id,
+        },
+      });
+
+      // Update default menu item for admin
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { defaultMenuItem: 'dashboard' },
+      });
+
+      // Log the first admin creation
+      await loggingService.logActivity({
+        userId: user.id,
+        actionType: 'auth.first_admin_enrolled',
+        actionDescription: `First admin user enrolled: ${user.email}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+      });
+
+      res.status(201).json({
+        message: 'First admin user created successfully',
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        },
+      });
+    } catch (error: any) {
+      console.error('🔐 [Auth Controller] First admin enrollment error:', error);
+      res.status(400).json({ error: error.message });
+    }
+  }
 }
 
 export default new AuthController();

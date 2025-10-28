@@ -19,21 +19,31 @@ export const Login: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [showDemoCredentials, setShowDemoCredentials] = useState(true);
 
-  // Fetch system settings
+  // Check if admin exists on mount
   useEffect(() => {
-    const fetchSettings = async () => {
+    const checkAdminAndSettings = async () => {
       try {
+        // Check if any admin users exist
+        const adminCheck = await api.get('/auth/check-admin');
+        if (adminCheck.data.needsSetup) {
+          // No admin exists, redirect to first-time setup
+          navigate('/first-time-setup');
+          return;
+        }
+
+        // Fetch system settings
         const response = await api.get('/settings/public');
         const settings = response.data.settings;
         if (settings.show_demo_credentials !== undefined) {
           setShowDemoCredentials(settings.show_demo_credentials === 'true' || settings.show_demo_credentials === true);
         }
       } catch (error) {
-        // Use default (true)
+        // Use defaults if check fails
+        console.error('Error checking admin status:', error);
       }
     };
-    fetchSettings();
-  }, []);
+    checkAdminAndSettings();
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

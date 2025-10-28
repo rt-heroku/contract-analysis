@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/database';
 import config from '../config/env';
+import { getJwtSecretSync } from '../config/secrets';
 import { RegisterData, LoginCredentials, JWTPayload } from '../types';
 import { JWT_EXPIRATION, JWT_REFRESH_EXPIRATION, ROLES } from '../utils/constants';
 
@@ -214,7 +215,8 @@ class AuthService {
    */
   generateToken(payload: JWTPayload, longExpiration: boolean = false): string {
     const expiration = longExpiration ? config.jwtRefreshExpiration : config.jwtExpiration;
-    return jwt.sign(payload, config.jwtSecret, { expiresIn: expiration } as jwt.SignOptions);
+    const jwtSecret = getJwtSecretSync();
+    return jwt.sign(payload, jwtSecret, { expiresIn: expiration } as jwt.SignOptions);
   }
 
   /**
@@ -222,7 +224,8 @@ class AuthService {
    */
   verifyToken(token: string): JWTPayload {
     try {
-      return jwt.verify(token, config.jwtSecret) as JWTPayload;
+      const jwtSecret = getJwtSecretSync();
+      return jwt.verify(token, jwtSecret) as JWTPayload;
     } catch (error) {
       throw new Error('Invalid or expired token');
     }

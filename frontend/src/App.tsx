@@ -29,6 +29,7 @@ import { Processes } from './pages/Processes';
 import { ProcessDesigner } from './pages/ProcessDesigner';
 import { Actions } from './pages/Actions';
 import { Executions } from './pages/Executions';
+import { FirstTimeSetup } from './pages/FirstTimeSetup';
 
 const App = () => {
   return (
@@ -40,6 +41,7 @@ const App = () => {
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/first-time-setup" element={<FirstTimeSetup />} />
             <Route path="/sysenv" element={<SystemEnvironment />} />
 
             {/* Protected Routes */}
