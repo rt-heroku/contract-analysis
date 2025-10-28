@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../../../projects/login2fa"
+		},
+		{
+			"path": "../../../projects/auth"
 		}
 	],
 	"settings": {

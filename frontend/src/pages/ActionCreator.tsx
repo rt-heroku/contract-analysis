@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
+
+interface Connector {
+  id: number;
+  name: string;
+  connectorType: string;
+  config: any;
+}
 
 export const ActionCreator: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
+
+  const [connectors, setConnectors] = useState<Connector[]>([]);
+  const [outputTab, setOutputTab] = useState<'definition' | 'example'>('definition');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -19,12 +29,18 @@ export const ActionCreator: React.FC = () => {
     icon: 'Zap',
     color: '#6366f1',
     executorType: 'rest_api',
+    connectorId: null as number | null,
     
     // REST API config
     restConfig: {
+      connectorId: null as number | null,
       method: 'POST',
-      url: '',
-      headers: {},
+      endpoint: '',
+      queryParams: {} as Record<string, string>,
+      pathParams: {} as Record<string, string>,
+      headers: {} as Record<string, string>,
+      contentType: 'application/json',
+      accept: 'application/json',
       bodyTemplate: '',
     },
     
@@ -43,6 +59,7 @@ export const ActionCreator: React.FC = () => {
       type: 'object',
       properties: {},
     },
+    outputExample: '',
   });
 
   const [alertDialog, setAlertDialog] = useState({
@@ -51,6 +68,63 @@ export const ActionCreator: React.FC = () => {
     message: '',
     type: 'info' as 'success' | 'error' | 'warning' | 'info',
   });
+
+  useEffect(() => {
+    loadConnectors();
+  }, []);
+
+  const loadConnectors = async () => {
+    try {
+      const response = await api.get('/connectors');
+      setConnectors(response.data.connectors.filter((c: Connector) => c.connectorType === 'rest') || []);
+    } catch (error) {
+      console.error('Failed to load connectors:', error);
+    }
+  };
+
+  const parseOutputExample = () => {
+    if (!formData.outputExample.trim()) return;
+
+    try {
+      const parsed = JSON.parse(formData.outputExample);
+      const schema = generateSchemaFromExample(parsed);
+      setFormData({
+        ...formData,
+        outputSchema: schema,
+      });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: 'Output schema generated from example',
+        type: 'success',
+      });
+    } catch (error) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: 'Invalid JSON format',
+        type: 'error',
+      });
+    }
+  };
+
+  const generateSchemaFromExample = (obj: any): any => {
+    if (obj === null) return { type: 'null' };
+    if (Array.isArray(obj)) {
+      return {
+        type: 'array',
+        items: obj.length > 0 ? generateSchemaFromExample(obj[0]) : { type: 'object' },
+      };
+    }
+    if (typeof obj === 'object') {
+      const properties: any = {};
+      for (const key in obj) {
+        properties[key] = generateSchemaFromExample(obj[key]);
+      }
+      return { type: 'object', properties };
+    }
+    return { type: typeof obj };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +143,7 @@ export const ActionCreator: React.FC = () => {
         inputSchema: formData.inputSchema,
         outputSchema: formData.outputSchema,
         configSchema: {},
+        connectorId: formData.executorType === 'rest_api' ? formData.restConfig.connectorId : null,
       };
 
       if (isEdit) {
@@ -100,19 +175,50 @@ export const ActionCreator: React.FC = () => {
     }
   };
 
-  const addHeaderField = () => {
-    const key = prompt('Header name:');
+  const addKeyValuePair = (type: 'queryParams' | 'pathParams' | 'headers') => {
+    const key = prompt(`Enter ${type === 'queryParams' ? 'parameter' : type === 'pathParams' ? 'path parameter' : 'header'} name:`);
     if (key) {
       setFormData({
         ...formData,
         restConfig: {
           ...formData.restConfig,
-          headers: {
-            ...formData.restConfig.headers,
+          [type]: {
+            ...formData.restConfig[type],
             [key]: '',
           },
         },
       });
+    }
+  };
+
+  const removeKeyValuePair = (type: 'queryParams' | 'pathParams' | 'headers', key: string) => {
+    const newObj = { ...formData.restConfig[type] } as Record<string, string>;
+    delete newObj[key];
+    setFormData({
+      ...formData,
+      restConfig: { ...formData.restConfig, [type]: newObj }
+    });
+  };
+
+  const updateKeyValuePair = (type: 'queryParams' | 'pathParams' | 'headers', key: string, value: string) => {
+    setFormData({
+      ...formData,
+      restConfig: {
+        ...formData.restConfig,
+        [type]: { ...formData.restConfig[type], [key]: value }
+      }
+    });
+  };
+
+  const getEndpointNote = () => {
+    const endpoint = formData.restConfig.endpoint;
+    if (!endpoint) return 'Full URL (http://...) or endpoint path (/api/...)';
+    if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+      return '✓ Full URL detected';
+    } else if (endpoint.startsWith('/')) {
+      return '✓ Endpoint path detected (will use connector base URL)';
+    } else {
+      return '⚠ Should start with http://, https://, or /';
     }
   };
 
@@ -231,6 +337,43 @@ export const ActionCreator: React.FC = () => {
 
             {formData.executorType === 'rest_api' && (
               <>
+                {/* Connector Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Connector
+                  </label>
+                  <div className="flex space-x-2">
+                    <select
+                      value={formData.restConfig.connectorId || ''}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        restConfig: { ...formData.restConfig, connectorId: e.target.value ? parseInt(e.target.value) : null }
+                      })}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">No Connector (standalone)</option>
+                      {connectors.map((connector) => (
+                        <option key={connector.id} value={connector.id}>
+                          {connector.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      type="button"
+                      onClick={() => navigate('/connectors')}
+                      className="flex items-center space-x-1 bg-green-600 hover:bg-green-700 text-white"
+                      title="Create new connector"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>New</span>
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Select a connector to inherit base URL, authentication, and default headers. Or leave empty for a standalone action.
+                  </p>
+                </div>
+
+                {/* HTTP Method and Endpoint */}
                 <div className="grid grid-cols-4 gap-4">
                   <div className="col-span-1">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Method *</label>
@@ -247,31 +390,172 @@ export const ActionCreator: React.FC = () => {
                       <option value="PUT">PUT</option>
                       <option value="PATCH">PATCH</option>
                       <option value="DELETE">DELETE</option>
+                      <option value="HEAD">HEAD</option>
+                      <option value="OPTIONS">OPTIONS</option>
                     </select>
                   </div>
                   <div className="col-span-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">URL *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Endpoint / URL *
+                    </label>
                     <input
-                      type="url"
+                      type="text"
                       required
-                      value={formData.restConfig.url}
+                      value={formData.restConfig.endpoint}
                       onChange={(e) => setFormData({
                         ...formData,
-                        restConfig: { ...formData.restConfig, url: e.target.value }
+                        restConfig: { ...formData.restConfig, endpoint: e.target.value }
                       })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      placeholder="https://api.example.com/endpoint"
+                      placeholder="/api/users or https://api.example.com/users"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Use {`{{variable}}`} for dynamic values from input
+                      {getEndpointNote()}
                     </p>
                   </div>
                 </div>
 
+                {/* Path Parameters */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Headers
+                    Path Parameters
                   </label>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Define path variables like <code className="bg-gray-100 px-1 rounded">{`{{userId}}`}</code> in your endpoint
+                  </p>
+                  <div className="space-y-2">
+                    {Object.entries(formData.restConfig.pathParams).map(([key, value]) => (
+                      <div key={key} className="flex space-x-2">
+                        <input
+                          type="text"
+                          value={key}
+                          disabled
+                          className="w-1/3 px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                          placeholder="paramName"
+                        />
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={(e) => updateKeyValuePair('pathParams', key, e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                          placeholder="{{input.userId}} or static value"
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => removeKeyValuePair('pathParams', key)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      onClick={() => addKeyValuePair('pathParams')}
+                      className="bg-gray-200 hover:bg-gray-300"
+                    >
+                      <Plus className="w-4 h-4 inline mr-1" />
+                      Add Path Parameter
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Query Parameters */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Query Parameters
+                  </label>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Will be appended to the URL as <code className="bg-gray-100 px-1 rounded">?key=value</code>
+                  </p>
+                  <div className="space-y-2">
+                    {Object.entries(formData.restConfig.queryParams).map(([key, value]) => (
+                      <div key={key} className="flex space-x-2">
+                        <input
+                          type="text"
+                          value={key}
+                          disabled
+                          className="w-1/3 px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                          placeholder="paramName"
+                        />
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={(e) => updateKeyValuePair('queryParams', key, e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+                          placeholder="{{input.search}} or static value"
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => removeKeyValuePair('queryParams', key)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      onClick={() => addKeyValuePair('queryParams')}
+                      className="bg-gray-200 hover:bg-gray-300"
+                    >
+                      <Plus className="w-4 h-4 inline mr-1" />
+                      Add Query Parameter
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Content-Type and Accept */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Content-Type
+                    </label>
+                    <select
+                      value={formData.restConfig.contentType}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        restConfig: { ...formData.restConfig, contentType: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="application/json">application/json</option>
+                      <option value="application/xml">application/xml</option>
+                      <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+                      <option value="multipart/form-data">multipart/form-data</option>
+                      <option value="text/plain">text/plain</option>
+                      <option value="text/html">text/html</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Accept
+                    </label>
+                    <select
+                      value={formData.restConfig.accept}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        restConfig: { ...formData.restConfig, accept: e.target.value }
+                      })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    >
+                      <option value="application/json">application/json</option>
+                      <option value="application/xml">application/xml</option>
+                      <option value="text/plain">text/plain</option>
+                      <option value="text/html">text/html</option>
+                      <option value="*/*">*/* (any)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Headers */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Custom Headers
+                  </label>
+                  <p className="text-xs text-gray-600 mb-2">
+                    Additional headers beyond Content-Type and Accept
+                  </p>
                   <div className="space-y-2">
                     {Object.entries(formData.restConfig.headers).map(([key, value]) => (
                       <div key={key} className="flex space-x-2">
@@ -283,46 +567,35 @@ export const ActionCreator: React.FC = () => {
                         />
                         <input
                           type="text"
-                          value={value as string}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            restConfig: {
-                              ...formData.restConfig,
-                              headers: { ...formData.restConfig.headers, [key]: e.target.value }
-                            }
-                          })}
+                          value={value}
+                          onChange={(e) => updateKeyValuePair('headers', key, e.target.value)}
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
                           placeholder="Header value"
                         />
                         <Button
                           type="button"
-                          onClick={() => {
-                            const newHeaders = { ...formData.restConfig.headers } as Record<string, string>;
-                            delete newHeaders[key];
-                            setFormData({
-                              ...formData,
-                              restConfig: { ...formData.restConfig, headers: newHeaders }
-                            });
-                          }}
-                          className="bg-red-600 hover:bg-red-700 text-white"
+                          onClick={() => removeKeyValuePair('headers', key)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-3"
                         >
-                          Remove
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     ))}
                     <Button
                       type="button"
-                      onClick={addHeaderField}
+                      onClick={() => addKeyValuePair('headers')}
                       className="bg-gray-200 hover:bg-gray-300"
                     >
+                      <Plus className="w-4 h-4 inline mr-1" />
                       Add Header
                     </Button>
                   </div>
                 </div>
 
+                {/* Body Template */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Body Template (JSON)
+                    Request Body Template
                   </label>
                   <textarea
                     value={formData.restConfig.bodyTemplate}
@@ -331,10 +604,11 @@ export const ActionCreator: React.FC = () => {
                       restConfig: { ...formData.restConfig, bodyTemplate: e.target.value }
                     })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
-                    rows={6}
+                    rows={8}
                     placeholder={`{
-  "key": "{{input.value}}",
-  "data": "{{input.data}}"
+  "name": "{{input.name}}",
+  "email": "{{input.email}}",
+  "data": {{input.data}}
 }`}
                   />
                   <p className="text-xs text-gray-500 mt-1">
@@ -396,6 +670,123 @@ return result;`}
           </div>
         </Card>
 
+        {/* Input Metadata */}
+        <Card title="Input Metadata">
+          <div className="space-y-2">
+            <p className="text-sm text-gray-600">
+              Define the expected input structure for this action. This will be used to validate inputs and enable mapping from previous actions.
+            </p>
+            <textarea
+              value={JSON.stringify(formData.inputSchema, null, 2)}
+              onChange={(e) => {
+                try {
+                  setFormData({ ...formData, inputSchema: JSON.parse(e.target.value) });
+                } catch (err) {
+                  // Invalid JSON, ignore
+                }
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
+              rows={8}
+              placeholder={`{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string" },
+    "age": { "type": "number" }
+  },
+  "required": ["name"]
+}`}
+            />
+          </div>
+        </Card>
+
+        {/* Output Metadata */}
+        <Card title="Output Metadata">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Define the output structure. You can provide an example JSON and auto-generate the schema.
+            </p>
+            
+            {/* Tabs */}
+            <div className="flex border-b border-gray-300">
+              <button
+                type="button"
+                onClick={() => setOutputTab('definition')}
+                className={`px-4 py-2 font-medium ${
+                  outputTab === 'definition'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Definition
+              </button>
+              <button
+                type="button"
+                onClick={() => setOutputTab('example')}
+                className={`px-4 py-2 font-medium ${
+                  outputTab === 'example'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Example
+              </button>
+            </div>
+
+            {/* Definition Tab */}
+            {outputTab === 'definition' && (
+              <div>
+                <textarea
+                  value={JSON.stringify(formData.outputSchema, null, 2)}
+                  onChange={(e) => {
+                    try {
+                      setFormData({ ...formData, outputSchema: JSON.parse(e.target.value) });
+                    } catch (err) {
+                      // Invalid JSON, ignore
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
+                  rows={10}
+                  placeholder={`{
+  "type": "object",
+  "properties": {
+    "userId": { "type": "string" },
+    "success": { "type": "boolean" }
+  }
+}`}
+                />
+              </div>
+            )}
+
+            {/* Example Tab */}
+            {outputTab === 'example' && (
+              <div className="space-y-2">
+                <textarea
+                  value={formData.outputExample}
+                  onChange={(e) => setFormData({ ...formData, outputExample: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
+                  rows={10}
+                  placeholder={`{
+  "userId": "12345",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "success": true
+}`}
+                />
+                <Button
+                  type="button"
+                  onClick={parseOutputExample}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  Generate Schema from Example
+                </Button>
+                <p className="text-xs text-gray-500">
+                  Paste a sample JSON response and click the button to auto-generate the output schema
+                </p>
+              </div>
+            )}
+          </div>
+        </Card>
+
         <div className="flex justify-end space-x-3">
           <Button
             type="button"
@@ -424,4 +815,3 @@ return result;`}
     </div>
   );
 };
-
