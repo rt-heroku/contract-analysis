@@ -9,14 +9,14 @@
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
-    "prisma:push": "prisma db push --skip-generate",
+    "prisma:push": "prisma db push --skip-generate --accept-data-loss",
     "prisma:studio": "prisma studio",
     "seed": "ts-node src/utils/seed.ts",
     "seed:once": "node dist/utils/seedOnce.js",
     "seed:actions": "ts-node src/utils/seedActions.ts",
     "setup:demo": "prisma generate && prisma db push && npm run seed",
     "db:init": "psql $DATABASE_URL -f init-database.sql",
-    "postdeploy": "npm run seed:once",
+    "postdeploy": "npm run seed:once && node dist/utils/seedActions.js",
     "users": "ts-node src/scripts/users.ts"
   },
   "keywords": [
