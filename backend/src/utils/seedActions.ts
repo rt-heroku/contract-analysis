@@ -396,6 +396,67 @@ export async function seedSystemActions() {
         executorType: 'builtin',
         executorConfig: {},
       },
+      {
+        name: 'set_variable',
+        displayName: 'Set Variable',
+        description: 'Set a variable in the execution context',
+        actionType: 'system',
+        category: 'data',
+        icon: 'Box',
+        color: '#06b6d4',
+        configSchema: {
+          type: 'object',
+          properties: {
+            variableName: { type: 'string', description: 'Name of the variable to set' },
+            value: { description: 'Value to set (can reference {{input.field}})' },
+            scope: { type: 'string', enum: ['local', 'global'], default: 'local', description: 'Variable scope' },
+          },
+          required: ['variableName'],
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            variableName: { type: 'string' },
+            value: { description: 'Set value' },
+            success: { type: 'boolean' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'set_payload',
+        displayName: 'Set Payload',
+        description: 'Set the payload data for subsequent actions',
+        actionType: 'system',
+        category: 'data',
+        icon: 'Database',
+        color: '#06b6d4',
+        configSchema: {
+          type: 'object',
+          properties: {
+            payload: { description: 'Payload data (can be static or reference {{input.field}})' },
+            merge: { type: 'boolean', default: false, description: 'Merge with existing payload' },
+          },
+          required: ['payload'],
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            payload: { description: 'New payload' },
+            merged: { type: 'boolean' },
+            success: { type: 'boolean' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
     ];
 
     // Create or update system actions

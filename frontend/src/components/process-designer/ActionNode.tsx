@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { 
   Network, Save, GitBranch, RefreshCw, Zap, FileText, 
-  Database, Box, Code, CheckCircle, Filter, Layers
+  Database, Box, Code, CheckCircle, Filter, Layers, Edit3
 } from 'lucide-react';
 
 const iconMap: Record<string, any> = {
@@ -17,11 +17,25 @@ interface ActionNodeData {
   icon?: string;
   color?: string;
   actionType?: 'system' | 'user_defined' | 'connector';
+  onEdit?: () => void;
 }
 
 export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) => {
   const IconComponent = iconMap[data.icon || 'Zap'] || Zap;
   const bgColor = data.color || '#6366f1';
+  
+  const handleDoubleClick = () => {
+    if (data.onEdit) {
+      data.onEdit();
+    }
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (data.onEdit) {
+      data.onEdit();
+    }
+  };
   
   // Determine badge color based on action type
   const getBadgeClass = () => {
@@ -52,11 +66,13 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
 
   return (
     <div
+      onDoubleClick={handleDoubleClick}
       className={`
         bg-white rounded-lg shadow-lg border-2 transition-all duration-200
         ${selected ? 'border-blue-500 shadow-xl scale-105' : 'border-gray-200 hover:border-blue-300'}
+        cursor-pointer relative
       `}
-      style={{ minWidth: '280px', maxWidth: '320px' }}
+      style={{ minWidth: '240px', maxWidth: '280px' }}
     >
       {/* Top Handle */}
       <Handle
@@ -66,48 +82,42 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
         style={{ top: -6 }}
       />
 
+      {/* Edit Button (top-right corner) */}
+      {data.onEdit && (
+        <button
+          onClick={handleEditClick}
+          className="absolute top-2 right-2 p-1.5 bg-white rounded-md shadow-md hover:bg-gray-50 transition-colors z-10 border border-gray-200"
+          title="Edit action"
+        >
+          <Edit3 className="w-3.5 h-3.5 text-gray-600" />
+        </button>
+      )}
+
       {/* Header with Icon */}
       <div
-        className="flex items-center space-x-3 p-4 rounded-t-lg"
+        className="flex items-center space-x-2 p-3 rounded-t-lg"
         style={{ backgroundColor: `${bgColor}20` }}
       >
         <div
-          className="p-3 rounded-lg flex-shrink-0"
+          className="p-2 rounded-lg flex-shrink-0"
           style={{ backgroundColor: bgColor }}
         >
-          <IconComponent className="w-6 h-6 text-white" />
+          <IconComponent className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 truncate text-base">
+          <h3 className="font-semibold text-gray-900 truncate text-sm">
             {data.label}
           </h3>
-          {data.category && (
-            <p className="text-xs text-gray-500 mt-0.5 capitalize">
-              {data.category}
-            </p>
-          )}
         </div>
       </div>
 
-      {/* Description */}
-      {data.description && (
-        <div className="px-4 py-3 border-t border-gray-100">
-          <p className="text-sm text-gray-600 line-clamp-2">
-            {data.description}
-          </p>
-        </div>
-      )}
-
       {/* Footer with Badge */}
-      <div className="px-4 py-2 bg-gray-50 rounded-b-lg border-t border-gray-100 flex items-center justify-between">
+      <div className="px-3 py-2 bg-gray-50 rounded-b-lg border-t border-gray-100">
         {data.actionType && (
-          <span className={`px-2 py-1 rounded text-xs font-medium border ${getBadgeClass()}`}>
+          <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getBadgeClass()}`}>
             {getTypeLabel()}
           </span>
         )}
-        <div className="text-xs text-gray-400">
-          Drag to connect
-        </div>
       </div>
 
       {/* Bottom Handle */}
@@ -140,4 +150,5 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
 });
 
 ActionNode.displayName = 'ActionNode';
+
 
