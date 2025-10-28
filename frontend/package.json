@@ -12,6 +12,7 @@
     "start": "vite --host --port ${PORT:-3000}"
   },
   "dependencies": {
+    "@types/dagre": "^0.7.53",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@uiw/react-md-editor": "^4.0.8",
@@ -19,6 +20,7 @@
     "autoprefixer": "^10.4.16",
     "axios": "^1.6.2",
     "clsx": "^2.0.0",
+    "dagre": "^0.8.5",
     "date-fns": "^2.30.0",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.12.1",

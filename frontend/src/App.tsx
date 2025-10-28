@@ -25,6 +25,10 @@ import { UserManagement } from './pages/admin/UserManagement';
 import { RoleManagement } from './pages/admin/RoleManagement';
 import { MenuManagement } from './pages/admin/MenuManagement';
 import { SystemEnvironment } from './pages/SystemEnvironment';
+import { Processes } from './pages/Processes';
+import { ProcessDesigner } from './pages/ProcessDesigner';
+import { Actions } from './pages/Actions';
+import { Executions } from './pages/Executions';
 
 const App = () => {
   return (
@@ -45,6 +49,11 @@ const App = () => {
             <Route path="/prompts" element={<MainLayout><Prompts /></MainLayout>} />
             <Route path="/flows" element={<MainLayout><Flows /></MainLayout>} />
             <Route path="/idp-executions" element={<MainLayout><IdpExecutions /></MainLayout>} />
+            <Route path="/processes" element={<MainLayout><Processes /></MainLayout>} />
+            <Route path="/process-designer" element={<MainLayout><ProcessDesigner /></MainLayout>} />
+            <Route path="/process-designer/:id" element={<MainLayout><ProcessDesigner /></MainLayout>} />
+            <Route path="/actions" element={<MainLayout><Actions /></MainLayout>} />
+            <Route path="/executions" element={<MainLayout><Executions /></MainLayout>} />
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
             <Route path="/history" element={<MainLayout><History /></MainLayout>} />
             <Route path="/idp-response/:analysisRecordId" element={<MainLayout><IDPResponse /></MainLayout>} />

@@ -35,18 +35,23 @@ model User {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  profile         UserProfile?
-  userRoles       UserRole[]
-  sessions        Session[]
-  activityLogs    ActivityLog[]
-  uploads         Upload[]
-  analysisRecords AnalysisRecord[]
-  notifications   Notification[]
-  apiLogs         ApiLog[]
-  deletedRecords  AnalysisRecord[] @relation("DeletedBy")
-  prompts         Prompt[]
-  flows           Flow[]
-  idpExecutions   IdpExecution[]
+  profile          UserProfile?
+  userRoles        UserRole[]
+  sessions         Session[]
+  activityLogs     ActivityLog[]
+  uploads          Upload[]
+  analysisRecords  AnalysisRecord[]
+  notifications    Notification[]
+  apiLogs          ApiLog[]
+  deletedRecords   AnalysisRecord[]   @relation("DeletedBy")
+  prompts          Prompt[]
+  flows            Flow[]
+  idpExecutions    IdpExecution[]
+  actions          Action[]           @relation("ActionCreator")
+  processes        Process[]          @relation("ProcessCreator")
+  processExecutions ProcessExecution[] @relation("ProcessExecutionUser")
+  connectors       Connector[]        @relation("ConnectorCreator")
+  stores           Store[]            @relation("StoreCreator")
 
   @@map("users")
 }
@@ -413,5 +418,153 @@ model IdpExecution {
   @@index([userId])
   @@index([isActive])
   @@map("idp_executions")
+}
+
+// ==================== ACTION SYSTEM MODELS ====================
+
+model Action {
+  id              Int      @id @default(autoincrement())
+  name            String   @unique @db.VarChar(200)
+  displayName     String   @map("display_name") @db.VarChar(200)
+  description     String?  @db.Text
+  actionType      String   @map("action_type") @db.VarChar(50) // 'system', 'user_defined', 'connector'
+  category        String   @db.VarChar(100) // 'control_flow', 'data', 'api', 'storage', 'idp'
+  icon            String?  @db.VarChar(50)
+  color           String?  @db.VarChar(20)
+  configSchema    Json     @map("config_schema") // JSON schema for action configuration
+  inputSchema     Json     @map("input_schema") // JSON schema for expected inputs
+  outputSchema    Json     @map("output_schema") // JSON schema for outputs
+  executorType    String   @map("executor_type") @db.VarChar(50) // 'builtin', 'rest_api', 'script'
+  executorConfig  Json     @map("executor_config") // Execution configuration
+  isSystem        Boolean  @default(false) @map("is_system")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdBy       Int      @map("created_by")
+  sharedWith      Json     @default("[]") @map("shared_with")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  creator          User               @relation("ActionCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  actionExecutions ActionExecution[]
+
+  @@index([category])
+  @@index([createdBy])
+  @@index([isActive])
+  @@index([actionType])
+  @@map("actions")
+}
+
+model Process {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(200)
+  description     String?  @db.Text
+  category        String?  @db.VarChar(100)
+  flowDefinition  Json     @map("flow_definition") // ReactFlow nodes/edges + metadata
+  executionMode   String   @default("sequential") @map("execution_mode") @db.VarChar(20) // 'sequential', 'parallel', 'hybrid'
+  timeoutSeconds  Int?     @map("timeout_seconds")
+  retryPolicy     Json?    @map("retry_policy")
+  isActive        Boolean  @default(true) @map("is_active")
+  isTemplate      Boolean  @default(false) @map("is_template")
+  createdBy       Int      @map("created_by")
+  sharedWith      Json     @default("[]") @map("shared_with")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  creator           User               @relation("ProcessCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  processExecutions ProcessExecution[]
+
+  @@index([createdBy])
+  @@index([isActive])
+  @@index([category])
+  @@map("processes")
+}
+
+model ProcessExecution {
+  id                Int       @id @default(autoincrement())
+  processId         Int       @map("process_id")
+  executionId       String    @unique @map("execution_id") @db.VarChar(100) // UUID
+  userId            Int       @map("user_id")
+  status            String    @db.VarChar(50) // 'pending', 'running', 'completed', 'failed', 'cancelled'
+  executionContext  Json      @map("execution_context") // Input variables, environment
+  result            Json?     // Final result
+  startedAt         DateTime? @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  durationMs        Int?      @map("duration_ms")
+  errorMessage      String?   @map("error_message") @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  process          Process           @relation(fields: [processId], references: [id], onDelete: Cascade)
+  user             User              @relation("ProcessExecutionUser", fields: [userId], references: [id], onDelete: Cascade)
+  actionExecutions ActionExecution[]
+
+  @@index([processId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@index([executionId])
+  @@map("process_executions")
+}
+
+model ActionExecution {
+  id                  Int       @id @default(autoincrement())
+  processExecutionId  Int       @map("process_execution_id")
+  actionId            Int       @map("action_id")
+  nodeId              String    @map("node_id") @db.VarChar(100) // Node ID from flow definition
+  stepOrder           Int       @map("step_order")
+  status              String    @db.VarChar(50) // 'pending', 'running', 'completed', 'failed', 'skipped'
+  inputData           Json?     @map("input_data")
+  outputData          Json?     @map("output_data")
+  errorMessage        String?   @map("error_message") @db.Text
+  startedAt           DateTime? @map("started_at")
+  completedAt         DateTime? @map("completed_at")
+  durationMs          Int?      @map("duration_ms")
+  retryCount          Int       @default(0) @map("retry_count")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  processExecution ProcessExecution @relation(fields: [processExecutionId], references: [id], onDelete: Cascade)
+  action           Action           @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  @@index([processExecutionId])
+  @@index([actionId])
+  @@index([status])
+  @@map("action_executions")
+}
+
+model Connector {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(200)
+  connectorType String   @map("connector_type") @db.VarChar(50) // 'rest', 'database', 's3', 'ftp', 'file'
+  config        Json // Encrypted credentials, connection details
+  authType      String?  @map("auth_type") @db.VarChar(50) // 'basic', 'bearer', 'oauth2', 'api_key'
+  isActive      Boolean  @default(true) @map("is_active")
+  createdBy     Int      @map("created_by")
+  sharedWith    Json     @default("[]") @map("shared_with")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  creator User @relation("ConnectorCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([createdBy])
+  @@index([connectorType])
+  @@index([isActive])
+  @@map("connectors")
+}
+
+model Store {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(200)
+  storeType String   @map("store_type") @db.VarChar(50) // 'database', 's3', 'ftp', 'local_file', 'redis'
+  config    Json // Encrypted connection details
+  isDefault Boolean  @default(false) @map("is_default")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdBy Int      @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  creator User @relation("StoreCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([createdBy])
+  @@index([storeType])
+  @@index([isDefault])
+  @@map("stores")
 }
 

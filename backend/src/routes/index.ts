@@ -17,6 +17,11 @@ import roleRoutes from './role.routes';
 import idpExecutionRoutes from './idpExecution.routes';
 import idpStatusRoutes from './idpStatus.routes';
 import sysenvRoutes from './sysenv.routes';
+import actionRoutes from './action.routes';
+import processRoutes from './process.routes';
+import executionRoutes from './execution.routes';
+import connectorRoutes from './connector.routes';
+import storeRoutes from './store.routes';
 
 const router = Router();
 
@@ -38,6 +43,11 @@ router.use('/roles', roleRoutes);
 router.use('/idp-executions', idpExecutionRoutes);
 router.use('/idp-status', idpStatusRoutes);
 router.use('/sysenv', sysenvRoutes);
+router.use('/actions', actionRoutes);
+router.use('/processes', processRoutes);
+router.use('/executions', executionRoutes);
+router.use('/connectors', connectorRoutes);
+router.use('/stores', storeRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {
