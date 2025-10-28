@@ -1,6 +1,11 @@
 import prisma from '../../config/database';
 import logger from '../../utils/logger';
 import axios from 'axios';
+import { Pool } from 'pg';
+import { promises as fs } from 'fs';
+import * as path from 'path';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, HeadObjectCommand, CopyObjectCommand } from '@aws-sdk/client-s3';
+import * as SFTPClient from 'ssh2-sftp-client';
 
 export interface ConnectorExecutionContext {
   connector: any;
@@ -103,50 +108,157 @@ export class ConnectorExecutor {
    * Execute Database connector action
    */
   private async executeDatabaseAction(connector: any, action: any, inputData: any): Promise<any> {
+    const config = connector.config;
+    const pool = new Pool({
+      host: config.host,
+      port: config.port || 5432,
+      database: config.database,
+      user: config.username,
+      password: config.password,
+      ssl: config.ssl ? { rejectUnauthorized: false } : false,
+      max: config.poolSize || 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    });
+
     try {
       const operation = action.operation;
-
       logger.info(`Executing DB operation: ${operation}`);
 
-      // Note: This is a simplified implementation
-      // In production, you'd use actual DB libraries (pg, mysql2, etc.)
       switch (operation) {
-        case 'query':
+        case 'query': {
+          const result = await pool.query(inputData.sql, inputData.values || []);
           return {
             success: true,
             operation: 'query',
-            sql: inputData.sql,
-            rowCount: 0,
-            rows: [],
-            message: 'DB connector not yet fully implemented',
+            rowCount: result.rowCount,
+            rows: result.rows,
+            fields: result.fields?.map((f: any) => f.name),
           };
+        }
 
-        case 'insert':
+        case 'query_all': {
+          const page = inputData.page || 1;
+          const pageSize = inputData.pageSize || 100;
+          const offset = (page - 1) * pageSize;
+          
+          // Get total count
+          const countResult = await pool.query(`SELECT COUNT(*) FROM (${inputData.sql}) as count_query`, inputData.values || []);
+          const total = parseInt(countResult.rows[0].count);
+          
+          // Get paginated results
+          const query = `${inputData.sql} LIMIT $${(inputData.values?.length || 0) + 1} OFFSET $${(inputData.values?.length || 0) + 2}`;
+          const values = [...(inputData.values || []), pageSize, offset];
+          const result = await pool.query(query, values);
+          
+          return {
+            success: true,
+            operation: 'query_all',
+            rowCount: result.rowCount,
+            rows: result.rows,
+            pagination: {
+              page,
+              pageSize,
+              total,
+              totalPages: Math.ceil(total / pageSize),
+            },
+          };
+        }
+
+        case 'insert': {
+          const columns = Object.keys(inputData.data);
+          const values = Object.values(inputData.data);
+          const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+          const sql = `INSERT INTO ${inputData.table} (${columns.join(', ')}) VALUES (${placeholders}) RETURNING *`;
+          
+          const result = await pool.query(sql, values);
           return {
             success: true,
             operation: 'insert',
             table: inputData.table,
-            insertedId: null,
-            message: 'DB connector not yet fully implemented',
+            inserted: result.rows[0],
+            rowCount: result.rowCount,
           };
+        }
 
-        case 'update':
+        case 'update': {
+          const columns = Object.keys(inputData.data);
+          const values = Object.values(inputData.data);
+          const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(', ');
+          
+          // Build WHERE clause
+          const whereColumns = Object.keys(inputData.where);
+          const whereValues = Object.values(inputData.where);
+          const whereClause = whereColumns.map((col, i) => `${col} = $${values.length + i + 1}`).join(' AND ');
+          
+          const sql = `UPDATE ${inputData.table} SET ${setClause} WHERE ${whereClause} RETURNING *`;
+          const allValues = [...values, ...whereValues];
+          
+          const result = await pool.query(sql, allValues);
           return {
             success: true,
             operation: 'update',
             table: inputData.table,
-            rowsAffected: 0,
-            message: 'DB connector not yet fully implemented',
+            updated: result.rows,
+            rowCount: result.rowCount,
           };
+        }
 
-        case 'delete':
+        case 'delete': {
+          const whereColumns = Object.keys(inputData.where);
+          const whereValues = Object.values(inputData.where);
+          const whereClause = whereColumns.map((col, i) => `${col} = $${i + 1}`).join(' AND ');
+          
+          const sql = `DELETE FROM ${inputData.table} WHERE ${whereClause} RETURNING *`;
+          const result = await pool.query(sql, whereValues);
+          
           return {
             success: true,
             operation: 'delete',
             table: inputData.table,
-            rowsDeleted: 0,
-            message: 'DB connector not yet fully implemented',
+            deleted: result.rows,
+            rowCount: result.rowCount,
           };
+        }
+
+        case 'execute': {
+          const result = await pool.query(inputData.sql, inputData.values || []);
+          return {
+            success: true,
+            operation: 'execute',
+            rowCount: result.rowCount,
+            rows: result.rows,
+          };
+        }
+
+        case 'transaction': {
+          const client = await pool.connect();
+          try {
+            await client.query('BEGIN');
+            const results = [];
+            
+            for (const query of inputData.queries) {
+              const result = await client.query(query.sql, query.values || []);
+              results.push({
+                rowCount: result.rowCount,
+                rows: result.rows,
+              });
+            }
+            
+            await client.query('COMMIT');
+            return {
+              success: true,
+              operation: 'transaction',
+              results,
+              queriesExecuted: inputData.queries.length,
+            };
+          } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+          } finally {
+            client.release();
+          }
+        }
 
         default:
           throw new Error(`Unsupported DB operation: ${operation}`);
@@ -154,6 +266,8 @@ export class ConnectorExecutor {
     } catch (error: any) {
       logger.error('Database connector execution error:', error);
       throw new Error(`Database operation failed: ${error.message}`);
+    } finally {
+      await pool.end();
     }
   }
 
@@ -161,49 +275,180 @@ export class ConnectorExecutor {
    * Execute File System connector action
    */
   private async executeFileAction(connector: any, action: any, inputData: any): Promise<any> {
+    const basePath = connector.config.basePath || '/tmp';
+    
     try {
       const operation = action.operation;
-
       logger.info(`Executing File operation: ${operation}`);
 
-      // Note: This is a simplified implementation
-      // In production, you'd use fs/promises
+      // Security: resolve path to prevent directory traversal
+      const resolvePath = (filePath: string) => {
+        const resolved = path.resolve(basePath, filePath);
+        if (!resolved.startsWith(basePath)) {
+          throw new Error('Access denied: Path outside base directory');
+        }
+        return resolved;
+      };
+
       switch (operation) {
-        case 'read':
+        case 'read': {
+          const filePath = resolvePath(inputData.path);
+          const content = await fs.readFile(filePath, inputData.encoding || 'utf8');
+          const stats = await fs.stat(filePath);
+          
           return {
             success: true,
             operation: 'read',
             path: inputData.path,
-            content: null,
-            message: 'File connector not yet fully implemented',
+            content,
+            size: stats.size,
+            encoding: inputData.encoding || 'utf8',
           };
+        }
 
-        case 'write':
+        case 'write': {
+          const filePath = resolvePath(inputData.path);
+          await fs.mkdir(path.dirname(filePath), { recursive: true });
+          await fs.writeFile(filePath, inputData.content, inputData.encoding || 'utf8');
+          const stats = await fs.stat(filePath);
+          
           return {
             success: true,
             operation: 'write',
             path: inputData.path,
-            bytesWritten: 0,
-            message: 'File connector not yet fully implemented',
+            bytesWritten: stats.size,
           };
+        }
 
-        case 'list':
+        case 'append': {
+          const filePath = resolvePath(inputData.path);
+          await fs.appendFile(filePath, inputData.content, 'utf8');
+          const stats = await fs.stat(filePath);
+          
+          return {
+            success: true,
+            operation: 'append',
+            path: inputData.path,
+            size: stats.size,
+          };
+        }
+
+        case 'delete': {
+          const filePath = resolvePath(inputData.path);
+          await fs.unlink(filePath);
+          
+          return {
+            success: true,
+            operation: 'delete',
+            path: inputData.path,
+            deleted: true,
+          };
+        }
+
+        case 'exists': {
+          const filePath = resolvePath(inputData.path);
+          try {
+            await fs.access(filePath);
+            return {
+              success: true,
+              operation: 'exists',
+              path: inputData.path,
+              exists: true,
+            };
+          } catch {
+            return {
+              success: true,
+              operation: 'exists',
+              path: inputData.path,
+              exists: false,
+            };
+          }
+        }
+
+        case 'list': {
+          const dirPath = resolvePath(inputData.path);
+          const entries = await fs.readdir(dirPath, { withFileTypes: true });
+          
+          const files = await Promise.all(entries.map(async (entry) => {
+            const fullPath = path.join(dirPath, entry.name);
+            const stats = await fs.stat(fullPath);
+            return {
+              name: entry.name,
+              isDirectory: entry.isDirectory(),
+              isFile: entry.isFile(),
+              size: stats.size,
+              modified: stats.mtime,
+              created: stats.birthtime,
+            };
+          }));
+          
           return {
             success: true,
             operation: 'list',
             path: inputData.path,
-            files: [],
-            message: 'File connector not yet fully implemented',
+            files,
+            count: files.length,
           };
+        }
 
-        case 'exists':
+        case 'copy': {
+          const sourcePath = resolvePath(inputData.source);
+          const destPath = resolvePath(inputData.destination);
+          await fs.mkdir(path.dirname(destPath), { recursive: true });
+          await fs.copyFile(sourcePath, destPath);
+          
           return {
             success: true,
-            operation: 'exists',
-            path: inputData.path,
-            exists: false,
-            message: 'File connector not yet fully implemented',
+            operation: 'copy',
+            source: inputData.source,
+            destination: inputData.destination,
           };
+        }
+
+        case 'move': {
+          const sourcePath = resolvePath(inputData.source);
+          const destPath = resolvePath(inputData.destination);
+          await fs.mkdir(path.dirname(destPath), { recursive: true });
+          await fs.rename(sourcePath, destPath);
+          
+          return {
+            success: true,
+            operation: 'move',
+            source: inputData.source,
+            destination: inputData.destination,
+          };
+        }
+
+        case 'mkdir': {
+          const dirPath = resolvePath(inputData.path);
+          await fs.mkdir(dirPath, { recursive: inputData.recursive !== false });
+          
+          return {
+            success: true,
+            operation: 'mkdir',
+            path: inputData.path,
+            created: true,
+          };
+        }
+
+        case 'stat': {
+          const filePath = resolvePath(inputData.path);
+          const stats = await fs.stat(filePath);
+          
+          return {
+            success: true,
+            operation: 'stat',
+            path: inputData.path,
+            stats: {
+              size: stats.size,
+              isFile: stats.isFile(),
+              isDirectory: stats.isDirectory(),
+              modified: stats.mtime,
+              created: stats.birthtime,
+              accessed: stats.atime,
+            },
+          };
+        }
 
         default:
           throw new Error(`Unsupported File operation: ${operation}`);
@@ -218,48 +463,211 @@ export class ConnectorExecutor {
    * Execute S3 connector action
    */
   private async executeS3Action(connector: any, action: any, inputData: any): Promise<any> {
+    const config = connector.config;
+    const s3Client = new S3Client({
+      region: config.region,
+      credentials: {
+        accessKeyId: config.accessKeyId,
+        secretAccessKey: config.secretAccessKey,
+      },
+      endpoint: config.endpoint || undefined,
+      forcePathStyle: config.forcePathStyle || false,
+    });
+
     try {
       const operation = action.operation;
-
+      const bucket = config.bucket;
       logger.info(`Executing S3 operation: ${operation}`);
 
-      // Note: This is a simplified implementation
-      // In production, you'd use @aws-sdk/client-s3
       switch (operation) {
-        case 'upload':
+        case 'upload': {
+          const command = new PutObjectCommand({
+            Bucket: bucket,
+            Key: inputData.key,
+            Body: Buffer.from(inputData.content, inputData.encoding || 'utf8'),
+            ContentType: inputData.contentType || 'application/octet-stream',
+            Metadata: inputData.metadata || {},
+          });
+          
+          await s3Client.send(command);
+          
           return {
             success: true,
             operation: 'upload',
+            bucket,
             key: inputData.key,
-            bucket: connector.config.bucket,
-            message: 'S3 connector not yet fully implemented',
+            contentType: inputData.contentType,
           };
+        }
 
-        case 'download':
+        case 'download': {
+          const command = new GetObjectCommand({
+            Bucket: bucket,
+            Key: inputData.key,
+          });
+          
+          const response = await s3Client.send(command);
+          const content = await response.Body?.transformToString();
+          
           return {
             success: true,
             operation: 'download',
+            bucket,
             key: inputData.key,
-            content: null,
-            message: 'S3 connector not yet fully implemented',
+            content,
+            contentType: response.ContentType,
+            contentLength: response.ContentLength,
+            lastModified: response.LastModified,
           };
+        }
 
-        case 'list':
-          return {
-            success: true,
-            operation: 'list',
-            prefix: inputData.prefix,
-            objects: [],
-            message: 'S3 connector not yet fully implemented',
-          };
-
-        case 'delete':
+        case 'delete': {
+          const command = new DeleteObjectCommand({
+            Bucket: bucket,
+            Key: inputData.key,
+          });
+          
+          await s3Client.send(command);
+          
           return {
             success: true,
             operation: 'delete',
+            bucket,
             key: inputData.key,
-            message: 'S3 connector not yet fully implemented',
+            deleted: true,
           };
+        }
+
+        case 'list': {
+          const command = new ListObjectsV2Command({
+            Bucket: bucket,
+            Prefix: inputData.prefix || '',
+            MaxKeys: inputData.maxKeys || 1000,
+            ContinuationToken: inputData.continuationToken,
+          });
+          
+          const response = await s3Client.send(command);
+          
+          return {
+            success: true,
+            operation: 'list',
+            bucket,
+            prefix: inputData.prefix,
+            objects: response.Contents?.map(obj => ({
+              key: obj.Key,
+              size: obj.Size,
+              lastModified: obj.LastModified,
+              etag: obj.ETag,
+            })) || [],
+            count: response.KeyCount,
+            isTruncated: response.IsTruncated,
+            nextContinuationToken: response.NextContinuationToken,
+          };
+        }
+
+        case 'exists': {
+          try {
+            const command = new HeadObjectCommand({
+              Bucket: bucket,
+              Key: inputData.key,
+            });
+            
+            const response = await s3Client.send(command);
+            
+            return {
+              success: true,
+              operation: 'exists',
+              bucket,
+              key: inputData.key,
+              exists: true,
+              size: response.ContentLength,
+              lastModified: response.LastModified,
+            };
+          } catch (error: any) {
+            if (error.name === 'NotFound') {
+              return {
+                success: true,
+                operation: 'exists',
+                bucket,
+                key: inputData.key,
+                exists: false,
+              };
+            }
+            throw error;
+          }
+        }
+
+        case 'copy': {
+          const sourceKey = inputData.sourceKey;
+          const destKey = inputData.destinationKey;
+          const destBucket = inputData.destinationBucket || bucket;
+          
+          const copySource = `${bucket}/${sourceKey}`;
+          const command = new CopyObjectCommand({
+            Bucket: destBucket,
+            Key: destKey,
+            CopySource: copySource,
+          });
+          
+          await s3Client.send(command);
+          
+          return {
+            success: true,
+            operation: 'copy',
+            sourceBucket: bucket,
+            sourceKey,
+            destinationBucket: destBucket,
+            destinationKey: destKey,
+          };
+        }
+
+        case 'move': {
+          // Move = Copy + Delete
+          const sourceKey = inputData.sourceKey;
+          const destKey = inputData.destinationKey;
+          
+          // Copy
+          const copySource = `${bucket}/${sourceKey}`;
+          const copyCommand = new CopyObjectCommand({
+            Bucket: bucket,
+            Key: destKey,
+            CopySource: copySource,
+          });
+          await s3Client.send(copyCommand);
+          
+          // Delete source
+          const deleteCommand = new DeleteObjectCommand({
+            Bucket: bucket,
+            Key: sourceKey,
+          });
+          await s3Client.send(deleteCommand);
+          
+          return {
+            success: true,
+            operation: 'move',
+            bucket,
+            sourceKey,
+            destinationKey: destKey,
+          };
+        }
+
+        case 'get_url': {
+          // Note: For presigned URLs, you'd need @aws-sdk/s3-request-presigner
+          // For now, return a basic URL
+          const url = config.endpoint 
+            ? `${config.endpoint}/${bucket}/${inputData.key}`
+            : `https://${bucket}.s3.${config.region}.amazonaws.com/${inputData.key}`;
+          
+          return {
+            success: true,
+            operation: 'get_url',
+            bucket,
+            key: inputData.key,
+            url,
+            expiresIn: inputData.expiresIn || 3600,
+            note: 'Basic URL generated. For presigned URLs, install @aws-sdk/s3-request-presigner',
+          };
+        }
 
         default:
           throw new Error(`Unsupported S3 operation: ${operation}`);
