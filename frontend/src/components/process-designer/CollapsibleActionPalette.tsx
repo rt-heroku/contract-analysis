@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, PlayCircle, XCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, PlayCircle, XCircle, Search, X } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 
 interface Action {
   id: number;
@@ -40,6 +41,8 @@ export const CollapsibleActionPalette = ({
   });
   
   const [connectorCollapsed, setConnectorCollapsed] = useState<Record<string, boolean>>({});
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Categorize actions
   const categories: Record<string, Action[]> = {
@@ -96,6 +99,15 @@ export const CollapsibleActionPalette = ({
     connectorGroups[connectorName].push(action);
   });
 
+  // Filter actions based on search
+  const filteredActions = searchQuery.trim()
+    ? actions.filter(action =>
+        action.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        action.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        action.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : actions;
+
   // Filter out empty categories
   const nonEmptyCategories = Object.entries(categories).filter(([_, actions]) => actions.length > 0);
 
@@ -105,6 +117,12 @@ export const CollapsibleActionPalette = ({
   
   const toggleConnector = (connectorName: string) => {
     setConnectorCollapsed(prev => ({ ...prev, [connectorName]: !prev[connectorName] }));
+  };
+
+  // Helper to get icon component
+  const getIconComponent = (iconName: string) => {
+    const Icon = (LucideIcons as any)[iconName];
+    return Icon || LucideIcons.Box;
   };
 
   const renderStartEndNodes = () => (
@@ -180,40 +198,101 @@ export const CollapsibleActionPalette = ({
     </div>
   );
 
-  const renderActionItem = (action: Action) => (
-    <div
-      key={action.id}
-      draggable
-      onDragStart={(event) => onDragStart(event, action)}
-      className="px-2 py-2 rounded cursor-move hover:bg-gray-100 border border-gray-200 transition-colors mb-1"
-    >
-      <div className="flex items-center space-x-2">
-        <div
-          className="w-6 h-6 rounded flex-shrink-0 flex items-center justify-center text-xs"
-          style={{ backgroundColor: action.color || '#6366f1' }}
-        >
-          <span className="text-white font-bold">
-            {action.displayName.charAt(0)}
-          </span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium text-gray-900 truncate">
-            {action.displayName}
+  const renderActionItem = (action: Action) => {
+    const Icon = getIconComponent(action.icon);
+    const hasConnectorIcon = action.connector?.iconUrl;
+    
+    return (
+      <div
+        key={action.id}
+        draggable
+        onDragStart={(event) => onDragStart(event, action)}
+        className="px-2 py-2 rounded cursor-move hover:bg-gray-100 border border-gray-200 transition-colors mb-1"
+      >
+        <div className="flex items-center space-x-2">
+          <div
+            className="w-6 h-6 rounded flex-shrink-0 flex items-center justify-center text-xs"
+            style={{ backgroundColor: action.color || '#6366f1' }}
+          >
+            {hasConnectorIcon ? (
+              <img
+                src={action.connector!.iconUrl}
+                alt={action.displayName}
+                className="w-4 h-4 object-contain"
+              />
+            ) : action.actionType === 'user_defined' && !action.connector ? (
+              <span className="text-white font-bold">
+                {action.displayName.charAt(0)}
+              </span>
+            ) : (
+              <Icon className="w-4 h-4 text-white" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-medium text-gray-900 truncate">
+              {action.displayName}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="h-full flex flex-col bg-white border-r border-gray-200">
       <div className="p-3 border-b border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-900">Actions</h3>
-        <p className="text-xs text-gray-500 mt-1">Drag to add to canvas</p>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-900">Actions</h3>
+          <button
+            onClick={() => {
+              setSearchOpen(!searchOpen);
+              if (searchOpen) {
+                setSearchQuery('');
+              }
+            }}
+            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            title={searchOpen ? 'Close search' : 'Search actions'}
+          >
+            {searchOpen ? (
+              <X className="w-4 h-4 text-gray-600" />
+            ) : (
+              <Search className="w-4 h-4 text-gray-600" />
+            )}
+          </button>
+        </div>
+        {searchOpen ? (
+          <div className="mt-2">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search actions..."
+              className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+              autoFocus
+            />
+          </div>
+        ) : (
+          <p className="text-xs text-gray-500 mt-1">Drag to add to canvas</p>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-2">
-        {renderStartEndNodes()}
+        {searchQuery.trim() ? (
+          <div className="space-y-1">
+            <div className="text-xs font-semibold text-gray-600 px-2 py-1">
+              Search Results ({filteredActions.length})
+            </div>
+            {filteredActions.length > 0 ? (
+              filteredActions.map(action => renderActionItem(action))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p className="text-xs">No actions found</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {renderStartEndNodes()}
 
         {nonEmptyCategories.map(([categoryName, categoryActions]) => (
           <div key={categoryName} className="mb-2">
@@ -301,11 +380,13 @@ export const CollapsibleActionPalette = ({
           </div>
         )}
 
-        {nonEmptyCategories.length === 0 && Object.keys(connectorGroups).length === 0 && (
-          <div className="text-center py-8 text-gray-500 text-sm">
-            <p>No actions available</p>
-            <p className="text-xs mt-1">Create actions to get started</p>
-          </div>
+            {nonEmptyCategories.length === 0 && Object.keys(connectorGroups).length === 0 && (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                <p>No actions available</p>
+                <p className="text-xs mt-1">Create actions to get started</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

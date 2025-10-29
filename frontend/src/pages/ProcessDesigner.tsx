@@ -679,7 +679,7 @@ const ProcessDesignerInner: React.FC = () => {
                   nodeTypes={nodeTypes}
                   edgeTypes={edgeTypes}
                   fitView
-                  defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+                  defaultViewport={{ x: 0, y: 0, zoom: 0.6 }}
                   minZoom={0.1}
                   maxZoom={2}
                   connectionLineType={ConnectionLineType.Bezier}
