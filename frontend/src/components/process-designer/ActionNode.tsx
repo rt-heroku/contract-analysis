@@ -223,20 +223,41 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
         );
       })}
 
-      {/* Error Handle - Always present on all actions */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="error"
-        className="w-3 h-3 !bg-red-500 !border-2 !border-white"
-        style={{ right: -6, top: '75%' }}
-      />
-      <div
-        className="absolute text-xs font-medium px-2 py-0.5 bg-white rounded shadow-sm border border-red-300 whitespace-nowrap pointer-events-none"
-        style={{ right: -50, top: 'calc(75% - 10px)', color: '#ef4444' }}
-      >
-        error
-      </div>
+      {/* Error Handle - Only for actions that can fail */}
+      {(() => {
+        const actionName = data.actionName?.toLowerCase() || '';
+        // Actions that should NOT have error connections
+        const noErrorActions = [
+          'if_then_else',
+          'log',
+          'for_each',
+          'switch_case',
+          'while',
+          'set_variable',
+          'set_payload',
+          'try_catch_finally',
+        ];
+        
+        const shouldShowError = !noErrorActions.some(name => actionName.includes(name));
+        
+        return shouldShowError ? (
+          <>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="error"
+              className="w-3 h-3 !bg-red-500 !border-2 !border-white"
+              style={{ right: -6, top: '75%' }}
+            />
+            <div
+              className="absolute text-xs font-medium px-2 py-0.5 bg-white rounded shadow-sm border border-red-300 whitespace-nowrap pointer-events-none"
+              style={{ right: -50, top: 'calc(75% - 10px)', color: '#ef4444' }}
+            >
+              error
+            </div>
+          </>
+        ) : null;
+      })()}
 
       {/* Plus Button Below Node - Only show if not connected or if multi-branch action */}
       {data.onAddNext && data.showPlusButton && (

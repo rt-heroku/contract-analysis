@@ -32,15 +32,13 @@ export const CollapsibleActionPalette = ({
   onDragStart,
 }: CollapsibleActionPaletteProps) => {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    'Flow Markers': true,
     'Flow Control': false,
     'Error Handling': false,
     'Data': false,
     'Execution': false,
     'Storage': false,
-    'API': false,
     'User': true,
-    'Connectors': true,
+    'Connections': true,
   });
   
   const [connectorCollapsed, setConnectorCollapsed] = useState<Record<string, boolean>>({});
@@ -125,12 +123,14 @@ export const CollapsibleActionPalette = ({
       !a.name.toLowerCase().includes('raise')
     ),
     'Error Handling': actions.filter(a =>
-      a.category === 'error_handling' ||
-      a.name.toLowerCase().includes('error') ||
+      (a.category === 'error_handling' ||
       a.name.toLowerCase().includes('try') ||
       a.name.toLowerCase().includes('catch') ||
       a.name.toLowerCase().includes('raise') ||
-      a.name.toLowerCase().includes('retry')
+      a.name.toLowerCase().includes('retry')) &&
+      // Hide On Error for now
+      !a.name.toLowerCase().includes('on_error') &&
+      !a.name.toLowerCase().includes('onerror')
     ),
     'Data': actions.filter(a =>
       a.category === 'data' ||
@@ -143,18 +143,16 @@ export const CollapsibleActionPalette = ({
     'Execution': actions.filter(a =>
       a.category === 'execution' ||
       a.name.toLowerCase().includes('script') ||
-      a.name.toLowerCase().includes('idp')
+      a.name.toLowerCase().includes('idp') ||
+      a.name.toLowerCase().includes('call_process') ||
+      a.name.toLowerCase().includes('parallel')
     ),
     'Storage': actions.filter(a =>
-      a.category === 'storage' ||
-      a.name.toLowerCase().includes('save') ||
+      (a.category === 'storage' ||
       a.name.toLowerCase().includes('load') ||
-      a.name.toLowerCase().includes('store')
-    ),
-    'API': actions.filter(a =>
-      a.category === 'api' ||
-      (a.name.toLowerCase().includes('rest') && a.actionType !== 'connector') ||
-      (a.name.toLowerCase().includes('api') && a.actionType !== 'connector')
+      a.name.toLowerCase().includes('store')) &&
+      // Hide save file (should be connector)
+      !a.name.toLowerCase().includes('save')
     ),
     'User': actions.filter(a => 
       a.actionType === 'user_defined' && 
@@ -451,21 +449,21 @@ export const CollapsibleActionPalette = ({
           </div>
         )}
 
-        {/* Connectors Section with Nested Groups */}
+        {/* Connections Section with Nested Groups */}
         {Object.keys(connectorGroups).length > 0 && (
           <div className="mb-2">
             <button
-              onClick={() => toggleCategory('Connectors')}
+              onClick={() => toggleCategory('Connections')}
               className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-gray-50 rounded transition-colors"
             >
               <div className="flex items-center space-x-2">
-                {collapsed['Connectors'] ? (
+                {collapsed['Connections'] ? (
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 ) : (
                   <ChevronDown className="w-4 h-4 text-gray-500" />
                 )}
                 <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  Connectors
+                  Connections
                 </span>
               </div>
               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
@@ -473,7 +471,7 @@ export const CollapsibleActionPalette = ({
               </span>
             </button>
 
-            {!collapsed['Connectors'] && (
+            {!collapsed['Connections'] && (
               <div className="mt-1 space-y-1 pl-2">
                 {Object.entries(connectorGroups).map(([connectorName, actions]) => (
                   <div key={connectorName}>
@@ -509,28 +507,28 @@ export const CollapsibleActionPalette = ({
                   className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50 rounded-lg border border-dashed border-green-300 transition-colors mt-2"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Add Connectors</span>
+                  <span>Add Connections</span>
                 </button>
               </div>
             )}
           </div>
         )}
         
-        {/* Connectors Section (if empty) */}
+        {/* Connections Section (if empty) */}
         {Object.keys(connectorGroups).length === 0 && (
           <div className="mb-2">
             <button
-              onClick={() => toggleCategory('Connectors')}
+              onClick={() => toggleCategory('Connections')}
               className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-gray-50 rounded transition-colors"
             >
               <div className="flex items-center space-x-2">
-                {collapsed['Connectors'] ? (
+                {collapsed['Connections'] ? (
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 ) : (
                   <ChevronDown className="w-4 h-4 text-gray-500" />
                 )}
                 <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  Connectors
+                  Connections
                 </span>
               </div>
               <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
@@ -538,14 +536,14 @@ export const CollapsibleActionPalette = ({
               </span>
             </button>
 
-            {!collapsed['Connectors'] && (
+            {!collapsed['Connections'] && (
               <div className="mt-1 space-y-1 pl-2">
                 <button
                   onClick={() => setShowConnectorModal(true)}
                   className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50 rounded-lg border border-dashed border-green-300 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Add Connectors</span>
+                  <span>Add Connections</span>
                 </button>
               </div>
             )}
