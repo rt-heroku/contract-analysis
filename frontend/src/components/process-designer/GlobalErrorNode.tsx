@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { XCircle, Settings } from 'lucide-react';
+import { XCircle, Settings, Plus } from 'lucide-react';
 
 interface GlobalErrorNodeData {
   label: string;
@@ -9,7 +9,9 @@ interface GlobalErrorNodeData {
     notifyOnError?: boolean;
     continueOnError?: boolean;
   };
+  showPlusButton?: boolean;
   onConfigure?: () => void;
+  onAddNext?: () => void;
 }
 
 export const GlobalErrorNode = memo(({ data, selected }: NodeProps<GlobalErrorNodeData>) => {
@@ -110,6 +112,24 @@ export const GlobalErrorNode = memo(({ data, selected }: NodeProps<GlobalErrorNo
         className="w-3 h-3 !bg-red-500 !border-2 !border-white"
         style={{ bottom: -6 }}
       />
+      
+      {/* Plus Button for adding error handling actions */}
+      {data.showPlusButton && data.onAddNext && (
+        <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (data.onAddNext) {
+                data.onAddNext();
+              }
+            }}
+            className="w-8 h-8 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-110 border-2 border-white"
+            title="Add error handling action"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+      )}
     </div>
   );
 });

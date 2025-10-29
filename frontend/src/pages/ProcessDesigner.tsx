@@ -203,7 +203,7 @@ const ProcessDesignerInner: React.FC = () => {
     if (id) {
       loadProcess();
     } else {
-      // Initialize with a start node if creating new process
+      // Initialize with a start node and global error node if creating new process
       if (nodes.length === 0) {
         const startNode: Node = {
           id: 'start-1',
@@ -222,7 +222,26 @@ const ProcessDesignerInner: React.FC = () => {
             },
           },
         };
-        setNodes([startNode]);
+        
+        const globalErrorNode: Node = {
+          id: 'global-error-1',
+          type: 'globalError',
+          position: { x: 550, y: 100 },
+          data: {
+            label: 'GLOBAL ERROR',
+            config: currentGlobalErrorConfig,
+            showPlusButton: true,
+            onAddNext: () => {
+              setTargetNodeForPlus('global-error-1');
+              setShowActionSearch(true);
+            },
+            onConfigure: () => {
+              setGlobalErrorConfigOpen(true);
+            },
+          },
+        };
+        
+        setNodes([startNode, globalErrorNode]);
       }
     }
   }, [id]);
@@ -265,20 +284,46 @@ const ProcessDesignerInner: React.FC = () => {
       
       if (process.flowDefinition?.nodes) {
         // Re-wire onEdit and onAddNext callbacks when loading nodes
-        const nodesWithCallbacks = process.flowDefinition.nodes.map((node: Node) => ({
+        let nodesWithCallbacks = process.flowDefinition.nodes.map((node: Node) => ({
           ...node,
           data: {
             ...node.data,
             onEdit: node.type === 'actionNode' ? () => handleEditNode(node.id) : undefined,
-            onAddNext: (node.type === 'actionNode' || node.type === 'start') ? () => {
+            onAddNext: (node.type === 'actionNode' || node.type === 'start' || node.type === 'globalError') ? () => {
               setTargetNodeForPlus(node.id);
               setShowActionSearch(true);
             } : undefined,
             onConfigure: node.type === 'start' ? () => {
               setTriggerConfigOpen(true);
+            } : node.type === 'globalError' ? () => {
+              setGlobalErrorConfigOpen(true);
             } : undefined,
           },
         }));
+        
+        // Ensure Global Error node exists (for backward compatibility)
+        const hasGlobalError = nodesWithCallbacks.some((n: Node) => n.type === 'globalError');
+        if (!hasGlobalError) {
+          const globalErrorNode: Node = {
+            id: 'global-error-1',
+            type: 'globalError',
+            position: { x: 550, y: 100 },
+            data: {
+              label: 'GLOBAL ERROR',
+              config: currentGlobalErrorConfig,
+              showPlusButton: true,
+              onAddNext: () => {
+                setTargetNodeForPlus('global-error-1');
+                setShowActionSearch(true);
+              },
+              onConfigure: () => {
+                setGlobalErrorConfigOpen(true);
+              },
+            },
+          };
+          nodesWithCallbacks.push(globalErrorNode);
+        }
+        
         setNodes(nodesWithCallbacks);
       }
       if (process.flowDefinition?.edges) {
@@ -369,6 +414,9 @@ const ProcessDesignerInner: React.FC = () => {
         // Find the source node
         const sourceNode = nodes.find(n => n.id === params.source);
         
+        // Check if this is an error connection
+        const isErrorConnection = params.sourceHandle === 'error';
+        
         // Count existing connections from this source
         const existingConnections = eds.filter(e => e.source === params.source).length;
         
@@ -379,8 +427,15 @@ const ProcessDesignerInner: React.FC = () => {
           ...params,
           type: label ? 'labeled' : 'default',
           markerEnd: { type: MarkerType.ArrowClosed },
-          style: { stroke: '#64748b', strokeWidth: 2 },
-          data: { label },
+          style: { 
+            stroke: isErrorConnection ? '#ef4444' : '#64748b', 
+            strokeWidth: 2,
+            strokeDasharray: isErrorConnection ? '5,5' : 'none',
+          },
+          data: { 
+            label: isErrorConnection ? 'error' : label,
+            isError: isErrorConnection,
+          },
         }, eds);
       });
     },
@@ -1074,6 +1129,20 @@ const ProcessDesignerInner: React.FC = () => {
             setContextMenu(null);
           }}
           onDelete={() => {
+            const node = nodes.find((n) => n.id === contextMenu.nodeId);
+            
+            // Prevent deletion of Global Error nodes
+            if (node?.type === 'globalError') {
+              setAlertDialog({
+                isOpen: true,
+                title: 'Cannot Delete Global Error',
+                message: 'The Global Error handler is required and cannot be deleted. It serves as a fallback for unhandled errors in your process.',
+                type: 'warning',
+              });
+              setContextMenu(null);
+              return;
+            }
+            
             setNodes((nds) => nds.filter((n) => n.id !== contextMenu.nodeId));
             setEdges((eds) => eds.filter((e) => e.source !== contextMenu.nodeId && e.target !== contextMenu.nodeId));
             setContextMenu(null);
