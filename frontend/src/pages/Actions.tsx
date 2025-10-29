@@ -3,9 +3,10 @@ import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { AlertDialog } from '@/components/common/AlertDialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/common/Tabs';
 import { 
   FileText, Network, Save, GitBranch, RefreshCw, ChevronDown, ChevronRight,
-  Box, User, Plug, Zap, Plus, Search
+  Box, User, Plug, Zap, Plus, Search, Send, Inbox
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
@@ -22,6 +23,12 @@ interface Action {
   isSystem: boolean;
   isActive: boolean;
   connectorId?: number;
+  connector?: {
+    id: number;
+    name: string;
+    connectorType: string;
+    iconUrl?: string;
+  };
 }
 
 interface Connector {
@@ -30,6 +37,7 @@ interface Connector {
   connectorType: string;
   version: string;
   isActive: boolean;
+  iconUrl?: string;
 }
 
 const iconMap: Record<string, any> = {
@@ -42,13 +50,25 @@ const iconMap: Record<string, any> = {
   User,
   Plug,
   Zap,
+  Send,
+  Inbox,
 };
 
 interface GroupedActions {
-  system: Action[];
+  system: Map<string, Action[]>; // Grouped by category
   user: Action[];
   connector: Map<number, { connector: Connector; actions: Action[] }>;
 }
+
+const categoryNames: Record<string, string> = {
+  control_flow: 'Control Flow',
+  data: 'Data',
+  api: 'API',
+  storage: 'Storage',
+  idp: 'IDP',
+  messaging: 'Messaging',
+  custom: 'Custom',
+};
 
 export const Actions: React.FC = () => {
   const navigate = useNavigate();
@@ -56,13 +76,10 @@ export const Actions: React.FC = () => {
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'user' | 'system' | 'connectors'>('user');
   
-  // Collapsed state for each group
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    system: false,
-    user: false,
-    connectors: false,
-  });
+  // Collapsed state for system action categories
+  const [categoryCollapsed, setCategoryCollapsed] = useState<Record<string, boolean>>({});
 
   // Collapsed state for individual connectors
   const [connectorCollapsed, setConnectorCollapsed] = useState<Record<number, boolean>>({});
@@ -99,8 +116,8 @@ export const Actions: React.FC = () => {
     }
   };
 
-  const toggleGroup = (group: string) => {
-    setCollapsed(prev => ({ ...prev, [group]: !prev[group] }));
+  const toggleCategory = (category: string) => {
+    setCategoryCollapsed(prev => ({ ...prev, [category]: !prev[category] }));
   };
 
   const toggleConnector = (connectorId: number) => {
@@ -110,14 +127,18 @@ export const Actions: React.FC = () => {
   // Group actions
   const groupedActions: GroupedActions = React.useMemo(() => {
     const grouped: GroupedActions = {
-      system: [],
+      system: new Map(),
       user: [],
       connector: new Map(),
     };
 
     actions.forEach(action => {
       if (action.actionType === 'system') {
-        grouped.system.push(action);
+        const category = action.category || 'custom';
+        if (!grouped.system.has(category)) {
+          grouped.system.set(category, []);
+        }
+        grouped.system.get(category)!.push(action);
       } else if (action.actionType === 'user_defined') {
         grouped.user.push(action);
       } else if (action.actionType === 'connector' && action.connectorId) {
@@ -149,32 +170,28 @@ export const Actions: React.FC = () => {
     return (
       <div
         key={action.id}
-        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+        onClick={() => navigate(`/actions/${action.id}`)}
       >
         <div className="flex items-start space-x-3">
           <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: action.color || '#3b82f6' }}
+            className="p-2 rounded-lg flex-shrink-0"
+            style={{ backgroundColor: `${action.color}20` }}
           >
-            <IconComponent className="w-5 h-5 text-white" />
+            <IconComponent className="w-5 h-5" style={{ color: action.color }} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-900 truncate">
-              {action.displayName}
-            </h3>
-            <p className="text-xs text-gray-600 mt-1 line-clamp-2">
-              {action.description}
-            </p>
-            <div className="flex items-center mt-2 space-x-2">
-              <div>
-                <Badge variant="default">
-                  {action.category}
-                </Badge>
+            <h3 className="font-semibold text-gray-900 mb-1">{action.displayName}</h3>
+            <p className="text-sm text-gray-600 line-clamp-2">{action.description || 'No description'}</p>
+            <div className="flex items-center space-x-2 mt-2">
+              <div className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
+                {action.category}
               </div>
               {action.isSystem && (
-                <div className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs">
-                  System
-                </div>
+                <Badge variant="default">System</Badge>
+              )}
+              {action.connector && (
+                <Badge variant="success">{action.connector.name}</Badge>
               )}
             </div>
           </div>
@@ -186,13 +203,14 @@ export const Actions: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading actions...</div>
+        <p>Loading actions...</p>
       </div>
     );
   }
 
-  const systemActions = filterActions(groupedActions.system);
   const userActions = filterActions(groupedActions.user);
+  const systemActionCount = Array.from(groupedActions.system.values()).reduce((sum, actions) => sum + actions.length, 0);
+  const connectorActionCount = Array.from(groupedActions.connector.values()).reduce((sum, { actions }) => sum + actions.length, 0);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -200,7 +218,7 @@ export const Actions: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Action Library</h1>
           <p className="text-gray-600 mt-1">
-            {actions.length} actions available • {groupedActions.system.length} system • {groupedActions.user.length} user • {groupedActions.connector.size} connectors
+            {actions.length} actions available • {userActions.length} user • {systemActionCount} system • {connectorActionCount} connector
           </p>
         </div>
         <Button
@@ -226,153 +244,153 @@ export const Actions: React.FC = () => {
         </div>
       </div>
 
-      <div className="space-y-4">
-        {/* System Actions Group */}
-        <Card className="overflow-hidden">
-          <div
-            className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
-            onClick={() => toggleGroup('system')}
-          >
-            <div className="flex items-center space-x-3">
-              {collapsed.system ? (
-                <ChevronRight className="w-5 h-5 text-gray-500" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-gray-500" />
-              )}
-              <Box className="w-6 h-6 text-purple-600" />
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">System Actions</h2>
-                <p className="text-sm text-gray-500">{systemActions.length} built-in actions</p>
-              </div>
-            </div>
-            <div className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-semibold">
-              {systemActions.length}
-            </div>
-          </div>
-          {!collapsed.system && (
-            <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {systemActions.length > 0 ? (
-                systemActions.map(renderActionCard)
-              ) : (
-                <p className="text-gray-500 col-span-full text-center py-8">
-                  No system actions found
-                </p>
-              )}
-            </div>
-          )}
-        </Card>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as 'user' | 'system' | 'connectors')}>
+        <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsTrigger value="user" className="flex items-center space-x-2">
+            <User className="w-4 h-4" />
+            <span>User Actions ({userActions.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="system" className="flex items-center space-x-2">
+            <Box className="w-4 h-4" />
+            <span>System Actions ({systemActionCount})</span>
+          </TabsTrigger>
+          <TabsTrigger value="connectors" className="flex items-center space-x-2">
+            <Plug className="w-4 h-4" />
+            <span>Connectors ({groupedActions.connector.size})</span>
+          </TabsTrigger>
+        </TabsList>
 
-        {/* User Actions Group */}
-        <Card className="overflow-hidden">
-          <div
-            className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
-            onClick={() => toggleGroup('user')}
-          >
-            <div className="flex items-center space-x-3">
-              {collapsed.user ? (
-                <ChevronRight className="w-5 h-5 text-gray-500" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-gray-500" />
-              )}
-              <User className="w-6 h-6 text-blue-600" />
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">User Actions</h2>
-                <p className="text-sm text-gray-500">{userActions.length} custom actions</p>
+        {/* User Actions Tab */}
+        <TabsContent value="user">
+          <Card>
+            {userActions.length > 0 ? (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {userActions.map(renderActionCard)}
               </div>
-            </div>
-            <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
-              {userActions.length}
-            </div>
-          </div>
-          {!collapsed.user && (
-            <div className="p-4">
-              {userActions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {userActions.map(renderActionCard)}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">No user actions yet</p>
-                  <Button
-                    onClick={() => navigate('/actions/new')}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Create Your First Action
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
+            ) : (
+              <div className="text-center py-12">
+                <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 mb-4">No user actions yet</p>
+                <Button
+                  onClick={() => navigate('/actions/new')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Create Your First Action
+                </Button>
+              </div>
+            )}
+          </Card>
+        </TabsContent>
 
-        {/* Connector Actions Group */}
-        <Card className="overflow-hidden">
-          <div
-            className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
-            onClick={() => toggleGroup('connectors')}
-          >
-            <div className="flex items-center space-x-3">
-              {collapsed.connectors ? (
-                <ChevronRight className="w-5 h-5 text-gray-500" />
-              ) : (
-                <ChevronDown className="w-5 h-5 text-gray-500" />
-              )}
-              <Plug className="w-6 h-6 text-green-600" />
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Connector Actions</h2>
-                <p className="text-sm text-gray-500">
-                  {groupedActions.connector.size} connectors with actions
-                </p>
-              </div>
-            </div>
-            <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
-              {groupedActions.connector.size}
-            </div>
-          </div>
-          {!collapsed.connectors && (
-            <div className="p-4 space-y-3">
-              {groupedActions.connector.size > 0 ? (
-                Array.from(groupedActions.connector.values()).map(({ connector, actions: connectorActions }) => {
-                  const filteredConnectorActions = filterActions(connectorActions);
-                  if (filteredConnectorActions.length === 0 && searchTerm) return null;
+        {/* System Actions Tab - Grouped by Category */}
+        <TabsContent value="system">
+          <div className="space-y-4">
+            {groupedActions.system.size > 0 ? (
+              Array.from(groupedActions.system.entries())
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([category, categoryActions]) => {
+                  const filteredActions = filterActions(categoryActions);
+                  if (filteredActions.length === 0 && searchTerm) return null;
 
                   return (
-                    <div key={connector.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                    <Card key={category} className="overflow-hidden">
                       <div
-                        className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100"
-                        onClick={() => toggleConnector(connector.id)}
+                        className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                        onClick={() => toggleCategory(category)}
                       >
                         <div className="flex items-center space-x-3">
-                          {connectorCollapsed[connector.id] ? (
-                            <ChevronRight className="w-4 h-4 text-gray-500" />
+                          {categoryCollapsed[category] ? (
+                            <ChevronRight className="w-5 h-5 text-gray-500" />
                           ) : (
-                            <ChevronDown className="w-4 h-4 text-gray-500" />
+                            <ChevronDown className="w-5 h-5 text-gray-500" />
                           )}
-                          <Plug className="w-5 h-5 text-green-600" />
                           <div>
-                            <h3 className="text-sm font-semibold text-gray-900">
-                              {connector.name}
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {categoryNames[category] || category}
                             </h3>
-                            <p className="text-xs text-gray-500">
-                              {connector.connectorType.toUpperCase()} • v{connector.version} • {filteredConnectorActions.length} actions
-                            </p>
+                            <p className="text-sm text-gray-500">{filteredActions.length} actions</p>
                           </div>
                         </div>
-                        <div className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-semibold">
-                          {filteredConnectorActions.length}
+                        <div className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-semibold">
+                          {filteredActions.length}
                         </div>
                       </div>
-                      {!connectorCollapsed[connector.id] && (
-                        <div className="p-3 bg-white grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {filteredConnectorActions.map(renderActionCard)}
+                      {!categoryCollapsed[category] && (
+                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {filteredActions.map(renderActionCard)}
                         </div>
                       )}
-                    </div>
+                    </Card>
                   );
                 })
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">No connector actions yet</p>
+            ) : (
+              <Card>
+                <div className="text-center py-12">
+                  <Box className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No system actions found</p>
+                </div>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Connector Actions Tab - One Collapsible per Connector */}
+        <TabsContent value="connectors">
+          <div className="space-y-4">
+            {groupedActions.connector.size > 0 ? (
+              Array.from(groupedActions.connector.values()).map(({ connector, actions: connectorActions }) => {
+                const filteredConnectorActions = filterActions(connectorActions);
+                if (filteredConnectorActions.length === 0 && searchTerm) return null;
+
+                return (
+                  <Card key={connector.id} className="overflow-hidden">
+                    <div
+                      className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                      onClick={() => toggleConnector(connector.id)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        {connectorCollapsed[connector.id] ? (
+                          <ChevronRight className="w-5 h-5 text-gray-500" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-gray-500" />
+                        )}
+                        <Plug className="w-6 h-6 text-green-600" />
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{connector.name}</h3>
+                          <p className="text-sm text-gray-500">
+                            {filteredConnectorActions.length} actions • {connector.connectorType}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
+                          {filteredConnectorActions.length}
+                        </div>
+                        <Badge variant="default">{connector.version}</Badge>
+                      </div>
+                    </div>
+                    {!connectorCollapsed[connector.id] && (
+                      <div className="p-4">
+                        {filteredConnectorActions.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filteredConnectorActions.map(renderActionCard)}
+                          </div>
+                        ) : (
+                          <p className="text-gray-500 text-center py-8">
+                            No actions found for this connector
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                );
+              })
+            ) : (
+              <Card>
+                <div className="text-center py-12">
+                  <Plug className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 mb-2">No connector actions yet</p>
                   <p className="text-sm text-gray-400 mb-4">
                     Create connectors and import OpenAPI specs to generate actions
                   </p>
@@ -383,11 +401,11 @@ export const Actions: React.FC = () => {
                     Go to Connectors
                   </Button>
                 </div>
-              )}
-            </div>
-          )}
-        </Card>
-      </div>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <AlertDialog
         isOpen={alertDialog.isOpen}
