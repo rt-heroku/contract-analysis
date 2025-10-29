@@ -12,6 +12,7 @@ import ReactFlow, {
   MarkerType,
   NodeTypes,
   EdgeTypes,
+  ConnectionLineType,
   useReactFlow,
   ReactFlowProvider,
 } from 'reactflow';
@@ -644,6 +645,14 @@ const ProcessDesignerInner: React.FC = () => {
                   defaultViewport={{ x: 0, y: 0, zoom: 1 }}
                   minZoom={0.1}
                   maxZoom={2}
+                  connectionLineType={ConnectionLineType.Bezier}
+                  snapToGrid={true}
+                  snapGrid={[15, 15]}
+                  panOnScroll={false}
+                  zoomOnScroll={true}
+                  panOnDrag={true}
+                  selectNodesOnDrag={false}
+                  deleteKeyCode="Delete"
                 >
                   <Background 
                     variant={BackgroundVariant.Lines} 
@@ -726,6 +735,8 @@ const ProcessDesignerInner: React.FC = () => {
         isOpen={editModalOpen}
         node={selectedNode}
         allActions={actions}
+        nodes={nodes}
+        edges={edges}
         onClose={() => {
           setEditModalOpen(false);
           setSelectedNode(null);
@@ -749,6 +760,9 @@ const ProcessDesignerInner: React.FC = () => {
           );
           setEditModalOpen(false);
           setSelectedNode(null);
+        }}
+        onDeleteEdge={(edgeId) => {
+          setEdges((eds) => eds.filter((e) => e.id !== edgeId));
         }}
       />
 

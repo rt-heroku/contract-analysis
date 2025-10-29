@@ -17,6 +17,7 @@ interface ActionNodeData {
   icon?: string;
   color?: string;
   actionType?: 'system' | 'user_defined' | 'connector';
+  actionName?: string;
   onEdit?: () => void;
   onAddNext?: () => void;
   showPlusButton?: boolean;
@@ -65,6 +66,58 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
         return '';
     }
   };
+
+  // Determine output handles based on action type
+  const getOutputHandles = () => {
+    const actionName = data.actionName?.toLowerCase() || '';
+    
+    // IF THEN ELSE: 2 handles (if, else)
+    if (actionName.includes('if_then_else')) {
+      return [
+        { id: 'if', label: 'if', position: 'left', color: '#22c55e' },
+        { id: 'else', label: 'else', position: 'right', color: '#ef4444' },
+      ];
+    }
+    
+    // Try Catch Finally: 3 handles (try, catch, finally)
+    if (actionName.includes('try_catch_finally')) {
+      return [
+        { id: 'try', label: 'try', position: 'left', color: '#22c55e' },
+        { id: 'catch', label: 'catch', position: 'bottom', color: '#ef4444' },
+        { id: 'finally', label: 'finally', position: 'right', color: '#f59e0b' },
+      ];
+    }
+    
+    // Switch Case: multiple handles (we'll show just bottom for now, connections determine cases)
+    if (actionName.includes('switch_case')) {
+      return [
+        { id: 'default', label: 'default', position: 'bottom', color: '#6366f1' },
+      ];
+    }
+    
+    // For Each: 2 handles (item, after)
+    if (actionName.includes('for_each')) {
+      return [
+        { id: 'item', label: 'item', position: 'bottom', color: '#8b5cf6' },
+        { id: 'after', label: 'after', position: 'right', color: '#6366f1' },
+      ];
+    }
+    
+    // While Loop: 2 handles (loop, after)
+    if (actionName.includes('while')) {
+      return [
+        { id: 'loop', label: 'loop', position: 'bottom', color: '#8b5cf6' },
+        { id: 'after', label: 'after', position: 'right', color: '#6366f1' },
+      ];
+    }
+    
+    // Default: single bottom handle
+    return [
+      { id: 'default', label: '', position: 'bottom', color: '#22c55e' },
+    ];
+  };
+
+  const outputHandles = getOutputHandles();
 
   return (
     <div
@@ -122,13 +175,46 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
         )}
       </div>
 
-      {/* Bottom Handle */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="w-3 h-3 !bg-green-500 !border-2 !border-white"
-        style={{ bottom: -6 }}
-      />
+      {/* Dynamic Output Handles */}
+      {outputHandles.map((handle, index) => {
+        const positionMap: Record<string, any> = {
+          bottom: { position: Position.Bottom, style: { bottom: -6, left: `${(index + 1) * (100 / (outputHandles.length + 1))}%` } },
+          left: { position: Position.Left, style: { left: -6, top: '50%' } },
+          right: { position: Position.Right, style: { right: -6, top: '50%' } },
+          top: { position: Position.Top, style: { top: -6, left: '50%' } },
+        };
+
+        const { position, style } = positionMap[handle.position] || positionMap.bottom;
+        
+        return (
+          <div key={handle.id}>
+            <Handle
+              type="source"
+              position={position}
+              id={handle.id}
+              className="w-3 h-3 !border-2 !border-white"
+              style={{ ...style, backgroundColor: handle.color }}
+            />
+            {handle.label && (
+              <div
+                className="absolute text-xs font-medium px-2 py-0.5 bg-white rounded shadow-sm border border-gray-300 whitespace-nowrap pointer-events-none"
+                style={{
+                  ...(handle.position === 'left' && { left: -50, top: 'calc(50% - 10px)' }),
+                  ...(handle.position === 'right' && { right: -50, top: 'calc(50% - 10px)' }),
+                  ...(handle.position === 'bottom' && { 
+                    bottom: -30, 
+                    left: `${(index + 1) * (100 / (outputHandles.length + 1))}%`,
+                    transform: 'translateX(-50%)'
+                  }),
+                  color: handle.color,
+                }}
+              >
+                {handle.label}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {/* Plus Button Below Node - Only show if not connected or if multi-branch action */}
       {data.onAddNext && data.showPlusButton && (
@@ -150,24 +236,6 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
           </button>
         </div>
       )}
-
-      {/* Left Handle (for branching) */}
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left"
-        className="w-3 h-3 !bg-yellow-500 !border-2 !border-white"
-        style={{ left: -6, top: '50%' }}
-      />
-
-      {/* Right Handle (for branching) */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        className="w-3 h-3 !bg-yellow-500 !border-2 !border-white"
-        style={{ right: -6, top: '50%' }}
-      />
     </div>
   );
 });
