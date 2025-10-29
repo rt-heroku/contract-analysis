@@ -139,14 +139,27 @@ export const connectorController = {
       const connectorId = parseInt(req.params.id);
       const { openApiSpec, url } = req.body;
 
+      console.log('=== OpenAPI Import Request ===');
+      console.log('Connector ID:', connectorId);
+      console.log('URL provided:', !!url);
+      console.log('Spec provided:', !!openApiSpec);
+      if (openApiSpec) {
+        console.log('Spec type:', typeof openApiSpec);
+        console.log('Spec preview:', typeof openApiSpec === 'string' ? openApiSpec.substring(0, 200) : JSON.stringify(openApiSpec).substring(0, 200));
+      }
+
       let result;
       if (url) {
+        console.log('Importing from URL:', url);
         result = await connectorService.importOpenApiFromUrl(connectorId, req.user.id, url);
       } else if (openApiSpec) {
+        console.log('Importing from provided spec');
         result = await connectorService.importOpenApiSpec(connectorId, req.user.id, openApiSpec);
       } else {
         return res.status(400).json({ error: 'Either openApiSpec or url is required' });
       }
+
+      console.log('Import successful:', result);
 
       await loggingService.logActivity({
         userId: req.user.id,
@@ -158,8 +171,11 @@ export const connectorController = {
 
       res.json(result);
     } catch (error: any) {
-      console.error('Error importing OpenAPI:', error);
-      res.status(500).json({ error: error.message });
+      console.error('=== OpenAPI Import Error ===');
+      console.error('Error:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      res.status(500).json({ error: error.message || 'Failed to import OpenAPI spec' });
     }
   },
 

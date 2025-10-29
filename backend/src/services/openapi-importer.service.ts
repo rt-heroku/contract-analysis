@@ -1,9 +1,11 @@
 import prisma from '../config/database';
 import logger from '../utils/logger';
 import axios from 'axios';
+import * as yaml from 'js-yaml';
 
 interface OpenAPISpec {
-  openapi: string;
+  openapi?: string;
+  swagger?: string; // For Swagger 2.0
   info: any;
   servers?: any[];
   paths: Record<string, Record<string, any>>;
@@ -24,9 +26,33 @@ interface ImportedAction {
 
 export class OpenAPIImporterService {
   /**
+   * Parse OpenAPI spec from string (JSON or YAML)
+   */
+  private parseSpec(specString: string): OpenAPISpec {
+    try {
+      // First try JSON parsing
+      logger.info('Attempting to parse spec as JSON...');
+      return JSON.parse(specString);
+    } catch (jsonError) {
+      // If JSON parsing fails, try YAML
+      try {
+        logger.info('JSON parsing failed, attempting to parse as YAML...');
+        const parsed = yaml.load(specString) as OpenAPISpec;
+        logger.info('Successfully parsed YAML spec');
+        return parsed;
+      } catch (yamlError: any) {
+        logger.error('Failed to parse spec as both JSON and YAML');
+        logger.error('JSON error:', jsonError);
+        logger.error('YAML error:', yamlError);
+        throw new Error(`Failed to parse OpenAPI spec. Not valid JSON or YAML. JSON error: ${(jsonError as Error).message}, YAML error: ${yamlError.message}`);
+      }
+    }
+  }
+
+  /**
    * Import OpenAPI spec and create connector actions
    */
-  async importFromSpec(connectorId: number, spec: OpenAPISpec): Promise<{ actionsCreated: number; actions: any[] }> {
+  async importFromSpec(connectorId: number, spec: OpenAPISpec | string): Promise<{ actionsCreated: number; actions: any[] }> {
     try {
       logger.info(`Importing OpenAPI spec for connector ${connectorId}`);
 
@@ -39,31 +65,63 @@ export class OpenAPIImporterService {
         throw new Error(`Connector ${connectorId} not found`);
       }
 
+      // Parse spec if it's a string
+      let parsedSpec: OpenAPISpec;
+      if (typeof spec === 'string') {
+        logger.info('Spec is a string, parsing...');
+        parsedSpec = this.parseSpec(spec);
+      } else {
+        logger.info('Spec is already an object');
+        parsedSpec = spec;
+      }
+
+      // Validate spec structure
+      if (!parsedSpec.openapi && !parsedSpec['swagger']) {
+        throw new Error('Invalid OpenAPI spec: missing "openapi" or "swagger" field');
+      }
+
+      if (!parsedSpec.paths || Object.keys(parsedSpec.paths).length === 0) {
+        throw new Error('Invalid OpenAPI spec: no paths defined');
+      }
+
+      logger.info(`OpenAPI version: ${parsedSpec.openapi || parsedSpec['swagger']}`);
+      logger.info(`API title: ${parsedSpec.info?.title || 'N/A'}`);
+      logger.info(`Found ${Object.keys(parsedSpec.paths).length} paths`);
+
       // Extract operations from spec
-      const operations = this.extractOperations(spec);
+      const operations = this.extractOperations(parsedSpec);
       logger.info(`Extracted ${operations.length} operations from OpenAPI spec`);
+
+      if (operations.length === 0) {
+        throw new Error('No operations found in OpenAPI spec');
+      }
 
       // Create connector actions
       const createdActions = [];
       for (const operation of operations) {
-        const action = await this.createConnectorAction(connectorId, operation);
-        createdActions.push(action);
+        try {
+          const action = await this.createConnectorAction(connectorId, operation);
+          createdActions.push(action);
+        } catch (error: any) {
+          logger.error(`Error creating action for ${operation.operation}:`, error);
+          // Continue with other actions
+        }
       }
 
       // Update connector with OpenAPI spec
       await prisma.connector.update({
         where: { id: connectorId },
-        data: { openApiSpec: spec as any },
+        data: { openApiSpec: parsedSpec as any },
       });
 
-      logger.info(`Created ${createdActions.length} connector actions`);
+      logger.info(`Successfully created ${createdActions.length} connector actions`);
       return {
         actionsCreated: createdActions.length,
         actions: createdActions,
       };
     } catch (error: any) {
       logger.error('Error importing OpenAPI spec:', error);
-      throw error;
+      throw new Error(`Failed to import OpenAPI spec: ${error.message}`);
     }
   }
 

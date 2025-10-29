@@ -191,7 +191,9 @@ export const Connectors: React.FC = () => {
       if (openApiUrl) {
         payload.url = openApiUrl;
       } else if (openApiSpec) {
-        payload.openApiSpec = JSON.parse(openApiSpec);
+        // Send spec as raw string (JSON or YAML) - backend will parse it
+        payload.openApiSpec = openApiSpec.trim();
+        console.log('Sending OpenAPI spec to backend:', payload.openApiSpec.substring(0, 200) + '...');
       } else {
         setAlertDialog({
           isOpen: true,
@@ -202,7 +204,9 @@ export const Connectors: React.FC = () => {
         return;
       }
 
+      console.log('Importing OpenAPI spec for connector:', selectedConnector.id);
       const response = await api.post(`/connectors/${selectedConnector.id}/import-openapi`, payload);
+      console.log('OpenAPI import response:', response.data);
       
       setAlertDialog({
         isOpen: true,
@@ -215,11 +219,19 @@ export const Connectors: React.FC = () => {
       setOpenApiSpec('');
       setOpenApiUrl('');
       setSelectedConnector(null);
+      
+      // Reload connectors to show updated data
+      loadConnectors();
     } catch (error: any) {
+      console.error('Error importing OpenAPI spec:', error);
+      console.error('Error response:', error.response?.data);
+      
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to import OpenAPI spec';
+      
       setAlertDialog({
         isOpen: true,
         title: 'Error',
-        message: error.response?.data?.error || 'Failed to import OpenAPI spec',
+        message: errorMessage,
         type: 'error',
       });
     } finally {
