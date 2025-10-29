@@ -143,7 +143,7 @@ export async function seedSystemActions() {
       {
         name: 'if_then_else',
         displayName: 'IF THEN ELSE',
-        description: 'Conditional branching based on expression evaluation',
+        description: 'Conditional branching - evaluates condition and routes to IF or ELSE branch',
         actionType: 'system',
         category: 'control_flow',
         icon: 'GitBranch',
@@ -166,11 +166,59 @@ export async function seedSystemActions() {
           properties: {
             conditionResult: { type: 'boolean' },
             selectedValue: { description: 'The value from the selected branch' },
-            branchTaken: { type: 'string', enum: ['true', 'false'] },
+            branchTaken: { type: 'string', enum: ['if', 'else'] },
           },
         },
         executorType: 'builtin',
-        executorConfig: {},
+        executorConfig: {
+          maxBranches: 2, // Only IF and ELSE branches
+          branchLabels: ['if', 'else'],
+        },
+      },
+      {
+        name: 'switch_case',
+        displayName: 'Switch Case',
+        description: 'Multi-way branching based on expression value - supports unlimited cases with default',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'GitBranch',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            expression: { description: 'Expression to evaluate and match against cases' },
+            cases: {
+              type: 'array',
+              description: 'Array of case values to match',
+              items: {
+                type: 'object',
+                properties: {
+                  value: { description: 'Case value to match' },
+                  label: { type: 'string', description: 'Display label for this case' },
+                },
+              },
+            },
+            defaultLabel: { type: 'string', default: 'default', description: 'Label for default case' },
+          },
+          required: ['expression'],
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Data used for expression evaluation',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            expressionValue: { description: 'The evaluated expression value' },
+            matchedCase: { description: 'The case that was matched' },
+            branchTaken: { type: 'string', description: 'Label of the branch taken' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          maxBranches: -1, // Unlimited branches
+          requiresDefault: true,
+        },
       },
       {
         name: 'transform',

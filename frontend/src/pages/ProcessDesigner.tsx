@@ -85,16 +85,40 @@ const ProcessDesignerInner: React.FC = () => {
     const actionName = node.data?.actionName?.toLowerCase() || '';
     const multiBranchActions = [
       'if_then_else',
+      'switch_case',
       'for_each',
       'while_loop',
       'do_loop',
       'parallel',
-      'switch',
       'try_catch',
     ];
     
     return multiBranchActions.some(name => actionName.includes(name));
   }, []);
+
+  // Helper to get max branches allowed for a node
+  const getMaxBranches = useCallback((node: Node): number => {
+    if (node.type !== 'actionNode') return 1;
+    
+    const actionName = node.data?.actionName?.toLowerCase() || '';
+    
+    // IF THEN ELSE: exactly 2 branches (if + else)
+    if (actionName.includes('if_then_else')) return 2;
+    
+    // Switch Case: unlimited branches (-1)
+    if (actionName.includes('switch_case')) return -1;
+    
+    // Other multi-branch actions: unlimited
+    if (isMultiBranchAction(node)) return -1;
+    
+    // Regular actions: single connection
+    return 1;
+  }, [isMultiBranchAction]);
+
+  // Helper to count outgoing connections from a node
+  const getOutgoingConnectionCount = useCallback((nodeId: string): number => {
+    return edges.filter(edge => edge.source === nodeId).length;
+  }, [edges]);
 
   // Helper to check if a node has outgoing connections
   const hasOutgoingConnection = useCallback((nodeId: string): boolean => {
@@ -103,12 +127,20 @@ const ProcessDesignerInner: React.FC = () => {
 
   // Helper to determine if plus button should be shown
   const shouldShowPlusButton = useCallback((node: Node): boolean => {
-    // Always show for multi-branch control flow actions
-    if (isMultiBranchAction(node)) return true;
+    const maxBranches = getMaxBranches(node);
+    const currentConnections = getOutgoingConnectionCount(node.id);
     
-    // Otherwise, only show if node doesn't have outgoing connections
+    // If max branches is -1 (unlimited), always show plus button
+    if (maxBranches === -1) return true;
+    
+    // If max branches is > 1 (multi-branch), show plus until limit reached
+    if (maxBranches > 1) {
+      return currentConnections < maxBranches;
+    }
+    
+    // For single-branch actions (maxBranches === 1), only show if not connected
     return !hasOutgoingConnection(node.id);
-  }, [isMultiBranchAction, hasOutgoingConnection]);
+  }, [getMaxBranches, getOutgoingConnectionCount, hasOutgoingConnection]);
 
   useEffect(() => {
     loadActions();

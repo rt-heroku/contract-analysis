@@ -8,6 +8,7 @@ import { IdpExtractAction } from './actions/IdpExtractAction';
 import { RestApiCallAction } from './actions/RestApiCallAction';
 import { SaveFileAction } from './actions/SaveFileAction';
 import { IfThenElseAction } from './actions/IfThenElseAction';
+import { SwitchCaseAction } from './actions/SwitchCaseAction';
 import { TransformAction } from './actions/TransformAction';
 import { ForEachAction } from './actions/ForEachAction';
 import { WhileAction } from './actions/WhileAction';
@@ -37,6 +38,7 @@ export class ActionExecutor {
     this.actionHandlers.set('rest_api_call', new RestApiCallAction());
     this.actionHandlers.set('save_file', new SaveFileAction());
     this.actionHandlers.set('if_then_else', new IfThenElseAction());
+    this.actionHandlers.set('switch_case', new SwitchCaseAction());
     this.actionHandlers.set('transform', new TransformAction());
     this.actionHandlers.set('for_each', new ForEachAction(this));
     this.actionHandlers.set('while', new WhileAction(this));
