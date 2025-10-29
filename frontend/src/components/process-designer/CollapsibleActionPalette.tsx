@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, PlayCircle, XCircle, Search, X, Plus } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+import api from '@/lib/api';
 import { ActionSelectionModal } from './ActionSelectionModal';
 import { ConnectorSelectionModal } from './ConnectorSelectionModal';
 
@@ -61,11 +62,55 @@ export const CollapsibleActionPalette = ({
     return saved ? JSON.parse(saved) : [];
   });
   
+  // Fetch all connector actions for the modal
+  const [allConnectorActions, setAllConnectorActions] = useState<Action[]>([]);
+  
+  useEffect(() => {
+    const fetchConnectorActions = async () => {
+      try {
+        // Fetch all connectors
+        const connectorsResponse = await api.get('/connectors');
+        const connectors = connectorsResponse.data.connectors || [];
+        
+        // Fetch actions for each connector
+        const allActions: Action[] = [];
+        for (const connector of connectors) {
+          try {
+            const actionsResponse = await api.get(`/connectors/${connector.id}/actions`);
+            const connectorActions = actionsResponse.data.actions || [];
+            
+            // Add connector info to each action
+            const actionsWithConnector = connectorActions.map((action: any) => ({
+              ...action,
+              actionType: 'connector',
+              connector: {
+                id: connector.id,
+                name: connector.name,
+                connectorType: connector.connectorType,
+                iconUrl: connector.iconUrl,
+              },
+            }));
+            
+            allActions.push(...actionsWithConnector);
+          } catch (error) {
+            console.error(`Error fetching actions for connector ${connector.id}:`, error);
+          }
+        }
+        
+        setAllConnectorActions(allActions);
+      } catch (error) {
+        console.error('Error fetching connector actions:', error);
+      }
+    };
+    
+    fetchConnectorActions();
+  }, []);
+  
   // Persist selections to localStorage (for future use)
   useEffect(() => {
     localStorage.setItem('selectedUserActions', JSON.stringify(selectedUserActionIds));
   }, [selectedUserActionIds]);
-  
+
   useEffect(() => {
     localStorage.setItem('selectedConnectorActions', JSON.stringify(selectedConnectorActionIds));
   }, [selectedConnectorActionIds]);
@@ -536,7 +581,7 @@ export const CollapsibleActionPalette = ({
       <ConnectorSelectionModal
         isOpen={showConnectorModal}
         onClose={() => setShowConnectorModal(false)}
-        availableActions={actions.filter(a => a.actionType === 'connector')}
+        availableActions={allConnectorActions}
         selectedActionIds={selectedConnectorActionIds}
         onSelectionChange={(newSelectedIds) => {
           setSelectedConnectorActionIds(newSelectedIds);

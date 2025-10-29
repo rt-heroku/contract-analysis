@@ -46,7 +46,7 @@ const ProcessDesignerInner: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { project } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
   
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -401,13 +401,12 @@ const ProcessDesignerInner: React.FC = () => {
 
       if (!reactFlowWrapper.current) return;
 
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const action: Action = JSON.parse(actionData);
       
-      // Use project to convert screen coordinates to flow coordinates
-      const position = project({
-        x: event.clientX - reactFlowBounds.left,
-        y: event.clientY - reactFlowBounds.top,
+      // Use screenToFlowPosition to convert screen coordinates to flow coordinates
+      const position = screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
       });
 
       const nodeId = `node-${Date.now()}`;
@@ -501,7 +500,7 @@ const ProcessDesignerInner: React.FC = () => {
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [handleEditNode, project, nodes]
+    [handleEditNode, screenToFlowPosition, nodes]
   );
 
   const handleSave = async () => {
