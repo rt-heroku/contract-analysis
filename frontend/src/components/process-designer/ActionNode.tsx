@@ -88,6 +88,14 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
       ];
     }
     
+    // On Error: 2 handles (error, no-error)
+    if (actionName.includes('on_error')) {
+      return [
+        { id: 'error', label: 'error', position: 'left', color: '#ef4444' },
+        { id: 'no-error', label: '', position: 'right', color: '#22c55e' },
+      ];
+    }
+    
     // Switch Case: multiple handles (we'll show just bottom for now, connections determine cases)
     if (actionName.includes('switch_case')) {
       return [

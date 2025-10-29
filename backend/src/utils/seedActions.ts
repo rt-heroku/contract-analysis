@@ -305,7 +305,7 @@ export async function seedSystemActions() {
         actionType: 'system',
         category: 'error_handling',
         icon: 'AlertOctagon',
-        color: '#f59e0b',
+        color: '#ef4444',
         configSchema: {
           type: 'object',
           properties: {
@@ -335,7 +335,8 @@ export async function seedSystemActions() {
         },
         executorType: 'builtin',
         executorConfig: {
-          maxBranches: 1, // Error handling flow
+          maxBranches: 2, // Error handling flow (error + no-error)
+          branchLabels: ['error', 'no-error'],
           isErrorHandler: true,
         },
       },

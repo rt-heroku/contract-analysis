@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, PlayCircle, CheckCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, PlayCircle, XCircle } from 'lucide-react';
 
 interface Action {
   id: number;
@@ -153,27 +153,27 @@ export const CollapsibleActionPalette = ({
             <span className="text-xs font-medium text-gray-700">Start</span>
           </div>
 
-          {/* End Node */}
+          {/* Global Error Node */}
           <div
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData('application/json', JSON.stringify({
                 id: 0,
-                name: 'end_node',
-                displayName: 'End',
-                description: 'Flow end point',
-                category: 'flow',
-                icon: 'CheckCircle',
+                name: 'global_error',
+                displayName: 'Global Error',
+                description: 'Default error handler for entire flow',
+                category: 'error_handling',
+                icon: 'XCircle',
                 color: '#ef4444',
-                actionType: 'end',
+                actionType: 'global_error',
               }));
             }}
             className="flex flex-col items-center p-2 rounded cursor-move hover:bg-red-50 border border-red-200"
           >
             <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center mb-1">
-              <CheckCircle className="w-5 h-5 text-white" />
+              <XCircle className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xs font-medium text-gray-700">End</span>
+            <span className="text-xs font-medium text-gray-700">Global Error</span>
           </div>
         </div>
       )}

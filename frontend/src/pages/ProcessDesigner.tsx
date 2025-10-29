@@ -105,33 +105,33 @@ const ProcessDesignerInner: React.FC = () => {
     return multiBranchActions.some(name => actionName.includes(name));
   }, []);
 
-  // Helper to get max branches allowed for a node
-  const getMaxBranches = useCallback((node: Node): number => {
-    if (node.type !== 'actionNode') return 1;
-    
-    const actionName = node.data?.actionName?.toLowerCase() || '';
-    
-    // IF THEN ELSE: exactly 2 branches (if + else)
-    if (actionName.includes('if_then_else')) return 2;
-    
-    // Try Catch Finally: exactly 3 branches (try + catch + finally)
-    if (actionName.includes('try_catch_finally')) return 3;
-    
-    // On Error: 1 branch (error handling flow)
-    if (actionName.includes('on_error')) return 1;
-    
-    // Retry: 1 branch (action to retry)
-    if (actionName.includes('retry')) return 1;
-    
-    // Switch Case: unlimited branches (-1)
-    if (actionName.includes('switch_case')) return -1;
-    
-    // Other multi-branch actions: unlimited
-    if (isMultiBranchAction(node)) return -1;
-    
-    // Regular actions: single connection
-    return 1;
-  }, [isMultiBranchAction]);
+    // Helper to get max branches allowed for a node
+    const getMaxBranches = useCallback((node: Node): number => {
+      if (node.type !== 'actionNode') return 1;
+      
+      const actionName = node.data?.actionName?.toLowerCase() || '';
+      
+      // IF THEN ELSE: exactly 2 branches (if + else)
+      if (actionName.includes('if_then_else')) return 2;
+      
+      // Try Catch Finally: exactly 3 branches (try + catch + finally)
+      if (actionName.includes('try_catch_finally')) return 3;
+      
+      // On Error: 2 branches (error + no-error)
+      if (actionName.includes('on_error')) return 2;
+      
+      // Retry: 1 branch (action to retry)
+      if (actionName.includes('retry')) return 1;
+      
+      // Switch Case: unlimited branches (-1)
+      if (actionName.includes('switch_case')) return -1;
+      
+      // Other multi-branch actions: unlimited
+      if (isMultiBranchAction(node)) return -1;
+      
+      // Regular actions: single connection
+      return 1;
+    }, [isMultiBranchAction]);
 
   // Helper to count outgoing connections from a node
   const getOutgoingConnectionCount = useCallback((nodeId: string): number => {
@@ -269,43 +269,48 @@ const ProcessDesignerInner: React.FC = () => {
     });
   }, []);
 
-  /**
-   * Generate edge label based on source node type and connection index
-   */
-  const generateEdgeLabel = useCallback((sourceNode: Node | undefined, connectionIndex: number): string | undefined => {
-    if (!sourceNode) return undefined;
+    /**
+     * Generate edge label based on source node type and connection index
+     */
+    const generateEdgeLabel = useCallback((sourceNode: Node | undefined, connectionIndex: number): string | undefined => {
+      if (!sourceNode) return undefined;
 
-    const actionName = sourceNode.data?.actionName?.toLowerCase() || '';
+      const actionName = sourceNode.data?.actionName?.toLowerCase() || '';
 
-    // IF THEN ELSE: "if" for first connection, "else" for second
-    if (actionName.includes('if_then_else')) {
-      return connectionIndex === 0 ? 'if' : 'else';
-    }
+      // IF THEN ELSE: "if" for first connection, "else" for second
+      if (actionName.includes('if_then_else')) {
+        return connectionIndex === 0 ? 'if' : 'else';
+      }
 
-    // Try Catch Finally: "try", "catch", "finally"
-    if (actionName.includes('try_catch_finally')) {
-      const labels = ['try', 'catch', 'finally'];
-      return labels[connectionIndex] || 'branch';
-    }
+      // Try Catch Finally: "try", "catch", "finally"
+      if (actionName.includes('try_catch_finally')) {
+        const labels = ['try', 'catch', 'finally'];
+        return labels[connectionIndex] || 'branch';
+      }
 
-    // Switch Case: "case N" or "default" for last
-    if (actionName.includes('switch_case')) {
-      return connectionIndex === 0 ? 'default' : `case ${connectionIndex}`;
-    }
+      // On Error: "error" for first connection, nothing for second
+      if (actionName.includes('on_error')) {
+        return connectionIndex === 0 ? 'error' : undefined;
+      }
 
-    // For Each: "item" for first, "after" for second
-    if (actionName.includes('for_each')) {
-      return connectionIndex === 0 ? 'item' : 'after';
-    }
+      // Switch Case: "case N" or "default" for last
+      if (actionName.includes('switch_case')) {
+        return connectionIndex === 0 ? 'default' : `case ${connectionIndex}`;
+      }
 
-    // While Loop: "loop" for first, "after" for second
-    if (actionName.includes('while')) {
-      return connectionIndex === 0 ? 'loop' : 'after';
-    }
+      // For Each: "item" for first, "after" for second
+      if (actionName.includes('for_each')) {
+        return connectionIndex === 0 ? 'item' : 'after';
+      }
 
-    // No label for other actions
-    return undefined;
-  }, []);
+      // While Loop: "loop" for first, "after" for second
+      if (actionName.includes('while')) {
+        return connectionIndex === 0 ? 'loop' : 'after';
+      }
+
+      // No label for other actions
+      return undefined;
+    }, []);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -676,7 +681,7 @@ const ProcessDesignerInner: React.FC = () => {
                     }}
                     maskColor="rgba(0, 0, 0, 0.1)"
                     className="bg-white shadow-lg rounded-lg border border-gray-200"
-                    style={{ width: 150, height: 100 }}
+                    style={{ width: 120, height: 80 }}
                     pannable={false}
                     zoomable={false}
                   />
