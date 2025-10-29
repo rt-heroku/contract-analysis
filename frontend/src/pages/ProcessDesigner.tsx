@@ -860,7 +860,7 @@ const ProcessDesignerInner: React.FC = () => {
                   onMoveEnd={onMoveEnd}
                   nodeTypes={nodeTypes}
                   edgeTypes={edgeTypes}
-                  defaultViewport={{ x: 0, y: 0, zoom: 0.4 }}
+                  defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
                   minZoom={0.1}
                   maxZoom={2}
                   connectionLineType={ConnectionLineType.Bezier}
