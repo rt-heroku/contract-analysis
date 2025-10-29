@@ -230,7 +230,12 @@ const ProcessDesignerInner: React.FC = () => {
         setNodes(nodesWithCallbacks);
       }
       if (process.flowDefinition?.edges) {
-        setEdges(process.flowDefinition.edges);
+        // Ensure edges have correct type based on whether they have labels
+        const edgesWithTypes = process.flowDefinition.edges.map((edge: any) => ({
+          ...edge,
+          type: edge.data?.label ? 'labeled' : (edge.type || 'default'),
+        }));
+        setEdges(edgesWithTypes);
       }
     } catch (error: any) {
       setAlertDialog({
@@ -817,13 +822,26 @@ const ProcessDesignerInner: React.FC = () => {
 
                         // Auto-connect if there's a target node
                         if (targetNodeForPlus) {
-                          setEdges((eds) => addEdge({
-                            id: `edge-${Date.now()}`,
-                            source: targetNodeForPlus,
-                            target: nodeId,
-                            markerEnd: { type: MarkerType.ArrowClosed },
-                            style: { stroke: '#64748b', strokeWidth: 2 },
-                          }, eds));
+                          setEdges((eds) => {
+                            // Find the source node
+                            const sourceNode = nodes.find(n => n.id === targetNodeForPlus);
+                            
+                            // Count existing connections from this source
+                            const existingConnections = eds.filter(e => e.source === targetNodeForPlus).length;
+                            
+                            // Generate label
+                            const label = generateEdgeLabel(sourceNode, existingConnections);
+
+                            return addEdge({
+                              id: `edge-${Date.now()}`,
+                              source: targetNodeForPlus,
+                              target: nodeId,
+                              type: label ? 'labeled' : 'default',
+                              markerEnd: { type: MarkerType.ArrowClosed },
+                              style: { stroke: '#64748b', strokeWidth: 2 },
+                              data: { label },
+                            }, eds);
+                          });
                         }
 
                         setShowActionSearch(false);
