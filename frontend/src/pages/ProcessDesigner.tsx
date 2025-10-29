@@ -78,6 +78,38 @@ const ProcessDesignerInner: React.FC = () => {
     start: StartNode,
   }), []);
 
+  // Helper to check if a node supports multiple connections (control flow actions)
+  const isMultiBranchAction = useCallback((node: Node): boolean => {
+    if (node.type !== 'actionNode') return false;
+    
+    const actionName = node.data?.actionName?.toLowerCase() || '';
+    const multiBranchActions = [
+      'if_then_else',
+      'for_each',
+      'while_loop',
+      'do_loop',
+      'parallel',
+      'switch',
+      'try_catch',
+    ];
+    
+    return multiBranchActions.some(name => actionName.includes(name));
+  }, []);
+
+  // Helper to check if a node has outgoing connections
+  const hasOutgoingConnection = useCallback((nodeId: string): boolean => {
+    return edges.some(edge => edge.source === nodeId);
+  }, [edges]);
+
+  // Helper to determine if plus button should be shown
+  const shouldShowPlusButton = useCallback((node: Node): boolean => {
+    // Always show for multi-branch control flow actions
+    if (isMultiBranchAction(node)) return true;
+    
+    // Otherwise, only show if node doesn't have outgoing connections
+    return !hasOutgoingConnection(node.id);
+  }, [isMultiBranchAction, hasOutgoingConnection]);
+
   useEffect(() => {
     loadActions();
     if (id) {
@@ -90,6 +122,7 @@ const ProcessDesignerInner: React.FC = () => {
           type: 'start',
           position: { x: 250, y: 100 },
           data: {
+            showPlusButton: true,
             onAddNext: () => {
               setTargetNodeForPlus('start-1');
               setShowActionSearch(true);
@@ -100,6 +133,19 @@ const ProcessDesignerInner: React.FC = () => {
       }
     }
   }, [id]);
+
+  // Update nodes with showPlusButton flag based on connections
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          showPlusButton: shouldShowPlusButton(node),
+        },
+      }))
+    );
+  }, [edges, shouldShowPlusButton]);
 
   const loadActions = async () => {
     try {
@@ -220,6 +266,7 @@ const ProcessDesignerInner: React.FC = () => {
           type: 'start',
           position,
           data: {
+            showPlusButton: true, // Will be updated by effect
             onAddNext: () => {
               setTargetNodeForPlus(nodeId);
               setShowActionSearch(true);
@@ -245,6 +292,7 @@ const ProcessDesignerInner: React.FC = () => {
           actionId: action.id,
           actionName: action.name,
           config: {},
+          showPlusButton: true, // Will be updated by effect
           onEdit: () => handleEditNode(nodeId),
           onAddNext: () => {
             setTargetNodeForPlus(nodeId);
@@ -444,6 +492,7 @@ const ProcessDesignerInner: React.FC = () => {
                       type: 'start',
                       position: { x: 250, y: 100 },
                       data: {
+                        showPlusButton: true, // Will be updated by effect
                         onAddNext: () => {
                           setTargetNodeForPlus('start-1');
                           setShowActionSearch(true);
@@ -521,8 +570,9 @@ const ProcessDesignerInner: React.FC = () => {
                 },
                 data: {
                   ...node.data,
+                  showPlusButton: true, // Will be updated by effect
                   onEdit: node.type === 'actionNode' ? () => handleEditNode(newNodeId) : undefined,
-                  onAddNext: node.type === 'actionNode' ? () => {
+                  onAddNext: (node.type === 'actionNode' || node.type === 'start') ? () => {
                     setTargetNodeForPlus(newNodeId);
                     setShowActionSearch(true);
                   } : undefined,
@@ -624,6 +674,7 @@ const ProcessDesignerInner: React.FC = () => {
                             actionId: action.id,
                             actionName: action.name,
                             config: {},
+                            showPlusButton: true, // Will be updated by effect
                             onEdit: () => handleEditNode(nodeId),
                             onAddNext: () => {
                               setTargetNodeForPlus(nodeId);

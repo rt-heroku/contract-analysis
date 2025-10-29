@@ -19,6 +19,7 @@ interface ActionNodeData {
   actionType?: 'system' | 'user_defined' | 'connector';
   onEdit?: () => void;
   onAddNext?: () => void;
+  showPlusButton?: boolean;
 }
 
 export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) => {
@@ -129,8 +130,8 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
         style={{ bottom: -6 }}
       />
 
-      {/* Plus Button Below Node */}
-      {data.onAddNext && (
+      {/* Plus Button Below Node - Only show if not connected or if multi-branch action */}
+      {data.onAddNext && data.showPlusButton && (
         <div
           className="absolute left-1/2 transform -translate-x-1/2"
           style={{ bottom: -40 }}

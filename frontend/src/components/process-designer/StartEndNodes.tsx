@@ -4,6 +4,7 @@ import { PlayCircle, CheckCircle, Plus } from 'lucide-react';
 
 interface StartNodeData {
   onAddNext?: () => void;
+  showPlusButton?: boolean;
 }
 
 export const StartNode = memo(({ data, selected }: NodeProps<StartNodeData>) => {
@@ -25,8 +26,8 @@ export const StartNode = memo(({ data, selected }: NodeProps<StartNodeData>) => 
         className="w-3 h-3 !bg-green-600 !border-2 !border-white"
       />
       
-      {/* Plus Button Below Start Node */}
-      {data?.onAddNext && (
+      {/* Plus Button Below Start Node - Only show if not connected */}
+      {data?.onAddNext && data?.showPlusButton && (
         <div
           className="absolute left-1/2 transform -translate-x-1/2"
           style={{ bottom: -50 }}
