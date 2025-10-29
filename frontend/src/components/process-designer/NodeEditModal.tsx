@@ -5,11 +5,12 @@ import { X, Plus, Trash2 } from 'lucide-react';
 interface NodeEditModalProps {
   isOpen: boolean;
   node: any;
+  allActions: any[];
   onClose: () => void;
-  onSave: (nodeId: string, data: any) => void;
+  onSave: (nodeId: string, data: any, outputSchema?: any, inputSchema?: any) => void;
 }
 
-export const NodeEditModal = ({ isOpen, node, onClose, onSave }: NodeEditModalProps) => {
+export const NodeEditModal = ({ isOpen, node, allActions: _allActions, onClose, onSave }: NodeEditModalProps) => {
   const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {

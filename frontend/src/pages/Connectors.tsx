@@ -4,7 +4,10 @@ import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { Plus, Edit, Trash2, TestTube, Eye, EyeOff } from 'lucide-react';
+import { 
+  Plus, Edit, Trash2, TestTube, Eye, Database, Globe, 
+  HardDrive, FolderOpen, Server, Code, X
+} from 'lucide-react';
 import api from '@/lib/api';
 
 interface Connector {
@@ -14,19 +17,48 @@ interface Connector {
   authType: string | null;
   isActive: boolean;
   config: any;
+  openApiSpec?: any;
+  version?: string;
   createdAt: string;
   creator: {
     firstName: string;
     lastName: string;
   };
+  _count?: {
+    connectorActions: number;
+  };
 }
+
+interface ConnectorAction {
+  id: number;
+  operation: string;
+  operationId: string | null;
+  displayName: string;
+  description: string | null;
+  method: string;
+  path: string;
+  parameters: any;
+}
+
+const connectorIcons = {
+  rest: { icon: Globe, color: '#3b82f6' },
+  database: { icon: Database, color: '#10b981' },
+  s3: { icon: HardDrive, color: '#f59e0b' },
+  ftp: { icon: FolderOpen, color: '#8b5cf6' },
+  file: { icon: Server, color: '#6366f1' },
+};
 
 export const Connectors: React.FC = () => {
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingConnector, setEditingConnector] = useState<Connector | null>(null);
-  const [showSecrets, setShowSecrets] = useState<Record<number, boolean>>({});
+  
+  // Connector Detail View
+  const [viewingConnector, setViewingConnector] = useState<Connector | null>(null);
+  const [activeTab, setActiveTab] = useState<'details' | 'specification' | 'actions'>('details');
+  const [connectorActions, setConnectorActions] = useState<ConnectorAction[]>([]);
+  const [loadingActions, setLoadingActions] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -71,6 +103,12 @@ export const Connectors: React.FC = () => {
     loadConnectors();
   }, []);
 
+  useEffect(() => {
+    if (viewingConnector && activeTab === 'actions') {
+      loadConnectorActions(viewingConnector.id);
+    }
+  }, [viewingConnector, activeTab]);
+
   const loadConnectors = async () => {
     try {
       setLoading(true);
@@ -85,6 +123,19 @@ export const Connectors: React.FC = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadConnectorActions = async (connectorId: number) => {
+    try {
+      setLoadingActions(true);
+      const response = await api.get(`/connectors/${connectorId}/actions`);
+      setConnectorActions(response.data.actions || []);
+    } catch (error: any) {
+      console.error('Error loading connector actions:', error);
+      setConnectorActions([]);
+    } finally {
+      setLoadingActions(false);
     }
   };
 
@@ -111,7 +162,6 @@ export const Connectors: React.FC = () => {
       }
       
       setShowModal(false);
-      setEditingConnector(null);
       resetForm();
       loadConnectors();
     } catch (error: any) {
@@ -130,7 +180,7 @@ export const Connectors: React.FC = () => {
       name: connector.name,
       connectorType: connector.connectorType,
       authType: connector.authType || 'none',
-      config: connector.config,
+      config: connector.config || {},
     });
     setShowModal(true);
   };
@@ -162,13 +212,13 @@ export const Connectors: React.FC = () => {
     });
   };
 
-  const handleTestConnection = async (id: number, name: string) => {
+  const handleTest = async (connector: Connector) => {
     try {
-      await api.post(`/connectors/${id}/test`);
+      await api.post(`/connectors/${connector.id}/test`);
       setAlertDialog({
         isOpen: true,
         title: 'Success',
-        message: `Connection test successful for "${name}"`,
+        message: 'Connection test successful',
         type: 'success',
       });
     } catch (error: any) {
@@ -191,7 +241,6 @@ export const Connectors: React.FC = () => {
       if (openApiUrl) {
         payload.url = openApiUrl;
       } else if (openApiSpec) {
-        // Send spec as raw string (JSON or YAML) - backend will parse it
         payload.openApiSpec = openApiSpec.trim();
         console.log('Sending OpenAPI spec to backend:', payload.openApiSpec.substring(0, 200) + '...');
       } else {
@@ -220,8 +269,12 @@ export const Connectors: React.FC = () => {
       setOpenApiUrl('');
       setSelectedConnector(null);
       
-      // Reload connectors to show updated data
       loadConnectors();
+      
+      // If we're viewing this connector, refresh the actions
+      if (viewingConnector?.id === selectedConnector.id) {
+        loadConnectorActions(selectedConnector.id);
+      }
     } catch (error: any) {
       console.error('Error importing OpenAPI spec:', error);
       console.error('Error response:', error.response?.data);
@@ -258,20 +311,366 @@ export const Connectors: React.FC = () => {
         timeout: 30000,
       },
     });
+    setEditingConnector(null);
   };
 
-  const toggleSecrets = (id: number) => {
-    setShowSecrets(prev => ({ ...prev, [id]: !prev[id] }));
+  const getConnectorIcon = (type: string) => {
+    const iconData = connectorIcons[type as keyof typeof connectorIcons] || connectorIcons.rest;
+    const IconComponent = iconData.icon;
+    return { IconComponent, color: iconData.color };
+  };
+
+  const renderConnectorCard = (connector: Connector) => {
+    const { IconComponent, color } = getConnectorIcon(connector.connectorType);
+    
+    return (
+      <div
+        key={connector.id}
+        className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 relative"
+        style={{ borderLeft: `4px solid ${color}` }}
+      >
+        {/* Edit and Delete icons in top-right corner */}
+        <div className="absolute top-4 right-4 flex space-x-2">
+          <button
+            onClick={() => handleEdit(connector)}
+            className="p-2 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+            title="Edit connector"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleDelete(connector)}
+            className="p-2 rounded-md bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+            title="Delete connector"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex items-start space-x-4 mb-4">
+          <div className="p-3 rounded-lg" style={{ backgroundColor: `${color}20` }}>
+            <IconComponent className="w-8 h-8" style={{ color }} />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-xl font-semibold text-gray-900 mb-1 pr-20">{connector.name}</h3>
+            <div className="flex items-center space-x-2">
+              <Badge variant={connector.isActive ? 'success' : 'default'}>
+                {connector.isActive ? 'Active' : 'Inactive'}
+              </Badge>
+              <span className="text-xs text-gray-500 uppercase">{connector.connectorType}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2 text-sm text-gray-600 mb-4">
+          {connector.connectorType === 'rest' && connector.config?.baseUrl && (
+            <div>
+              <span className="font-medium">Base URL:</span> {connector.config.baseUrl}
+            </div>
+          )}
+          {connector.authType && connector.authType !== 'none' && (
+            <div>
+              <span className="font-medium">Auth:</span> {connector.authType}
+            </div>
+          )}
+          <div>
+            <span className="font-medium">Created by:</span> {connector.creator.firstName} {connector.creator.lastName}
+          </div>
+          {connector._count?.connectorActions !== undefined && (
+            <div>
+              <span className="font-medium">Actions:</span> {connector._count.connectorActions}
+            </div>
+          )}
+        </div>
+
+        <div className="flex space-x-2">
+          <Button
+            onClick={() => {
+              setViewingConnector(connector);
+              setActiveTab('details');
+            }}
+            className="flex-1 flex items-center justify-center space-x-1 text-sm py-2 bg-gray-600 hover:bg-gray-700"
+          >
+            <Eye className="w-4 h-4" />
+            <span>View Details</span>
+          </Button>
+          <Button
+            onClick={() => handleTest(connector)}
+            className="flex items-center justify-center px-4 text-sm py-2 bg-green-600 hover:bg-green-700"
+            title="Test connection"
+          >
+            <TestTube className="w-4 h-4" />
+          </Button>
+          {connector.connectorType === 'rest' && (
+            <Button
+              onClick={() => openImportModal(connector)}
+              className="flex items-center justify-center px-4 text-sm py-2 bg-purple-600 hover:bg-purple-700"
+              title="Import OpenAPI"
+            >
+              <Code className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderDetailsTab = () => {
+    if (!viewingConnector) return null;
+
+    const { IconComponent, color } = getConnectorIcon(viewingConnector.connectorType);
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center space-x-4">
+          <div className="p-4 rounded-lg" style={{ backgroundColor: `${color}20` }}>
+            <IconComponent className="w-12 h-12" style={{ color }} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">{viewingConnector.name}</h2>
+            <p className="text-gray-600 capitalize">{viewingConnector.connectorType} Connector</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <Badge variant={viewingConnector.isActive ? 'success' : 'default'}>
+              {viewingConnector.isActive ? 'Active' : 'Inactive'}
+            </Badge>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Authentication</label>
+            <p className="text-gray-900">{viewingConnector.authType || 'None'}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Created By</label>
+            <p className="text-gray-900">{viewingConnector.creator.firstName} {viewingConnector.creator.lastName}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Created At</label>
+            <p className="text-gray-900">{new Date(viewingConnector.createdAt).toLocaleString()}</p>
+          </div>
+        </div>
+
+        {viewingConnector.connectorType === 'rest' && viewingConnector.config?.baseUrl && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Base URL</label>
+            <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{viewingConnector.config.baseUrl}</p>
+          </div>
+        )}
+
+        {viewingConnector.version && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Version</label>
+            <p className="text-gray-900">{viewingConnector.version}</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSpecificationTab = () => {
+    if (!viewingConnector) return null;
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-900">OpenAPI Specification</h3>
+          <Button
+            onClick={() => openImportModal(viewingConnector)}
+            className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Import/Update Spec</span>
+          </Button>
+        </div>
+
+        {viewingConnector.openApiSpec ? (
+          <div>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex justify-between items-center mb-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">
+                    API Title: {viewingConnector.openApiSpec.info?.title || 'N/A'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Version: {viewingConnector.openApiSpec.openapi || viewingConnector.openApiSpec.swagger || 'N/A'}
+                  </p>
+                </div>
+              </div>
+              <pre className="bg-white p-4 rounded border border-gray-200 overflow-auto max-h-96 text-xs">
+                {JSON.stringify(viewingConnector.openApiSpec, null, 2)}
+              </pre>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+            <Code className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <p className="text-gray-600 mb-4">No OpenAPI specification imported yet</p>
+            <Button
+              onClick={() => openImportModal(viewingConnector)}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Import OpenAPI Spec
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderActionsTab = () => {
+    if (!viewingConnector) return null;
+
+    if (loadingActions) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-gray-600">Loading actions...</p>
+        </div>
+      );
+    }
+
+    if (connectorActions.length === 0) {
+      return (
+        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+          <Database className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-600 mb-4">No actions available for this connector</p>
+          {viewingConnector.connectorType === 'rest' && (
+            <Button
+              onClick={() => openImportModal(viewingConnector)}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Import OpenAPI to Generate Actions
+            </Button>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Connector Actions ({connectorActions.length})
+          </h3>
+        </div>
+        <div className="grid gap-4">
+          {connectorActions.map((action) => (
+            <div
+              key={action.id}
+              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900 mb-1">{action.displayName}</h4>
+                  <div className="flex items-center space-x-3 text-sm mb-2">
+                    <div className="bg-blue-100 text-blue-700 border-blue-200 border px-2 py-1 rounded text-xs font-medium">
+                      {action.method}
+                    </div>
+                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">{action.path}</code>
+                  </div>
+                  {action.description && (
+                    <p className="text-sm text-gray-600 mb-2">{action.description}</p>
+                  )}
+                  {action.operationId && (
+                    <p className="text-xs text-gray-500">Operation ID: {action.operationId}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading connectors...</div>
+        <p className="text-lg text-gray-600">Loading connectors...</p>
       </div>
     );
   }
 
+  // Viewing connector details
+  if (viewingConnector) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-6 flex justify-between items-center">
+          <Button
+            onClick={() => setViewingConnector(null)}
+            className="flex items-center space-x-2"
+          >
+            <X className="w-4 h-4" />
+            <span>Back to Connectors</span>
+          </Button>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          {/* Tabs */}
+          <div className="border-b border-gray-200 mb-6">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('details')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'details'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Details
+              </button>
+              {viewingConnector.connectorType === 'rest' && (
+                <button
+                  onClick={() => setActiveTab('specification')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'specification'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Specification
+                </button>
+              )}
+              <button
+                onClick={() => setActiveTab('actions')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'actions'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Actions
+                {viewingConnector._count?.connectorActions !== undefined && (
+                  <span className="ml-2 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs">
+                    {viewingConnector._count.connectorActions}
+                  </span>
+                )}
+              </button>
+            </nav>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'details' && renderDetailsTab()}
+          {activeTab === 'specification' && renderSpecificationTab()}
+          {activeTab === 'actions' && renderActionsTab()}
+        </div>
+
+        <AlertDialog
+          isOpen={alertDialog.isOpen}
+          onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+          title={alertDialog.title}
+          message={alertDialog.message}
+          type={alertDialog.type}
+        />
+      </div>
+    );
+  }
+
+  // Connectors list view
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -282,7 +681,6 @@ export const Connectors: React.FC = () => {
         <Button
           onClick={() => {
             resetForm();
-            setEditingConnector(null);
             setShowModal(true);
           }}
           className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
@@ -293,110 +691,19 @@ export const Connectors: React.FC = () => {
       </div>
 
       {connectors.length === 0 ? (
-        <Card>
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No connectors yet</h3>
-            <p className="text-gray-600 mb-4">Create your first connector to connect to external services</p>
-            <Button
-              onClick={() => {
-                resetForm();
-                setShowModal(true);
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Create Connector
-            </Button>
-          </div>
+        <Card className="text-center py-12">
+          <p className="text-gray-600 mb-4">No connectors found. Create your first connector to get started.</p>
+          <Button
+            onClick={() => setShowModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Create Connector
+          </Button>
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {connectors.map((connector) => (
-            <Card key={connector.id} className="hover:shadow-lg transition-shadow">
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{connector.name}</h3>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="default">{connector.connectorType.toUpperCase()}</Badge>
-                    {connector.authType && (
-                      <Badge variant="info">{connector.authType}</Badge>
-                    )}
-                  </div>
-                </div>
-                <Badge variant={connector.isActive ? 'success' : 'default'}>
-                  {connector.isActive ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-
-              <div className="space-y-2 mb-4 text-sm text-gray-600">
-                {connector.connectorType === 'rest' && connector.config.baseUrl && (
-                  <div>
-                    <span className="font-medium">Base URL:</span>{' '}
-                    <span className="text-xs">{connector.config.baseUrl}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Created by:</span>
-                  <span>{connector.creator.firstName} {connector.creator.lastName}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Secrets:</span>
-                  <button
-                    onClick={() => toggleSecrets(connector.id)}
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    {showSecrets[connector.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {showSecrets[connector.id] && connector.config && (
-                  <div className="text-xs bg-gray-50 p-2 rounded mt-2">
-                    {connector.authType === 'basic' && (
-                      <>
-                        <div>Username: {connector.config.username || 'N/A'}</div>
-                        <div>Password: ••••••••</div>
-                      </>
-                    )}
-                    {connector.authType === 'bearer' && (
-                      <div>Token: {connector.config.token?.substring(0, 20)}...</div>
-                    )}
-                    {connector.authType === 'api_key' && (
-                      <div>API Key: {connector.config.apiKey?.substring(0, 20)}...</div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex space-x-2">
-                <Button
-                  onClick={() => handleTestConnection(connector.id, connector.name)}
-                  className="flex-1 flex items-center justify-center space-x-1 text-sm py-2"
-                >
-                  <TestTube className="w-4 h-4" />
-                  <span>Test</span>
-                </Button>
-                {connector.connectorType === 'rest' && (
-                  <Button
-                    onClick={() => openImportModal(connector)}
-                    className="flex-1 flex items-center justify-center space-x-1 text-sm py-2 bg-purple-600 hover:bg-purple-700"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Import OpenAPI</span>
-                  </Button>
-                )}
-                <Button
-                  onClick={() => handleEdit(connector)}
-                  className="flex items-center justify-center px-3 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button
-                  onClick={() => handleDelete(connector)}
-                  className="flex items-center justify-center px-3 bg-red-600 hover:bg-red-700 text-white"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </Card>
-          ))}
+          {connectors.map(renderConnectorCard)}
         </div>
       )}
 
@@ -406,37 +713,32 @@ export const Connectors: React.FC = () => {
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-4">
-                {editingConnector ? 'Edit Connector' : 'Create Connector'}
+                {editingConnector ? 'Edit Connector' : 'Create New Connector'}
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Connector Name *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                   <input
                     type="text"
-                    required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="My REST API"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Connector Type *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Connector Type</label>
                   <select
                     value={formData.connectorType}
                     onChange={(e) => setFormData({ ...formData, connectorType: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="rest">REST API</option>
                     <option value="database">Database</option>
-                    <option value="s3">S3</option>
-                    <option value="ftp">FTP</option>
+                    <option value="s3">S3 Storage</option>
+                    <option value="ftp">FTP/SFTP</option>
                     <option value="file">File System</option>
                   </select>
                 </div>
@@ -444,30 +746,23 @@ export const Connectors: React.FC = () => {
                 {formData.connectorType === 'rest' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Base URL *
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Base URL</label>
                       <input
-                        type="url"
-                        required
+                        type="text"
                         value={formData.config.baseUrl}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          config: { ...formData.config, baseUrl: e.target.value }
-                        })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        onChange={(e) => setFormData({ ...formData, config: { ...formData.config, baseUrl: e.target.value } })}
                         placeholder="https://api.example.com"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Authentication Type
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Authentication Type</label>
                       <select
                         value={formData.authType}
                         onChange={(e) => setFormData({ ...formData, authType: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="none">None</option>
                         <option value="basic">Basic Auth</option>
@@ -483,11 +778,8 @@ export const Connectors: React.FC = () => {
                           <input
                             type="text"
                             value={formData.config.username}
-                            onChange={(e) => setFormData({
-                              ...formData,
-                              config: { ...formData.config, username: e.target.value }
-                            })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            onChange={(e) => setFormData({ ...formData, config: { ...formData.config, username: e.target.value } })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                         <div>
@@ -495,11 +787,8 @@ export const Connectors: React.FC = () => {
                           <input
                             type="password"
                             value={formData.config.password}
-                            onChange={(e) => setFormData({
-                              ...formData,
-                              config: { ...formData.config, password: e.target.value }
-                            })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                            onChange={(e) => setFormData({ ...formData, config: { ...formData.config, password: e.target.value } })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                       </>
@@ -509,13 +798,10 @@ export const Connectors: React.FC = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Bearer Token</label>
                         <input
-                          type="text"
+                          type="password"
                           value={formData.config.token}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            config: { ...formData.config, token: e.target.value }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          onChange={(e) => setFormData({ ...formData, config: { ...formData.config, token: e.target.value } })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                     )}
@@ -524,51 +810,32 @@ export const Connectors: React.FC = () => {
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
                         <input
-                          type="text"
+                          type="password"
                           value={formData.config.apiKey}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            config: { ...formData.config, apiKey: e.target.value }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          onChange={(e) => setFormData({ ...formData, config: { ...formData.config, apiKey: e.target.value } })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
                     )}
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Timeout (ms)
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.config.timeout}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          config: { ...formData.config, timeout: parseInt(e.target.value) }
-                        })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      />
-                    </div>
                   </>
                 )}
 
-                <div className="flex justify-end space-x-3 pt-4">
+                <div className="flex justify-end space-x-3 mt-6">
                   <Button
                     type="button"
                     onClick={() => {
                       setShowModal(false);
-                      setEditingConnector(null);
                       resetForm();
                     }}
-                    className="bg-gray-200 hover:bg-gray-300"
+                    className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    {editingConnector ? 'Update' : 'Create'}
+                    {editingConnector ? 'Update' : 'Create'} Connector
                   </Button>
                 </div>
               </form>
@@ -576,22 +843,6 @@ export const Connectors: React.FC = () => {
           </div>
         </div>
       )}
-
-      <AlertDialog
-        isOpen={alertDialog.isOpen}
-        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
-        title={alertDialog.title}
-        message={alertDialog.message}
-        type={alertDialog.type}
-      />
-
-      <ConfirmDialog
-        isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-        onConfirm={confirmDialog.onConfirm}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-      />
 
       {/* OpenAPI Import Modal */}
       {showOpenApiModal && selectedConnector && (
@@ -628,12 +879,12 @@ export const Connectors: React.FC = () => {
                   <textarea
                     value={openApiSpec}
                     onChange={(e) => setOpenApiSpec(e.target.value)}
-                    placeholder='{ "openapi": "3.0.0", "info": { ... }, "paths": { ... } }'
+                    placeholder="Paste your OpenAPI 3.0 specification here..."
                     rows={12}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Paste your OpenAPI 3.0 specification here
+                    Paste your OpenAPI 3.0 specification here (JSON or YAML format supported)
                   </p>
                 </div>
               </div>
@@ -647,14 +898,13 @@ export const Connectors: React.FC = () => {
                     setSelectedConnector(null);
                   }}
                   className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300"
-                  disabled={importingOpenApi}
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleImportOpenApi}
+                  disabled={importingOpenApi}
                   className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white"
-                  disabled={importingOpenApi || (!openApiUrl && !openApiSpec)}
                 >
                   {importingOpenApi ? 'Importing...' : 'Import'}
                 </Button>
@@ -663,7 +913,22 @@ export const Connectors: React.FC = () => {
           </div>
         </div>
       )}
+
+      <AlertDialog
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        type={alertDialog.type}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+      />
     </div>
   );
 };
-

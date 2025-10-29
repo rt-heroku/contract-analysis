@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../types';
 import { connectorService } from '../services/connector.service';
 import loggingService from '../services/logging.service';
 import { getClientIp, getUserAgent } from '../utils/helpers';
+import prisma from '../config/database';
 
 export const connectorController = {
   async getConnectors(req: AuthenticatedRequest, res: Response) {
@@ -17,7 +18,19 @@ export const connectorController = {
         connectorType as string | undefined
       );
 
-      res.json({ connectors });
+      // Include count of connector actions for each connector
+      const connectorsWithCounts = await Promise.all(
+        connectors.map(async (connector: any) => ({
+          ...connector,
+          _count: {
+            connectorActions: await prisma.connectorAction.count({
+              where: { connectorId: connector.id },
+            }),
+          },
+        }))
+      );
+
+      res.json({ connectors: connectorsWithCounts });
     } catch (error: any) {
       console.error('Error fetching connectors:', error);
       res.status(500).json({ error: error.message });

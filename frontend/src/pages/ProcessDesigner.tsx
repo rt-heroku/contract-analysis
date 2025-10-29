@@ -460,11 +460,12 @@ export const ProcessDesigner: React.FC = () => {
       <NodeEditModal
         isOpen={editModalOpen}
         node={selectedNode}
+        allActions={actions}
         onClose={() => {
           setEditModalOpen(false);
           setSelectedNode(null);
         }}
-        onSave={(nodeId, data) => {
+        onSave={(nodeId, newConfig, newOutputSchema, newInputSchema) => {
           setNodes((nds) =>
             nds.map((n) =>
               n.id === nodeId
@@ -472,8 +473,10 @@ export const ProcessDesigner: React.FC = () => {
                     ...n,
                     data: {
                       ...n.data,
-                      config: data,
-                      label: data.nodeLabel || n.data.label,
+                      config: newConfig,
+                      outputSchema: newOutputSchema || n.data.outputSchema,
+                      inputSchema: newInputSchema || n.data.inputSchema,
+                      label: newConfig.nodeLabel || n.data.label,
                     },
                   }
                 : n
