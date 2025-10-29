@@ -120,43 +120,69 @@ export const TriggerConfigPanel = ({
     </div>
   );
 
-  const renderManualConfig = () => (
-    <div className="space-y-4">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-blue-800">
-          <strong>Manual Trigger:</strong> Process can be started manually by clicking a button or
-          submitting a form.
-        </p>
-      </div>
+  const renderManualConfig = () => {
+    // Generate menu URL if access from menu is selected
+    const processId = window.location.pathname.split('/').pop();
+    const menuUrl = processId ? `${window.location.origin}/process/execute/${processId}` : '';
+    
+    return (
+      <div className="space-y-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Manual Trigger:</strong> Process can be started manually by clicking a button,
+            submitting a form, or accessing from the menu.
+          </p>
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          UI Form (Optional)
-        </label>
-        <select
-          value={config.formType || 'none'}
-          onChange={(e) => setConfig({ ...config, formType: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-        >
-          <option value="none">No form (just a button)</option>
-          <option value="file-upload">File Upload</option>
-          <option value="text-input">Text Input</option>
-          <option value="custom">Custom Form Fields</option>
-        </select>
-      </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Execution Type
+          </label>
+          <select
+            value={config.executionType || 'button'}
+            onChange={(e) => setConfig({ ...config, executionType: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          >
+            <option value="button">Button Only (no form)</option>
+            <option value="file-upload">File Upload</option>
+            <option value="text-input">Text Input</option>
+            <option value="custom">Custom Form Fields</option>
+            <option value="menu">Access from Menu</option>
+          </select>
+        </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Button Label</label>
-        <input
-          type="text"
-          value={config.buttonLabel || 'Start Process'}
-          onChange={(e) => setConfig({ ...config, buttonLabel: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
-          placeholder="Start Process"
-        />
+        {config.executionType === 'menu' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Menu Execution URL
+            </label>
+            <input
+              type="text"
+              value={menuUrl}
+              readOnly
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 font-mono text-sm"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This URL will be accessible from the application menu. Copy it to add to your menu configuration.
+            </p>
+          </div>
+        )}
+
+        {config.executionType !== 'menu' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Button Label</label>
+            <input
+              type="text"
+              value={config.buttonLabel || 'Start Process'}
+              onChange={(e) => setConfig({ ...config, buttonLabel: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              placeholder="Start Process"
+            />
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderScheduleConfig = () => (
     <div className="space-y-4">

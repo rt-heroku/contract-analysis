@@ -614,17 +614,30 @@ const ProcessDesignerInner: React.FC = () => {
   // Zoom handlers
   const handleZoomIn = useCallback(() => {
     reactFlowInstance.zoomIn();
-    setCurrentZoom(reactFlowInstance.getZoom());
+    // Use setTimeout to ensure zoom has been applied
+    setTimeout(() => {
+      setCurrentZoom(reactFlowInstance.getZoom());
+    }, 50);
   }, [reactFlowInstance]);
   
   const handleZoomOut = useCallback(() => {
     reactFlowInstance.zoomOut();
-    setCurrentZoom(reactFlowInstance.getZoom());
+    // Use setTimeout to ensure zoom has been applied
+    setTimeout(() => {
+      setCurrentZoom(reactFlowInstance.getZoom());
+    }, 50);
   }, [reactFlowInstance]);
   
   // Update zoom state when viewport changes
   const onMoveEnd = useCallback(() => {
     setCurrentZoom(reactFlowInstance.getZoom());
+  }, [reactFlowInstance]);
+  
+  // Initialize zoom on mount
+  useEffect(() => {
+    if (reactFlowInstance) {
+      setCurrentZoom(reactFlowInstance.getZoom());
+    }
   }, [reactFlowInstance]);
   
   // Handle node selection for right properties panel

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, PlayCircle, XCircle, Search, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, PlayCircle, XCircle, Search, X, Plus } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 // import { ActionSelectionModal } from './ActionSelectionModal';
 // import { ConnectorSelectionModal } from './ConnectorSelectionModal';
@@ -50,13 +50,13 @@ export const CollapsibleActionPalette = ({
   // const [showActionModal, setShowActionModal] = useState(false);
   // const [showConnectorModal, setShowConnectorModal] = useState(false);
   
-  // Selected action IDs (persisted in localStorage) - for future modal filtering
-  const [selectedUserActionIds] = useState<number[]>(() => {
+  // Selected action IDs (persisted in localStorage) - Only show selected
+  const [selectedUserActionIds /*, setSelectedUserActionIds */] = useState<number[]>(() => {
     const saved = localStorage.getItem('selectedUserActions');
     return saved ? JSON.parse(saved) : [];
   });
   
-  const [selectedConnectorActionIds] = useState<number[]>(() => {
+  const [selectedConnectorActionIds /*, setSelectedConnectorActionIds */] = useState<number[]>(() => {
     const saved = localStorage.getItem('selectedConnectorActions');
     return saved ? JSON.parse(saved) : [];
   });
@@ -113,14 +113,14 @@ export const CollapsibleActionPalette = ({
     ),
     'User': actions.filter(a => 
       a.actionType === 'user_defined' && 
-      (selectedUserActionIds.length === 0 || selectedUserActionIds.includes(a.id))
+      selectedUserActionIds.includes(a.id)
     ),
   };
 
-  // Group connector actions by connector name (filtered by selection)
+  // Group connector actions by connector name (filtered by selection) - ONLY show selected
   const connectorActions = actions.filter(a => 
     a.actionType === 'connector' &&
-    (selectedConnectorActionIds.length === 0 || selectedConnectorActionIds.includes(a.id))
+    selectedConnectorActionIds.includes(a.id)
   );
   const connectorGroups: Record<string, Action[]> = {};
   connectorActions.forEach(action => {
@@ -356,10 +356,61 @@ export const CollapsibleActionPalette = ({
             {!collapsed[categoryName] && (
               <div className="mt-1 space-y-1 pl-2">
                 {categoryActions.map(action => renderActionItem(action))}
+                {categoryName === 'User' && (
+                  <button
+                    onClick={() => {
+                      alert('User Actions selection modal - Coming soon!');
+                      // TODO: Open ActionSelectionModal
+                    }}
+                    className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg border border-dashed border-blue-300 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add User Actions</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
         ))}
+        
+        {/* User Actions Section (if empty) */}
+        {!categories['User'].length && (
+          <div className="mb-2">
+            <button
+              onClick={() => toggleCategory('User')}
+              className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-gray-50 rounded transition-colors"
+            >
+              <div className="flex items-center space-x-2">
+                {collapsed['User'] ? (
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                )}
+                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                  User
+                </span>
+              </div>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                0
+              </span>
+            </button>
+
+            {!collapsed['User'] && (
+              <div className="mt-1 space-y-1 pl-2">
+                <button
+                  onClick={() => {
+                    alert('User Actions selection modal - Coming soon!');
+                    // TODO: Open ActionSelectionModal
+                  }}
+                  className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg border border-dashed border-blue-300 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add User Actions</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Connectors Section with Nested Groups */}
         {Object.keys(connectorGroups).length > 0 && (
@@ -413,6 +464,56 @@ export const CollapsibleActionPalette = ({
                     )}
                   </div>
                 ))}
+                
+                <button
+                  onClick={() => {
+                    alert('Connector selection modal - Coming soon!');
+                    // TODO: Open ConnectorSelectionModal
+                  }}
+                  className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50 rounded-lg border border-dashed border-green-300 transition-colors mt-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Connectors</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Connectors Section (if empty) */}
+        {Object.keys(connectorGroups).length === 0 && (
+          <div className="mb-2">
+            <button
+              onClick={() => toggleCategory('Connectors')}
+              className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-gray-50 rounded transition-colors"
+            >
+              <div className="flex items-center space-x-2">
+                {collapsed['Connectors'] ? (
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                )}
+                <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                  Connectors
+                </span>
+              </div>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                0
+              </span>
+            </button>
+
+            {!collapsed['Connectors'] && (
+              <div className="mt-1 space-y-1 pl-2">
+                <button
+                  onClick={() => {
+                    alert('Connector selection modal - Coming soon!');
+                    // TODO: Open ConnectorSelectionModal
+                  }}
+                  className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50 rounded-lg border border-dashed border-green-300 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Connectors</span>
+                </button>
               </div>
             )}
           </div>
