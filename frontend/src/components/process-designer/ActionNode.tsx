@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { 
   Network, Save, GitBranch, RefreshCw, Zap, FileText, 
-  Database, Box, Code, CheckCircle, Filter, Layers, Edit3
+  Database, Box, Code, CheckCircle, Filter, Layers, Edit3, Plus
 } from 'lucide-react';
 
 const iconMap: Record<string, any> = {
@@ -18,6 +18,7 @@ interface ActionNodeData {
   color?: string;
   actionType?: 'system' | 'user_defined' | 'connector';
   onEdit?: () => void;
+  onAddNext?: () => void;
 }
 
 export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) => {
@@ -127,6 +128,27 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
         className="w-3 h-3 !bg-green-500 !border-2 !border-white"
         style={{ bottom: -6 }}
       />
+
+      {/* Plus Button Below Node */}
+      {data.onAddNext && (
+        <div
+          className="absolute left-1/2 transform -translate-x-1/2"
+          style={{ bottom: -40 }}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (data.onAddNext) {
+                data.onAddNext();
+              }
+            }}
+            className="w-8 h-8 rounded-full bg-blue-500 hover:bg-blue-600 text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 border-2 border-white"
+            title="Add next action"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {/* Left Handle (for branching) */}
       <Handle

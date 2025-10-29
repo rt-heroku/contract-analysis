@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -11,13 +11,15 @@ import ReactFlow, {
   BackgroundVariant,
   MarkerType,
   NodeTypes,
+  useReactFlow,
+  ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { Play, Save, Download, ArrowLeft } from 'lucide-react';
+import { Play, Save, Download, ArrowLeft, Search, Plus } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode } from '@/components/process-designer/StartEndNodes';
 import { CollapsibleActionPalette } from '@/components/process-designer/CollapsibleActionPalette';
@@ -35,9 +37,11 @@ interface Action {
   actionType?: 'system' | 'user_defined' | 'connector' | 'start' | 'end';
 }
 
-export const ProcessDesigner: React.FC = () => {
+const ProcessDesignerInner: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const { project } = useReactFlow();
   
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -46,6 +50,9 @@ export const ProcessDesigner: React.FC = () => {
   const [actions, setActions] = useState<Action[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showActionSearch, setShowActionSearch] = useState(false);
+  const [actionSearchQuery, setActionSearchQuery] = useState('');
+  const [targetNodeForPlus, setTargetNodeForPlus] = useState<string | null>(null);
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{
@@ -75,6 +82,22 @@ export const ProcessDesigner: React.FC = () => {
     loadActions();
     if (id) {
       loadProcess();
+    } else {
+      // Initialize with a start node if creating new process
+      if (nodes.length === 0) {
+        const startNode: Node = {
+          id: 'start-1',
+          type: 'start',
+          position: { x: 250, y: 100 },
+          data: {
+            onAddNext: () => {
+              setTargetNodeForPlus('start-1');
+              setShowActionSearch(true);
+            },
+          },
+        };
+        setNodes([startNode]);
+      }
     }
   }, [id]);
 
@@ -97,12 +120,16 @@ export const ProcessDesigner: React.FC = () => {
       setProcessDescription(process.description || '');
       
       if (process.flowDefinition?.nodes) {
-        // Re-wire onEdit callbacks when loading nodes
+        // Re-wire onEdit and onAddNext callbacks when loading nodes
         const nodesWithCallbacks = process.flowDefinition.nodes.map((node: Node) => ({
           ...node,
           data: {
             ...node.data,
             onEdit: node.type === 'actionNode' ? () => handleEditNode(node.id) : undefined,
+            onAddNext: (node.type === 'actionNode' || node.type === 'start') ? () => {
+              setTargetNodeForPlus(node.id);
+              setShowActionSearch(true);
+            } : undefined,
           },
         }));
         setNodes(nodesWithCallbacks);
@@ -162,33 +189,42 @@ export const ProcessDesigner: React.FC = () => {
       const actionData = event.dataTransfer.getData('application/json');
       if (!actionData) return;
 
+      if (!reactFlowWrapper.current) return;
+
+      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
       const action: Action = JSON.parse(actionData);
-      const position = {
-        x: event.clientX - 250,
-        y: event.clientY - 150,
-      };
+      
+      // Use project to convert screen coordinates to flow coordinates
+      const position = project({
+        x: event.clientX - reactFlowBounds.left,
+        y: event.clientY - reactFlowBounds.top,
+      });
 
       const nodeId = `node-${Date.now()}`;
 
-      // Handle Start node
+      // Handle Start node - only allow one
       if (action.actionType === 'start' || action.name === 'start_node') {
+        const hasStartNode = nodes.some(node => node.type === 'start');
+        if (hasStartNode) {
+          setAlertDialog({
+            isOpen: true,
+            title: 'Start Node Already Exists',
+            message: 'Only one start node is allowed per process. Please use the existing start node.',
+            type: 'warning',
+          });
+          return;
+        }
+
         const newNode: Node = {
           id: nodeId,
           type: 'start',
           position,
-          data: {},
-        };
-        setNodes((nds) => nds.concat(newNode));
-        return;
-      }
-
-      // Handle End node
-      if (action.actionType === 'end' || action.name === 'end_node') {
-        const newNode: Node = {
-          id: nodeId,
-          type: 'end',
-          position,
-          data: {},
+          data: {
+            onAddNext: () => {
+              setTargetNodeForPlus(nodeId);
+              setShowActionSearch(true);
+            },
+          },
         };
         setNodes((nds) => nds.concat(newNode));
         return;
@@ -209,25 +245,30 @@ export const ProcessDesigner: React.FC = () => {
           actionId: action.id,
           actionName: action.name,
           config: {},
-          onEdit: () => handleEditNode(nodeId), // Wire up edit callback
+          onEdit: () => handleEditNode(nodeId),
+          onAddNext: () => {
+            setTargetNodeForPlus(nodeId);
+            setShowActionSearch(true);
+          },
         },
       };
 
       setNodes((nds) => nds.concat(newNode));
     },
-    [handleEditNode]
+    [handleEditNode, project, nodes]
   );
 
   const handleSave = async () => {
     try {
       setSaving(true);
       
-      // Remove onEdit callbacks before saving (they're functions and can't be serialized)
+      // Remove onEdit and onAddNext callbacks before saving (they're functions and can't be serialized)
       const nodesToSave = nodes.map((node) => ({
         ...node,
         data: {
           ...node.data,
           onEdit: undefined,
+          onAddNext: undefined,
         },
       }));
 
@@ -390,30 +431,66 @@ export const ProcessDesigner: React.FC = () => {
         </div>
 
         {/* Canvas */}
-        <div className="flex-1">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onNodeContextMenu={onNodeContextMenu}
-            nodeTypes={nodeTypes}
-            fitView
-          >
-            <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e2e8f0" />
-            <Controls />
-            <MiniMap
-              nodeColor={(node) => {
-                if (node.type === 'start') return '#22c55e';
-                if (node.type === 'end') return '#ef4444';
-                return node.data?.color as string || '#3b82f6';
-              }}
-              maskColor="rgba(0, 0, 0, 0.1)"
-            />
-          </ReactFlow>
+        <div className="flex-1" ref={reactFlowWrapper}>
+          {nodes.length === 0 ? (
+            <div className="flex items-center justify-center h-full bg-gray-50">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">Empty Process Canvas</h3>
+                <p className="text-gray-500 mb-4">Add a start node to begin building your process</p>
+                <Button
+                  onClick={() => {
+                    const startNode: Node = {
+                      id: 'start-1',
+                      type: 'start',
+                      position: { x: 250, y: 100 },
+                      data: {
+                        onAddNext: () => {
+                          setTargetNodeForPlus('start-1');
+                          setShowActionSearch(true);
+                        },
+                      },
+                    };
+                    setNodes([startNode]);
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Start Node
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              onNodeContextMenu={onNodeContextMenu}
+              nodeTypes={nodeTypes}
+              fitView
+              defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            >
+              <Background 
+                variant={BackgroundVariant.Lines} 
+                gap={20} 
+                size={1} 
+                color="#e5e7eb"
+                style={{ backgroundColor: '#f9fafb' }}
+              />
+              <Controls />
+              <MiniMap
+                nodeColor={(node) => {
+                  if (node.type === 'start') return '#22c55e';
+                  if (node.type === 'end') return '#ef4444';
+                  return node.data?.color as string || '#3b82f6';
+                }}
+                maskColor="rgba(0, 0, 0, 0.1)"
+              />
+            </ReactFlow>
+          )}
         </div>
       </div>
 
@@ -445,6 +522,10 @@ export const ProcessDesigner: React.FC = () => {
                 data: {
                   ...node.data,
                   onEdit: node.type === 'actionNode' ? () => handleEditNode(newNodeId) : undefined,
+                  onAddNext: node.type === 'actionNode' ? () => {
+                    setTargetNodeForPlus(newNodeId);
+                    setShowActionSearch(true);
+                  } : undefined,
                 },
               };
               setNodes((nds) => nds.concat(newNode));
@@ -493,6 +574,131 @@ export const ProcessDesigner: React.FC = () => {
         message={alertDialog.message}
         type={alertDialog.type}
       />
+
+      {/* Action Search Modal */}
+      {showActionSearch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Select Action</h3>
+              <div className="mt-3 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={actionSearchQuery}
+                  onChange={(e) => setActionSearchQuery(e.target.value)}
+                  placeholder="Search actions..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-2">
+                {actions
+                  .filter(action => 
+                    action.displayName.toLowerCase().includes(actionSearchQuery.toLowerCase()) ||
+                    action.description?.toLowerCase().includes(actionSearchQuery.toLowerCase())
+                  )
+                  .map((action) => (
+                    <button
+                      key={action.id}
+                      onClick={() => {
+                        const nodeId = `node-${Date.now()}`;
+                        const targetNode = nodes.find(n => n.id === targetNodeForPlus);
+                        const position = targetNode 
+                          ? { x: targetNode.position.x, y: targetNode.position.y + 120 }
+                          : { x: 250, y: 200 };
+
+                        const newNode: Node = {
+                          id: nodeId,
+                          type: 'actionNode',
+                          position,
+                          data: {
+                            label: action.displayName,
+                            description: action.description,
+                            category: action.category,
+                            icon: action.icon,
+                            color: action.color,
+                            actionType: action.actionType,
+                            actionId: action.id,
+                            actionName: action.name,
+                            config: {},
+                            onEdit: () => handleEditNode(nodeId),
+                            onAddNext: () => {
+                              setTargetNodeForPlus(nodeId);
+                              setShowActionSearch(true);
+                            },
+                          },
+                        };
+
+                        setNodes((nds) => nds.concat(newNode));
+
+                        // Auto-connect if there's a target node
+                        if (targetNodeForPlus) {
+                          setEdges((eds) => addEdge({
+                            id: `edge-${Date.now()}`,
+                            source: targetNodeForPlus,
+                            target: nodeId,
+                            markerEnd: { type: MarkerType.ArrowClosed },
+                            style: { stroke: '#64748b', strokeWidth: 2 },
+                          }, eds));
+                        }
+
+                        setShowActionSearch(false);
+                        setActionSearchQuery('');
+                        setTargetNodeForPlus(null);
+                      }}
+                      className="w-full flex items-start space-x-3 p-3 rounded-lg border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-colors text-left"
+                    >
+                      <div
+                        className="p-2 rounded-lg flex-shrink-0"
+                        style={{ backgroundColor: `${action.color}20` }}
+                      >
+                        <div className="w-5 h-5" style={{ color: action.color }}>●</div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-900">{action.displayName}</h4>
+                        <p className="text-sm text-gray-500 truncate">{action.description}</p>
+                        <div className="mt-1 flex items-center space-x-2">
+                          <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                            {action.category}
+                          </span>
+                          {action.actionType && (
+                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-600 rounded">
+                              {action.actionType}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              <Button
+                onClick={() => {
+                  setShowActionSearch(false);
+                  setActionSearchQuery('');
+                  setTargetNodeForPlus(null);
+                }}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+};
+
+// Wrapper component with ReactFlowProvider
+export const ProcessDesigner: React.FC = () => {
+  return (
+    <ReactFlowProvider>
+      <ProcessDesignerInner />
+    </ReactFlowProvider>
   );
 };

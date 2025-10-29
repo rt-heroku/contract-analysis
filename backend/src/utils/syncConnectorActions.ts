@@ -9,6 +9,38 @@ export async function syncConnectorActions() {
   try {
     logger.info('Syncing connector actions to actions table...');
 
+    // First, delete orphaned connector actions (where connector no longer exists)
+    const orphanedActions = await prisma.action.findMany({
+      where: {
+        actionType: 'connector',
+        connectorId: { not: null },
+      },
+      select: {
+        id: true,
+        connectorId: true,
+        name: true,
+      },
+    });
+
+    let deleted = 0;
+    for (const action of orphanedActions) {
+      if (action.connectorId) {
+        const connectorExists = await prisma.connector.findUnique({
+          where: { id: action.connectorId },
+        });
+        
+        if (!connectorExists) {
+          await prisma.action.delete({ where: { id: action.id } });
+          deleted++;
+          logger.debug(`Deleted orphaned action: ${action.name}`);
+        }
+      }
+    }
+
+    if (deleted > 0) {
+      logger.info(`Cleaned up ${deleted} orphaned connector actions`);
+    }
+
     // Get all connector actions
     const connectorActions = await prisma.connectorAction.findMany({
       where: { isActive: true },
