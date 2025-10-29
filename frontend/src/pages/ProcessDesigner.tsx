@@ -646,8 +646,8 @@ const ProcessDesignerInner: React.FC = () => {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Collapsible Action Palette - Fixed height with internal scroll */}
-        <div className="w-64 bg-white border-r shadow-sm overflow-y-auto">
+        {/* Collapsible Action Palette - Takes full height with internal scroll */}
+        <div className="w-64 flex flex-col bg-white border-r shadow-sm">
           <CollapsibleActionPalette
             actions={actions}
             onDragStart={(event, action) => {
@@ -658,7 +658,7 @@ const ProcessDesignerInner: React.FC = () => {
         </div>
 
         {/* Canvas - Fill remaining space */}
-        <div className="flex-1 flex flex-col overflow-hidden" ref={reactFlowWrapper}>
+        <div className="flex-1 flex flex-col" ref={reactFlowWrapper}>
           {nodes.length === 0 ? (
             <div className="flex items-center justify-center h-full bg-gray-50">
               <div className="text-center">
