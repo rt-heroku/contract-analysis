@@ -48,8 +48,32 @@ const ProcessDesignerInner: React.FC = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
   
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [nodes, setNodes, onNodesChangeRaw] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  
+  // Custom onNodesChange that prevents deletion of Start and Global Error nodes
+  const onNodesChange = useCallback((changes: any[]) => {
+    // Filter out removal changes for protected node types
+    const filteredChanges = changes.filter(change => {
+      if (change.type === 'remove') {
+        const node = nodes.find(n => n.id === change.id);
+        if (node && (node.type === 'start' || node.type === 'globalError')) {
+          // Show warning once
+          setAlertDialog({
+            isOpen: true,
+            title: `Cannot Delete ${node.type === 'start' ? 'Start' : 'Global Error'}`,
+            message: `The ${node.type === 'start' ? 'Start node' : 'Global Error handler'} is required and cannot be deleted.`,
+            type: 'warning',
+          });
+          return false; // Filter out this change
+        }
+      }
+      return true; // Allow all other changes
+    });
+    
+    // Apply the filtered changes
+    onNodesChangeRaw(filteredChanges);
+  }, [nodes, onNodesChangeRaw]);
   const [processName, setProcessName] = useState('Untitled Process');
   const [processDescription, setProcessDescription] = useState('');
   const [actions, setActions] = useState<Action[]>([]);
@@ -712,34 +736,6 @@ const ProcessDesignerInner: React.FC = () => {
     }
   }, [rightPanelOpen]);
   
-  // Handle node deletion (keyboard Delete key)
-  const onNodesDelete = useCallback((nodesToDelete: Node[]) => {
-    // Check if any node to delete is Global Error
-    const hasGlobalError = nodesToDelete.some(node => node.type === 'globalError');
-    
-    if (hasGlobalError) {
-      setAlertDialog({
-        isOpen: true,
-        title: 'Cannot Delete Global Error',
-        message: 'The Global Error handler is required and cannot be deleted. It serves as a fallback for unhandled errors in your process.',
-        type: 'warning',
-      });
-      
-      // Filter out Global Error nodes from deletion
-      const allowedDeletions = nodesToDelete.filter(node => node.type !== 'globalError');
-      
-      if (allowedDeletions.length > 0) {
-        // Delete only the allowed nodes
-        setNodes((nds) => nds.filter((n) => !allowedDeletions.some(d => d.id === n.id)));
-        setEdges((eds) => eds.filter((e) => 
-          !allowedDeletions.some(d => d.id === e.source || d.id === e.target)
-        ));
-      }
-      
-      return; // Prevent default deletion
-    }
-  }, []);
-  
   // Canvas context menu handlers
   const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
@@ -940,7 +936,6 @@ const ProcessDesignerInner: React.FC = () => {
                   onPaneClick={onPaneClick}
                   onNodeContextMenu={onNodeContextMenu}
                   onPaneContextMenu={onPaneContextMenu}
-                  onNodesDelete={onNodesDelete}
                   onMoveEnd={onMoveEnd}
                   nodeTypes={nodeTypes}
                   edgeTypes={edgeTypes}
@@ -1160,12 +1155,12 @@ const ProcessDesignerInner: React.FC = () => {
           onDelete={() => {
             const node = nodes.find((n) => n.id === contextMenu.nodeId);
             
-            // Prevent deletion of Global Error nodes
-            if (node?.type === 'globalError') {
+            // Prevent deletion of Start and Global Error nodes
+            if (node?.type === 'start' || node?.type === 'globalError') {
               setAlertDialog({
                 isOpen: true,
-                title: 'Cannot Delete Global Error',
-                message: 'The Global Error handler is required and cannot be deleted. It serves as a fallback for unhandled errors in your process.',
+                title: `Cannot Delete ${node.type === 'start' ? 'Start' : 'Global Error'}`,
+                message: `The ${node.type === 'start' ? 'Start node' : 'Global Error handler'} is required and cannot be deleted.`,
                 type: 'warning',
               });
               setContextMenu(null);
