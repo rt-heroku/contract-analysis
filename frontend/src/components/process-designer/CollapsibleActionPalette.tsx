@@ -524,11 +524,11 @@ export const CollapsibleActionPalette = ({
       <ActionSelectionModal
         isOpen={showActionModal}
         onClose={() => setShowActionModal(false)}
+        availableActions={actions.filter(a => a.actionType === 'user_defined')}
         selectedActionIds={selectedUserActionIds}
-        onSave={(newSelectedIds) => {
+        onSelectionChange={(newSelectedIds) => {
           setSelectedUserActionIds(newSelectedIds);
           localStorage.setItem('selectedUserActions', JSON.stringify(newSelectedIds));
-          setShowActionModal(false);
         }}
       />
       
@@ -536,11 +536,11 @@ export const CollapsibleActionPalette = ({
       <ConnectorSelectionModal
         isOpen={showConnectorModal}
         onClose={() => setShowConnectorModal(false)}
-        selectedConnectorActionIds={selectedConnectorActionIds}
-        onSave={(newSelectedIds) => {
+        availableActions={actions.filter(a => a.actionType === 'connector')}
+        selectedActionIds={selectedConnectorActionIds}
+        onSelectionChange={(newSelectedIds) => {
           setSelectedConnectorActionIds(newSelectedIds);
           localStorage.setItem('selectedConnectorActions', JSON.stringify(newSelectedIds));
-          setShowConnectorModal(false);
         }}
       />
     </div>
