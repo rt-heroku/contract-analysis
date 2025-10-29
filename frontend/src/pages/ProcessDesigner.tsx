@@ -24,6 +24,7 @@ import { AlertDialog } from '@/components/common/AlertDialog';
 import { Play, Save, Download, ArrowLeft, Search, Plus } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
+import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
 import { CollapsibleActionPalette } from '@/components/process-designer/CollapsibleActionPalette';
 import { NodeContextMenu } from '@/components/process-designer/NodeContextMenu';
 import { NodeEditModal } from '@/components/process-designer/NodeEditModal';
@@ -38,7 +39,7 @@ interface Action {
   category: string;
   icon: string;
   color: string;
-  actionType?: 'system' | 'user_defined' | 'connector' | 'start' | 'end';
+  actionType?: 'system' | 'user_defined' | 'connector' | 'start' | 'end' | 'global_error';
 }
 
 const ProcessDesignerInner: React.FC = () => {
@@ -75,6 +76,14 @@ const ProcessDesignerInner: React.FC = () => {
     type: 'none',
   });
   
+  // Global error config state
+  const [globalErrorConfigOpen, setGlobalErrorConfigOpen] = useState(false);
+  const [currentGlobalErrorConfig, setCurrentGlobalErrorConfig] = useState<any>({
+    logError: true,
+    notifyOnError: false,
+    continueOnError: false,
+  });
+  
   const [alertDialog, setAlertDialog] = useState({
     isOpen: false,
     title: '',
@@ -82,10 +91,11 @@ const ProcessDesignerInner: React.FC = () => {
     type: 'info' as 'success' | 'error' | 'warning' | 'info',
   });
 
-  // Define custom node types (including Start/End)
+  // Define custom node types (including Start/GlobalError)
   const nodeTypes: NodeTypes = useMemo(() => ({
     actionNode: ActionNode,
     start: StartNode,
+    globalError: GlobalErrorNode,
   }), []);
 
   const edgeTypes: EdgeTypes = useMemo(() => ({
@@ -408,6 +418,35 @@ const ProcessDesignerInner: React.FC = () => {
             },
             onConfigure: () => {
               setTriggerConfigOpen(true);
+            },
+          },
+        };
+        setNodes((nds) => nds.concat(newNode));
+        return;
+      }
+
+      // Handle Global Error node - only allow one
+      if (action.actionType === 'global_error' || action.name === 'global_error') {
+        const hasGlobalError = nodes.some(node => node.type === 'globalError');
+        if (hasGlobalError) {
+          setAlertDialog({
+            isOpen: true,
+            title: 'Global Error Already Exists',
+            message: 'Only one global error handler is allowed per process. Please use the existing one.',
+            type: 'warning',
+          });
+          return;
+        }
+
+        const newNode: Node = {
+          id: nodeId,
+          type: 'globalError',
+          position,
+          data: {
+            label: 'GLOBAL ERROR',
+            config: currentGlobalErrorConfig,
+            onConfigure: () => {
+              setGlobalErrorConfigOpen(true);
             },
           },
         };
@@ -835,6 +874,97 @@ const ProcessDesignerInner: React.FC = () => {
           setTriggerConfigOpen(false);
         }}
       />
+
+      {/* Global Error Configuration Modal */}
+      {globalErrorConfigOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Configure Global Error Handler</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Set how errors are handled across the entire process
+                </p>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800">
+                  <strong>Global Error Handler:</strong> Catches all unhandled errors in the process.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="logError"
+                  checked={currentGlobalErrorConfig.logError !== false}
+                  onChange={(e) => setCurrentGlobalErrorConfig({ ...currentGlobalErrorConfig, logError: e.target.checked })}
+                  className="rounded border-gray-300"
+                />
+                <label htmlFor="logError" className="text-sm text-gray-700">
+                  Log errors to activity logs
+                </label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="notifyOnError"
+                  checked={currentGlobalErrorConfig.notifyOnError}
+                  onChange={(e) => setCurrentGlobalErrorConfig({ ...currentGlobalErrorConfig, notifyOnError: e.target.checked })}
+                  className="rounded border-gray-300"
+                />
+                <label htmlFor="notifyOnError" className="text-sm text-gray-700">
+                  Send notification on error
+                </label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="continueOnError"
+                  checked={currentGlobalErrorConfig.continueOnError}
+                  onChange={(e) => setCurrentGlobalErrorConfig({ ...currentGlobalErrorConfig, continueOnError: e.target.checked })}
+                  className="rounded border-gray-300"
+                />
+                <label htmlFor="continueOnError" className="text-sm text-gray-700">
+                  Continue process after error (don't stop)
+                </label>
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+              <Button onClick={() => setGlobalErrorConfigOpen(false)} className="bg-gray-200 hover:bg-gray-300">
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  // Update all global error nodes with new config
+                  setNodes((nds) =>
+                    nds.map((node) =>
+                      node.type === 'globalError'
+                        ? {
+                            ...node,
+                            data: {
+                              ...node.data,
+                              config: currentGlobalErrorConfig,
+                            },
+                          }
+                        : node
+                    )
+                  );
+                  setGlobalErrorConfigOpen(false);
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Save Configuration
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Action Search Modal */}
       {showActionSearch && (
