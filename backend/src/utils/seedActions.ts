@@ -221,6 +221,204 @@ export async function seedSystemActions() {
         },
       },
       {
+        name: 'try_catch_finally',
+        displayName: 'Try Catch Finally',
+        description: 'Error handling with try, catch, and optional finally blocks',
+        actionType: 'system',
+        category: 'error_handling',
+        icon: 'AlertCircle',
+        color: '#ef4444',
+        configSchema: {
+          type: 'object',
+          properties: {
+            catchEnabled: { type: 'boolean', default: true, description: 'Enable catch block' },
+            finallyEnabled: { type: 'boolean', default: false, description: 'Enable finally block (always executes)' },
+            propagateError: { type: 'boolean', default: false, description: 'Re-throw error after catch' },
+            errorVariable: { type: 'string', default: 'error', description: 'Variable name for error object' },
+          },
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Input data for try block',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', description: 'Whether try block succeeded' },
+            error: { description: 'Error object if catch was triggered' },
+            result: { description: 'Result from try block or catch block' },
+            branchTaken: { type: 'string', enum: ['try', 'catch', 'finally'] },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          maxBranches: 3, // try, catch, finally
+          branchLabels: ['try', 'catch', 'finally'],
+        },
+      },
+      {
+        name: 'raise_error',
+        displayName: 'Raise Error',
+        description: 'Throw an error to trigger error handling flow',
+        actionType: 'system',
+        category: 'error_handling',
+        icon: 'AlertTriangle',
+        color: '#dc2626',
+        configSchema: {
+          type: 'object',
+          properties: {
+            errorMessage: { type: 'string', description: 'Error message to throw' },
+            errorCode: { type: 'string', description: 'Error code for identification' },
+            errorType: { type: 'string', default: 'UserError', description: 'Type of error (UserError, ValidationError, SystemError)' },
+            statusCode: { type: 'number', default: 500, description: 'HTTP status code' },
+            includeStackTrace: { type: 'boolean', default: true, description: 'Include stack trace in error' },
+          },
+          required: ['errorMessage'],
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Additional error context data',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            error: {
+              type: 'object',
+              properties: {
+                message: { type: 'string' },
+                code: { type: 'string' },
+                type: { type: 'string' },
+                statusCode: { type: 'number' },
+                context: { type: 'object' },
+                timestamp: { type: 'string' },
+              },
+            },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'on_error',
+        displayName: 'On Error',
+        description: 'Execute a separate error handling flow when errors occur',
+        actionType: 'system',
+        category: 'error_handling',
+        icon: 'AlertOctagon',
+        color: '#f59e0b',
+        configSchema: {
+          type: 'object',
+          properties: {
+            errorTypes: {
+              type: 'array',
+              description: 'Error types to catch (empty = catch all)',
+              items: { type: 'string' },
+              default: [],
+            },
+            continueOnError: { type: 'boolean', default: false, description: 'Continue main flow after error handling' },
+            logError: { type: 'boolean', default: true, description: 'Log error to activity logs' },
+            notifyOnError: { type: 'boolean', default: false, description: 'Send notification on error' },
+          },
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Input data when error occurs',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            error: { description: 'The error that was caught' },
+            handled: { type: 'boolean', description: 'Whether error was handled' },
+            originalInput: { description: 'Input data when error occurred' },
+            timestamp: { type: 'string' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          maxBranches: 1, // Error handling flow
+          isErrorHandler: true,
+        },
+      },
+      {
+        name: 'retry',
+        displayName: 'Retry',
+        description: 'Retry an action with exponential backoff on failure',
+        actionType: 'system',
+        category: 'error_handling',
+        icon: 'RefreshCw',
+        color: '#10b981',
+        configSchema: {
+          type: 'object',
+          properties: {
+            maxAttempts: { type: 'number', default: 3, description: 'Maximum retry attempts' },
+            initialDelay: { type: 'number', default: 1000, description: 'Initial delay in ms' },
+            maxDelay: { type: 'number', default: 60000, description: 'Maximum delay in ms' },
+            backoffMultiplier: { type: 'number', default: 2, description: 'Exponential backoff multiplier' },
+            retryOnErrors: {
+              type: 'array',
+              description: 'Error types to retry on',
+              items: { type: 'string' },
+              default: ['NetworkError', 'TimeoutError', 'ServiceUnavailable'],
+            },
+          },
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Input data for action to retry',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            attempts: { type: 'number', description: 'Number of attempts made' },
+            result: { description: 'Result from successful attempt' },
+            lastError: { description: 'Last error if all attempts failed' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          maxBranches: 1, // Action to retry
+        },
+      },
+      {
+        name: 'call_process',
+        displayName: 'Call Process',
+        description: 'Execute another process as a sub-process',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'Workflow',
+        color: '#6366f1',
+        configSchema: {
+          type: 'object',
+          properties: {
+            processId: { type: 'string', description: 'ID of the process to call' },
+            processName: { type: 'string', description: 'Name of the process to call (for display)' },
+            waitForCompletion: { type: 'boolean', default: true, description: 'Wait for sub-process to complete' },
+            inheritContext: { type: 'boolean', default: true, description: 'Pass current context to sub-process' },
+            timeoutMs: { type: 'number', default: 300000, description: 'Timeout in milliseconds (5 min default)' },
+          },
+          required: ['processId'],
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Input data to pass to the sub-process',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            executionId: { type: 'string', description: 'Execution ID of the sub-process' },
+            status: { type: 'string', description: 'Status of the sub-process execution' },
+            result: { description: 'Result from the sub-process' },
+            startedAt: { type: 'string' },
+            completedAt: { type: 'string' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          maxBranches: 1,
+        },
+      },
+      {
         name: 'transform',
         displayName: 'Transform Data',
         description: 'Transform data using mappings or scripts',

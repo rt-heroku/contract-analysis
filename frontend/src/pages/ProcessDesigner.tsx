@@ -11,6 +11,7 @@ import ReactFlow, {
   BackgroundVariant,
   MarkerType,
   NodeTypes,
+  EdgeTypes,
   useReactFlow,
   ReactFlowProvider,
 } from 'reactflow';
@@ -25,6 +26,7 @@ import { StartNode } from '@/components/process-designer/StartEndNodes';
 import { CollapsibleActionPalette } from '@/components/process-designer/CollapsibleActionPalette';
 import { NodeContextMenu } from '@/components/process-designer/NodeContextMenu';
 import { NodeEditModal } from '@/components/process-designer/NodeEditModal';
+import { LabeledEdge } from '@/components/process-designer/LabeledEdge';
 
 interface Action {
   id: number;
@@ -78,6 +80,10 @@ const ProcessDesignerInner: React.FC = () => {
     start: StartNode,
   }), []);
 
+  const edgeTypes: EdgeTypes = useMemo(() => ({
+    labeled: LabeledEdge,
+  }), []);
+
   // Helper to check if a node supports multiple connections (control flow actions)
   const isMultiBranchAction = useCallback((node: Node): boolean => {
     if (node.type !== 'actionNode') return false;
@@ -86,11 +92,13 @@ const ProcessDesignerInner: React.FC = () => {
     const multiBranchActions = [
       'if_then_else',
       'switch_case',
+      'try_catch_finally',
+      'on_error',
       'for_each',
       'while_loop',
       'do_loop',
       'parallel',
-      'try_catch',
+      'retry',
     ];
     
     return multiBranchActions.some(name => actionName.includes(name));
@@ -104,6 +112,15 @@ const ProcessDesignerInner: React.FC = () => {
     
     // IF THEN ELSE: exactly 2 branches (if + else)
     if (actionName.includes('if_then_else')) return 2;
+    
+    // Try Catch Finally: exactly 3 branches (try + catch + finally)
+    if (actionName.includes('try_catch_finally')) return 3;
+    
+    // On Error: 1 branch (error handling flow)
+    if (actionName.includes('on_error')) return 1;
+    
+    // Retry: 1 branch (action to retry)
+    if (actionName.includes('retry')) return 1;
     
     // Switch Case: unlimited branches (-1)
     if (actionName.includes('switch_case')) return -1;
@@ -246,13 +263,66 @@ const ProcessDesignerInner: React.FC = () => {
     });
   }, []);
 
+  /**
+   * Generate edge label based on source node type and connection index
+   */
+  const generateEdgeLabel = useCallback((sourceNode: Node | undefined, connectionIndex: number): string | undefined => {
+    if (!sourceNode) return undefined;
+
+    const actionName = sourceNode.data?.actionName?.toLowerCase() || '';
+
+    // IF THEN ELSE: "if" for first connection, "else" for second
+    if (actionName.includes('if_then_else')) {
+      return connectionIndex === 0 ? 'if' : 'else';
+    }
+
+    // Try Catch Finally: "try", "catch", "finally"
+    if (actionName.includes('try_catch_finally')) {
+      const labels = ['try', 'catch', 'finally'];
+      return labels[connectionIndex] || 'branch';
+    }
+
+    // Switch Case: "case N" or "default" for last
+    if (actionName.includes('switch_case')) {
+      return connectionIndex === 0 ? 'default' : `case ${connectionIndex}`;
+    }
+
+    // For Each: "item" for first, "after" for second
+    if (actionName.includes('for_each')) {
+      return connectionIndex === 0 ? 'item' : 'after';
+    }
+
+    // While Loop: "loop" for first, "after" for second
+    if (actionName.includes('while')) {
+      return connectionIndex === 0 ? 'loop' : 'after';
+    }
+
+    // No label for other actions
+    return undefined;
+  }, []);
+
   const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({
-      ...params,
-      markerEnd: { type: MarkerType.ArrowClosed },
-      style: { stroke: '#64748b', strokeWidth: 2 },
-    }, eds)),
-    []
+    (params: Connection) => {
+      setEdges((eds) => {
+        // Find the source node
+        const sourceNode = nodes.find(n => n.id === params.source);
+        
+        // Count existing connections from this source
+        const existingConnections = eds.filter(e => e.source === params.source).length;
+        
+        // Generate label
+        const label = generateEdgeLabel(sourceNode, existingConnections);
+
+        return addEdge({
+          ...params,
+          type: label ? 'labeled' : 'default',
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { stroke: '#64748b', strokeWidth: 2 },
+          data: { label },
+        }, eds);
+      });
+    },
+    [nodes, generateEdgeLabel]
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -498,9 +568,9 @@ const ProcessDesignerInner: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 flex">
-        {/* Collapsible Action Palette */}
-        <div className="w-64">
+      <div className="flex-1 flex overflow-hidden">
+        {/* Collapsible Action Palette - Fixed height with internal scroll */}
+        <div className="w-64 bg-white border-r shadow-sm overflow-y-auto">
           <CollapsibleActionPalette
             actions={actions}
             onDragStart={(event, action) => {
@@ -510,8 +580,8 @@ const ProcessDesignerInner: React.FC = () => {
           />
         </div>
 
-        {/* Canvas */}
-        <div className="flex-1" ref={reactFlowWrapper}>
+        {/* Canvas - Fill remaining space */}
+        <div className="flex-1 flex flex-col overflow-hidden" ref={reactFlowWrapper}>
           {nodes.length === 0 ? (
             <div className="flex items-center justify-center h-full bg-gray-50">
               <div className="text-center">
@@ -541,36 +611,64 @@ const ProcessDesignerInner: React.FC = () => {
               </div>
             </div>
           ) : (
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              onNodeContextMenu={onNodeContextMenu}
-              nodeTypes={nodeTypes}
-              fitView
-              defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-            >
-              <Background 
-                variant={BackgroundVariant.Lines} 
-                gap={20} 
-                size={1} 
-                color="#e5e7eb"
-                style={{ backgroundColor: '#f9fafb' }}
-              />
-              <Controls />
-              <MiniMap
-                nodeColor={(node) => {
-                  if (node.type === 'start') return '#22c55e';
-                  if (node.type === 'end') return '#ef4444';
-                  return node.data?.color as string || '#3b82f6';
-                }}
-                maskColor="rgba(0, 0, 0, 0.1)"
-              />
-            </ReactFlow>
+            <>
+              {/* Controls Bar - Top of canvas */}
+              <div className="bg-white border-b px-4 py-2 flex items-center justify-between shadow-sm z-10">
+                <div className="text-sm text-gray-600">
+                  {nodes.length} nodes, {edges.length} connections
+                </div>
+                <div className="text-xs text-gray-500">
+                  Scroll to zoom • Drag to pan • Right-click for options
+                </div>
+              </div>
+
+              {/* ReactFlow Canvas */}
+              <div className="flex-1 relative">
+                <ReactFlow
+                  nodes={nodes}
+                  edges={edges}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  onConnect={onConnect}
+                  onDrop={onDrop}
+                  onDragOver={onDragOver}
+                  onNodeContextMenu={onNodeContextMenu}
+                  nodeTypes={nodeTypes}
+                  edgeTypes={edgeTypes}
+                  fitView
+                  defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+                  minZoom={0.1}
+                  maxZoom={2}
+                >
+                  <Background 
+                    variant={BackgroundVariant.Lines} 
+                    gap={20} 
+                    size={1} 
+                    color="#e5e7eb"
+                    style={{ backgroundColor: '#f9fafb' }}
+                  />
+                  {/* Controls positioned at top-left */}
+                  <Controls 
+                    position="top-left" 
+                    className="bg-white shadow-lg rounded-lg border border-gray-200"
+                  />
+                  {/* MiniMap positioned at top-right */}
+                  <MiniMap
+                    position="top-right"
+                    nodeColor={(node) => {
+                      if (node.type === 'start') return '#22c55e';
+                      if (node.type === 'end') return '#ef4444';
+                      return node.data?.color as string || '#3b82f6';
+                    }}
+                    maskColor="rgba(0, 0, 0, 0.1)"
+                    className="bg-white shadow-lg rounded-lg border border-gray-200"
+                    style={{ width: 150, height: 100 }}
+                    pannable={false}
+                    zoomable={false}
+                  />
+                </ReactFlow>
+              </div>
+            </>
           )}
         </div>
       </div>
