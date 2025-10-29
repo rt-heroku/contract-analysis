@@ -23,10 +23,11 @@ import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { Play, Save, Download, ArrowLeft, Search, Plus } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
-import { StartNode } from '@/components/process-designer/StartEndNodes';
+import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
 import { CollapsibleActionPalette } from '@/components/process-designer/CollapsibleActionPalette';
 import { NodeContextMenu } from '@/components/process-designer/NodeContextMenu';
 import { NodeEditModal } from '@/components/process-designer/NodeEditModal';
+import { TriggerConfigPanel } from '@/components/process-designer/TriggerConfigPanel';
 import { LabeledEdge } from '@/components/process-designer/LabeledEdge';
 
 interface Action {
@@ -67,6 +68,12 @@ const ProcessDesignerInner: React.FC = () => {
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  
+  // Trigger config state
+  const [triggerConfigOpen, setTriggerConfigOpen] = useState(false);
+  const [currentTriggerConfig, setCurrentTriggerConfig] = useState<TriggerConfig>({
+    type: 'none',
+  });
   
   const [alertDialog, setAlertDialog] = useState({
     isOpen: false,
@@ -172,10 +179,15 @@ const ProcessDesignerInner: React.FC = () => {
           type: 'start',
           position: { x: 250, y: 100 },
           data: {
+            label: 'START',
+            trigger: currentTriggerConfig,
             showPlusButton: true,
             onAddNext: () => {
               setTargetNodeForPlus('start-1');
               setShowActionSearch(true);
+            },
+            onConfigure: () => {
+              setTriggerConfigOpen(true);
             },
           },
         };
@@ -215,6 +227,11 @@ const ProcessDesignerInner: React.FC = () => {
       setProcessName(process.name);
       setProcessDescription(process.description || '');
       
+      // Load trigger config if exists
+      if (process.flowDefinition?.triggerConfig) {
+        setCurrentTriggerConfig(process.flowDefinition.triggerConfig);
+      }
+      
       if (process.flowDefinition?.nodes) {
         // Re-wire onEdit and onAddNext callbacks when loading nodes
         const nodesWithCallbacks = process.flowDefinition.nodes.map((node: Node) => ({
@@ -225,6 +242,9 @@ const ProcessDesignerInner: React.FC = () => {
             onAddNext: (node.type === 'actionNode' || node.type === 'start') ? () => {
               setTargetNodeForPlus(node.id);
               setShowActionSearch(true);
+            } : undefined,
+            onConfigure: node.type === 'start' ? () => {
+              setTriggerConfigOpen(true);
             } : undefined,
           },
         }));
@@ -379,10 +399,15 @@ const ProcessDesignerInner: React.FC = () => {
           type: 'start',
           position,
           data: {
+            label: 'START',
+            trigger: currentTriggerConfig,
             showPlusButton: true, // Will be updated by effect
             onAddNext: () => {
               setTargetNodeForPlus(nodeId);
               setShowActionSearch(true);
+            },
+            onConfigure: () => {
+              setTriggerConfigOpen(true);
             },
           },
         };
@@ -423,13 +448,14 @@ const ProcessDesignerInner: React.FC = () => {
     try {
       setSaving(true);
       
-      // Remove onEdit and onAddNext callbacks before saving (they're functions and can't be serialized)
+      // Remove onEdit, onAddNext, and onConfigure callbacks before saving (they're functions and can't be serialized)
       const nodesToSave = nodes.map((node) => ({
         ...node,
         data: {
           ...node.data,
           onEdit: undefined,
           onAddNext: undefined,
+          onConfigure: undefined,
         },
       }));
 
@@ -439,6 +465,7 @@ const ProcessDesignerInner: React.FC = () => {
         flowDefinition: {
           nodes: nodesToSave,
           edges,
+          triggerConfig: currentTriggerConfig,
           executionMode: 'sequential',
         },
       };
@@ -605,10 +632,15 @@ const ProcessDesignerInner: React.FC = () => {
                       type: 'start',
                       position: { x: 250, y: 100 },
                       data: {
+                        label: 'START',
+                        trigger: currentTriggerConfig,
                         showPlusButton: true, // Will be updated by effect
                         onAddNext: () => {
                           setTargetNodeForPlus('start-1');
                           setShowActionSearch(true);
+                        },
+                        onConfigure: () => {
+                          setTriggerConfigOpen(true);
                         },
                       },
                     };
@@ -777,6 +809,31 @@ const ProcessDesignerInner: React.FC = () => {
         title={alertDialog.title}
         message={alertDialog.message}
         type={alertDialog.type}
+      />
+
+      {/* Trigger Configuration Panel */}
+      <TriggerConfigPanel
+        isOpen={triggerConfigOpen}
+        currentConfig={currentTriggerConfig}
+        onClose={() => setTriggerConfigOpen(false)}
+        onSave={(config) => {
+          setCurrentTriggerConfig(config);
+          // Update all start nodes with new trigger config
+          setNodes((nds) =>
+            nds.map((node) =>
+              node.type === 'start'
+                ? {
+                    ...node,
+                    data: {
+                      ...node.data,
+                      trigger: config,
+                    },
+                  }
+                : node
+            )
+          );
+          setTriggerConfigOpen(false);
+        }}
       />
 
       {/* Action Search Modal */}
