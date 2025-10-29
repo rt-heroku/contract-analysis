@@ -4,6 +4,7 @@ import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/common/Tabs';
+import { ConnectorActionModal } from '@/components/actions/ConnectorActionModal';
 import { 
   FileText, Network, Save, GitBranch, RefreshCw, ChevronDown, ChevronRight,
   Box, User, Plug, Zap, Plus, Search, Send, Inbox
@@ -83,6 +84,10 @@ export const Actions: React.FC = () => {
 
   // Collapsed state for individual connectors
   const [connectorCollapsed, setConnectorCollapsed] = useState<Record<number, boolean>>({});
+  
+  // Connector action modal
+  const [selectedAction, setSelectedAction] = useState<Action | null>(null);
+  const [isConnectorModalOpen, setIsConnectorModalOpen] = useState(false);
   
   const [alertDialog, setAlertDialog] = useState({
     isOpen: false,
@@ -172,7 +177,7 @@ export const Actions: React.FC = () => {
         key={action.id}
         className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
         onClick={() => {
-          // System actions are read-only, don't navigate
+          // System actions are read-only, show info dialog
           if (action.isSystem) {
             setAlertDialog({
               isOpen: true,
@@ -180,7 +185,14 @@ export const Actions: React.FC = () => {
               message: 'System actions are read-only and cannot be edited.',
               type: 'info',
             });
-          } else {
+          } 
+          // Connector actions show read-only details modal
+          else if (action.actionType === 'connector') {
+            setSelectedAction(action);
+            setIsConnectorModalOpen(true);
+          } 
+          // User actions can be edited
+          else {
             navigate(`/actions/edit/${action.id}`);
           }
         }}
@@ -425,6 +437,15 @@ export const Actions: React.FC = () => {
         title={alertDialog.title}
         message={alertDialog.message}
         type={alertDialog.type}
+      />
+
+      <ConnectorActionModal
+        isOpen={isConnectorModalOpen}
+        action={selectedAction}
+        onClose={() => {
+          setIsConnectorModalOpen(false);
+          setSelectedAction(null);
+        }}
       />
     </div>
   );

@@ -192,6 +192,9 @@ export const Connectors: React.FC = () => {
       message: `Are you sure you want to delete "${connector.name}"? This action cannot be undone.`,
       onConfirm: async () => {
         try {
+          // Close confirm dialog immediately
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          
           await api.delete(`/connectors/${connector.id}`);
           setAlertDialog({
             isOpen: true,
@@ -201,6 +204,9 @@ export const Connectors: React.FC = () => {
           });
           loadConnectors();
         } catch (error: any) {
+          // Close confirm dialog on error too
+          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+          
           setAlertDialog({
             isOpen: true,
             title: 'Error',
