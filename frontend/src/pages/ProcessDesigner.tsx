@@ -712,6 +712,34 @@ const ProcessDesignerInner: React.FC = () => {
     }
   }, [rightPanelOpen]);
   
+  // Handle node deletion (keyboard Delete key)
+  const onNodesDelete = useCallback((nodesToDelete: Node[]) => {
+    // Check if any node to delete is Global Error
+    const hasGlobalError = nodesToDelete.some(node => node.type === 'globalError');
+    
+    if (hasGlobalError) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Cannot Delete Global Error',
+        message: 'The Global Error handler is required and cannot be deleted. It serves as a fallback for unhandled errors in your process.',
+        type: 'warning',
+      });
+      
+      // Filter out Global Error nodes from deletion
+      const allowedDeletions = nodesToDelete.filter(node => node.type !== 'globalError');
+      
+      if (allowedDeletions.length > 0) {
+        // Delete only the allowed nodes
+        setNodes((nds) => nds.filter((n) => !allowedDeletions.some(d => d.id === n.id)));
+        setEdges((eds) => eds.filter((e) => 
+          !allowedDeletions.some(d => d.id === e.source || d.id === e.target)
+        ));
+      }
+      
+      return; // Prevent default deletion
+    }
+  }, []);
+  
   // Canvas context menu handlers
   const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
@@ -912,6 +940,7 @@ const ProcessDesignerInner: React.FC = () => {
                   onPaneClick={onPaneClick}
                   onNodeContextMenu={onNodeContextMenu}
                   onPaneContextMenu={onPaneContextMenu}
+                  onNodesDelete={onNodesDelete}
                   onMoveEnd={onMoveEnd}
                   nodeTypes={nodeTypes}
                   edgeTypes={edgeTypes}
