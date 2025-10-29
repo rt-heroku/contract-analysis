@@ -171,7 +171,19 @@ export const Actions: React.FC = () => {
       <div
         key={action.id}
         className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
-        onClick={() => navigate(`/actions/${action.id}`)}
+        onClick={() => {
+          // System actions are read-only, don't navigate
+          if (action.isSystem) {
+            setAlertDialog({
+              isOpen: true,
+              title: 'System Action',
+              message: 'System actions are read-only and cannot be edited.',
+              type: 'info',
+            });
+          } else {
+            navigate(`/actions/edit/${action.id}`);
+          }
+        }}
       >
         <div className="flex items-start space-x-3">
           <div
