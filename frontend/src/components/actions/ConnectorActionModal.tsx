@@ -12,10 +12,10 @@ interface ConnectorActionModalProps {
 export const ConnectorActionModal: React.FC<ConnectorActionModalProps> = ({ isOpen, action, onClose }) => {
   if (!isOpen || !action) return null;
 
-  const executorConfig = action.executorConfig || {};
-  const parameters = executorConfig.parameters || {};
-  const requestBody = executorConfig.requestBody;
-  const responses = action.outputSchema?.properties || {};
+  const executorConfig = action?.executorConfig || {};
+  const parameters = executorConfig?.parameters || {};
+  const requestBody = executorConfig?.requestBody;
+  const responses = action?.outputSchema?.properties || {};
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -25,13 +25,13 @@ export const ConnectorActionModal: React.FC<ConnectorActionModalProps> = ({ isOp
           <div className="flex items-center space-x-3">
             <div
               className="p-2 rounded-lg"
-              style={{ backgroundColor: `${action.color}20` }}
+              style={{ backgroundColor: `${action?.color || '#3B82F6'}20` }}
             >
-              <Code className="w-6 h-6" style={{ color: action.color }} />
+              <Code className="w-6 h-6" style={{ color: action?.color || '#3B82F6' }} />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{action.displayName}</h2>
-              <p className="text-sm text-gray-500">{action.description}</p>
+              <h2 className="text-2xl font-bold text-gray-900">{action?.displayName || 'Connector Action'}</h2>
+              <p className="text-sm text-gray-500">{action?.description || 'No description available'}</p>
             </div>
           </div>
           <button
@@ -49,17 +49,19 @@ export const ConnectorActionModal: React.FC<ConnectorActionModalProps> = ({ isOp
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Connector</label>
               <div className="flex items-center space-x-2">
-                {action.connector && (
+                {action?.connector ? (
                   <>
                     <Badge variant="success">{action.connector.name}</Badge>
                     <span className="text-sm text-gray-500">({action.connector.connectorType})</span>
                   </>
+                ) : (
+                  <span className="text-sm text-gray-400">No connector</span>
                 )}
               </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <Badge variant="default">{action.category}</Badge>
+              <Badge variant="default">{action?.category || 'Uncategorized'}</Badge>
             </div>
           </div>
 
@@ -85,7 +87,7 @@ export const ConnectorActionModal: React.FC<ConnectorActionModalProps> = ({ isOp
           )}
 
           {/* Operation ID */}
-          {action.connectorOperation && (
+          {action?.connectorOperation && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Operation ID</label>
               <code className="text-sm bg-gray-100 px-3 py-2 rounded border border-gray-300 font-mono block">
@@ -109,22 +111,24 @@ export const ConnectorActionModal: React.FC<ConnectorActionModalProps> = ({ isOp
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {Object.entries(parameters).map(([name, param]: [string, any]) => (
-                      <tr key={name}>
-                        <td className="px-4 py-2 font-mono text-sm text-gray-900">{name}</td>
-                        <td className="px-4 py-2 text-sm text-gray-600">
-                          <Badge variant="default">{param.type || param.schema?.type || 'any'}</Badge>
-                        </td>
-                        <td className="px-4 py-2 text-sm">
-                          {param.required ? (
-                            <Badge variant="error">Required</Badge>
-                          ) : (
-                            <span className="text-gray-400">Optional</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-600">{param.description || '-'}</td>
-                      </tr>
-                    ))}
+                    {Object.entries(parameters)
+                      .filter(([_, param]) => param !== null && param !== undefined)
+                      .map(([name, param]: [string, any]) => (
+                        <tr key={name}>
+                          <td className="px-4 py-2 font-mono text-sm text-gray-900">{name}</td>
+                          <td className="px-4 py-2 text-sm text-gray-600">
+                            <Badge variant="default">{param?.type || param?.schema?.type || 'any'}</Badge>
+                          </td>
+                          <td className="px-4 py-2 text-sm">
+                            {param?.required ? (
+                              <Badge variant="error">Required</Badge>
+                            ) : (
+                              <span className="text-gray-400">Optional</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-gray-600">{param?.description || '-'}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -156,7 +160,7 @@ export const ConnectorActionModal: React.FC<ConnectorActionModalProps> = ({ isOp
           )}
 
           {/* Configuration Schema */}
-          {action.configSchema && Object.keys(action.configSchema.properties || {}).length > 0 && (
+          {action?.configSchema && Object.keys(action.configSchema?.properties || {}).length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Configuration Schema</h3>
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
@@ -172,21 +176,21 @@ export const ConnectorActionModal: React.FC<ConnectorActionModalProps> = ({ isOp
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-gray-500">Action Type:</span>{' '}
-                <span className="font-medium text-gray-900">{action.actionType}</span>
+                <span className="font-medium text-gray-900">{action?.actionType || 'N/A'}</span>
               </div>
               <div>
                 <span className="text-gray-500">Executor Type:</span>{' '}
-                <span className="font-medium text-gray-900">{action.executorType}</span>
+                <span className="font-medium text-gray-900">{action?.executorType || 'N/A'}</span>
               </div>
               <div>
                 <span className="text-gray-500">Status:</span>{' '}
-                {action.isActive ? (
+                {action?.isActive ? (
                   <Badge variant="success">Active</Badge>
                 ) : (
                   <Badge variant="warning">Inactive</Badge>
                 )}
               </div>
-              {action.connector && (
+              {action?.connector && (
                 <div>
                   <span className="text-gray-500">Connector ID:</span>{' '}
                   <span className="font-mono text-sm text-gray-900">{action.connectorId}</span>
@@ -202,7 +206,7 @@ export const ConnectorActionModal: React.FC<ConnectorActionModalProps> = ({ isOp
             <span className="font-medium">Read-Only:</span> This action was auto-generated from an OpenAPI specification
           </div>
           <div className="flex space-x-2">
-            {action.connector && (
+            {action?.connector && (
               <Button
                 variant="outline"
                 onClick={() => window.location.href = `/connectors`}
