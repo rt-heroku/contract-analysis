@@ -4,6 +4,7 @@ import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { IconUpload } from '@/components/common/IconUpload';
 import { 
   Plus, Edit, Trash2, TestTube, Eye, Database, Globe, 
   HardDrive, FolderOpen, Server, Code, X
@@ -19,6 +20,7 @@ interface Connector {
   config: any;
   openApiSpec?: any;
   version?: string;
+  iconUrl?: string;
   createdAt: string;
   creator: {
     firstName: string;
@@ -64,6 +66,7 @@ export const Connectors: React.FC = () => {
     name: '',
     connectorType: 'rest',
     authType: 'none',
+    iconUrl: null as string | null,
     config: {
       baseUrl: '',
       username: '',
@@ -180,6 +183,7 @@ export const Connectors: React.FC = () => {
       name: connector.name,
       connectorType: connector.connectorType,
       authType: connector.authType || 'none',
+      iconUrl: connector.iconUrl || null,
       config: connector.config || {},
     });
     setShowModal(true);
@@ -308,6 +312,7 @@ export const Connectors: React.FC = () => {
       name: '',
       connectorType: 'rest',
       authType: 'none',
+      iconUrl: null,
       config: {
         baseUrl: '',
         username: '',
@@ -748,6 +753,13 @@ export const Connectors: React.FC = () => {
                     <option value="file">File System</option>
                   </select>
                 </div>
+
+                <IconUpload
+                  currentIcon={formData.iconUrl || undefined}
+                  onIconChange={(iconUrl) => setFormData({ ...formData, iconUrl })}
+                  label="Custom Icon (Optional)"
+                  helpText="Upload a custom icon for this connector (PNG, JPG, SVG - max 512KB)"
+                />
 
                 {formData.connectorType === 'rest' && (
                   <>
