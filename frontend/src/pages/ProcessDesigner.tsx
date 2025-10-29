@@ -21,7 +21,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, X } from 'lucide-react';
+import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
 import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
@@ -86,6 +86,24 @@ const ProcessDesignerInner: React.FC = () => {
   
   // Process properties modal state
   const [processPropertiesOpen, setProcessPropertiesOpen] = useState(false);
+  
+  // UI state for panels
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [selectedNodeForProps, setSelectedNodeForProps] = useState<Node | null>(null);
+  
+  // Zoom state
+  const [currentZoom, setCurrentZoom] = useState(0.4);
+  
+  // Canvas context menu
+  const [canvasContextMenu, setCanvasContextMenu] = useState<{
+    x: number;
+    y: number;
+    visible: boolean;
+  }>({ x: 0, y: 0, visible: false });
+  
+  // Get ReactFlow instance for zoom control
+  const reactFlowInstance = useReactFlow();
   
   const [alertDialog, setAlertDialog] = useState({
     isOpen: false,
@@ -592,6 +610,83 @@ const ProcessDesignerInner: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
+  
+  // Zoom handlers
+  const handleZoomIn = useCallback(() => {
+    reactFlowInstance.zoomIn();
+    setCurrentZoom(reactFlowInstance.getZoom());
+  }, [reactFlowInstance]);
+  
+  const handleZoomOut = useCallback(() => {
+    reactFlowInstance.zoomOut();
+    setCurrentZoom(reactFlowInstance.getZoom());
+  }, [reactFlowInstance]);
+  
+  // Update zoom state when viewport changes
+  const onMoveEnd = useCallback(() => {
+    setCurrentZoom(reactFlowInstance.getZoom());
+  }, [reactFlowInstance]);
+  
+  // Handle node selection for right properties panel
+  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    setSelectedNodeForProps(node);
+  }, []);
+  
+  // Canvas context menu handlers
+  const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
+    event.preventDefault();
+    setCanvasContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      visible: true,
+    });
+  }, []);
+  
+  const closeCanvasContextMenu = useCallback(() => {
+    setCanvasContextMenu({ x: 0, y: 0, visible: false });
+  }, []);
+  
+  // Handle canvas context menu actions
+  const handleCanvasMenuAction = (action: string) => {
+    closeCanvasContextMenu();
+    
+    switch(action) {
+      case 'add-action':
+        setShowActionSearch(true);
+        setTargetNodeForPlus(null);
+        break;
+      case 'refresh-metadata':
+        console.log('Refresh metadata');
+        break;
+      case 'view-connectors':
+        navigate('/connectors');
+        break;
+      case 'view-user-actions':
+        navigate('/actions');
+        break;
+      case 'zoom-in':
+        handleZoomIn();
+        break;
+      case 'zoom-out':
+        handleZoomOut();
+        break;
+      case 'run':
+        handleExecute();
+        break;
+      case 'save':
+        handleSave();
+        break;
+      case 'validate':
+        console.log('Validate process');
+        break;
+      case 'export':
+        handleExport();
+        break;
+      case 'properties':
+        setProcessPropertiesOpen(true);
+        break;
+    }
+  };
 
   if (loading) {
     return (
@@ -648,20 +743,35 @@ const ProcessDesignerInner: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Collapsible Action Palette - Takes full height with internal scroll */}
-        <div className="w-64 flex flex-col bg-white border-r shadow-sm">
-          <CollapsibleActionPalette
-            actions={actions}
-            onDragStart={(event, action) => {
-              event.dataTransfer.setData('application/json', JSON.stringify(action));
-              event.dataTransfer.effectAllowed = 'move';
-            }}
-          />
-        </div>
+      <div className="flex-1 flex overflow-hidden" onClick={closeCanvasContextMenu}>
+        {/* Left Panel - Collapsible Action Palette */}
+        {!leftPanelCollapsed && (
+          <div className="w-64 flex-shrink-0 flex flex-col bg-white border-r shadow-sm">
+            <CollapsibleActionPalette
+              actions={actions}
+              onDragStart={(event, action) => {
+                event.dataTransfer.setData('application/json', JSON.stringify(action));
+                event.dataTransfer.effectAllowed = 'move';
+              }}
+            />
+          </div>
+        )}
+        
+        {/* Left Panel Collapse Toggle */}
+        <button
+          onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
+          className="w-6 flex-shrink-0 bg-gray-100 hover:bg-gray-200 border-r border-gray-300 flex items-center justify-center transition-colors"
+          title={leftPanelCollapsed ? 'Show actions panel' : 'Hide actions panel'}
+        >
+          {leftPanelCollapsed ? (
+            <ChevronRight className="w-4 h-4 text-gray-600" />
+          ) : (
+            <ChevronLeft className="w-4 h-4 text-gray-600" />
+          )}
+        </button>
 
         {/* Canvas - Fill remaining space */}
-        <div className="flex-1 flex flex-col" ref={reactFlowWrapper}>
+        <div className="flex-1 flex flex-col min-w-0" ref={reactFlowWrapper}>
           {nodes.length === 0 ? (
             <div className="flex items-center justify-center h-full bg-gray-50">
               <div className="text-center">
@@ -718,7 +828,10 @@ const ProcessDesignerInner: React.FC = () => {
                   onConnect={onConnect}
                   onDrop={onDrop}
                   onDragOver={onDragOver}
+                  onNodeClick={onNodeClick}
                   onNodeContextMenu={onNodeContextMenu}
+                  onPaneContextMenu={onPaneContextMenu}
+                  onMoveEnd={onMoveEnd}
                   nodeTypes={nodeTypes}
                   edgeTypes={edgeTypes}
                   fitView
@@ -758,6 +871,15 @@ const ProcessDesignerInner: React.FC = () => {
                     </button>
                   </div>
                   
+                  {/* Zoom Percentage Display */}
+                  <div className="absolute top-4 left-4" style={{ marginLeft: '104px' }}>
+                    <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 flex items-center space-x-2">
+                      <span className="text-xs font-semibold text-gray-700">
+                        {Math.round(currentZoom * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                  
                   {/* MiniMap positioned at top-right */}
                   <MiniMap
                     position="top-right"
@@ -777,6 +899,95 @@ const ProcessDesignerInner: React.FC = () => {
             </>
           )}
         </div>
+        
+        {/* Right Panel Collapse Toggle */}
+        <button
+          onClick={() => setRightPanelOpen(!rightPanelOpen)}
+          className="w-6 flex-shrink-0 bg-gray-100 hover:bg-gray-200 border-l border-gray-300 flex items-center justify-center transition-colors"
+          title={rightPanelOpen ? 'Hide properties panel' : 'Show properties panel'}
+        >
+          {rightPanelOpen ? (
+            <ChevronRight className="w-4 h-4 text-gray-600" />
+          ) : (
+            <ChevronLeft className="w-4 h-4 text-gray-600" />
+          )}
+        </button>
+        
+        {/* Right Properties Panel */}
+        {rightPanelOpen && (
+          <div className="w-80 flex-shrink-0 bg-white border-l shadow-lg flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-900">Properties</h3>
+              <p className="text-xs text-gray-500 mt-1">Quick edit panel</p>
+            </div>
+            
+            {selectedNodeForProps ? (
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Node ID
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedNodeForProps.id}
+                      disabled
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded bg-gray-50"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Display Name
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedNodeForProps.data?.displayName || ''}
+                      onChange={(e) => {
+                        const updatedNode = {
+                          ...selectedNodeForProps,
+                          data: { ...selectedNodeForProps.data, displayName: e.target.value }
+                        };
+                        setSelectedNodeForProps(updatedNode);
+                        setNodes(nodes.map(n => n.id === updatedNode.id ? updatedNode : n));
+                      }}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Type
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedNodeForProps.type || ''}
+                      disabled
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded bg-gray-50"
+                    />
+                  </div>
+                  
+                  <Button
+                    onClick={() => {
+                      setEditModalOpen(true);
+                      setSelectedNode(selectedNodeForProps);
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    Open Full Editor
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center p-4">
+                <div className="text-center text-gray-500">
+                  <p className="text-sm">No node selected</p>
+                  <p className="text-xs mt-1">Click on a node to view properties</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Context Menu */}
@@ -820,6 +1031,122 @@ const ProcessDesignerInner: React.FC = () => {
           }}
           onClose={() => setContextMenu(null)}
         />
+      )}
+      
+      {/* Canvas Context Menu */}
+      {canvasContextMenu.visible && (
+        <div
+          className="fixed bg-white rounded-lg shadow-2xl border border-gray-200 py-2 z-50 min-w-[200px]"
+          style={{
+            left: `${canvasContextMenu.x}px`,
+            top: `${canvasContextMenu.y}px`,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 mb-1">
+            Canvas Actions
+          </div>
+          
+          <button
+            onClick={() => handleCanvasMenuAction('add-action')}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 hover:text-blue-600 flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Action</span>
+          </button>
+          
+          <button
+            onClick={() => handleCanvasMenuAction('refresh-metadata')}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 hover:text-blue-600 flex items-center space-x-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Refresh Metadata</span>
+          </button>
+          
+          <div className="border-t border-gray-100 my-1"></div>
+          
+          <button
+            onClick={() => handleCanvasMenuAction('view-connectors')}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 hover:text-blue-600"
+          >
+            View Connectors
+          </button>
+          
+          <button
+            onClick={() => handleCanvasMenuAction('view-user-actions')}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 hover:text-blue-600"
+          >
+            View User Actions
+          </button>
+          
+          <div className="border-t border-gray-100 my-1"></div>
+          
+          <button
+            onClick={() => handleCanvasMenuAction('zoom-in')}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 hover:text-blue-600 flex items-center space-x-2"
+          >
+            <ZoomIn className="w-4 h-4" />
+            <span>Zoom In</span>
+          </button>
+          
+          <button
+            onClick={() => handleCanvasMenuAction('zoom-out')}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 hover:text-blue-600 flex items-center space-x-2"
+          >
+            <ZoomOut className="w-4 h-4" />
+            <span>Zoom Out</span>
+          </button>
+          
+          <div className="border-t border-gray-100 my-1"></div>
+          
+          <button
+            onClick={() => handleCanvasMenuAction('run')}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-green-50 text-gray-700 hover:text-green-600 flex items-center space-x-2"
+          >
+            <Play className="w-4 h-4" />
+            <span>Run</span>
+          </button>
+          
+          <button
+            onClick={() => handleCanvasMenuAction('save')}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 hover:text-blue-600 flex items-center space-x-2"
+          >
+            <Save className="w-4 h-4" />
+            <span>Save</span>
+          </button>
+          
+          <button
+            onClick={() => handleCanvasMenuAction('validate')}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 hover:text-blue-600"
+          >
+            Validate
+          </button>
+          
+          <div className="border-t border-gray-100 my-1"></div>
+          
+          <button
+            onClick={() => handleCanvasMenuAction('export')}
+            className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 text-gray-700 hover:text-blue-600 flex items-center space-x-2"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export</span>
+          </button>
+          
+          <div className="border-t border-gray-100 my-1"></div>
+          
+          <button
+            onClick={() => handleCanvasMenuAction('properties')}
+            disabled={rightPanelOpen}
+            className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
+              rightPanelOpen
+                ? 'text-gray-400 cursor-not-allowed'
+                : 'hover:bg-blue-50 text-gray-700 hover:text-blue-600'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>Properties</span>
+          </button>
+        </div>
       )}
 
       {/* Edit Modal */}

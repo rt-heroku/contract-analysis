@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, PlayCircle, XCircle, Search, X } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+// import { ActionSelectionModal } from './ActionSelectionModal';
+// import { ConnectorSelectionModal } from './ConnectorSelectionModal';
 
 interface Action {
   id: number;
@@ -43,6 +45,30 @@ export const CollapsibleActionPalette = ({
   const [connectorCollapsed, setConnectorCollapsed] = useState<Record<string, boolean>>({});
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modal states (prepared for future integration)
+  // const [showActionModal, setShowActionModal] = useState(false);
+  // const [showConnectorModal, setShowConnectorModal] = useState(false);
+  
+  // Selected action IDs (persisted in localStorage) - for future modal filtering
+  const [selectedUserActionIds] = useState<number[]>(() => {
+    const saved = localStorage.getItem('selectedUserActions');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  const [selectedConnectorActionIds] = useState<number[]>(() => {
+    const saved = localStorage.getItem('selectedConnectorActions');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  // Persist selections to localStorage (for future use)
+  useEffect(() => {
+    localStorage.setItem('selectedUserActions', JSON.stringify(selectedUserActionIds));
+  }, [selectedUserActionIds]);
+  
+  useEffect(() => {
+    localStorage.setItem('selectedConnectorActions', JSON.stringify(selectedConnectorActionIds));
+  }, [selectedConnectorActionIds]);
 
   // Categorize actions
   const categories: Record<string, Action[]> = {
@@ -85,11 +111,17 @@ export const CollapsibleActionPalette = ({
       (a.name.toLowerCase().includes('rest') && a.actionType !== 'connector') ||
       (a.name.toLowerCase().includes('api') && a.actionType !== 'connector')
     ),
-    'User': actions.filter(a => a.actionType === 'user_defined'),
+    'User': actions.filter(a => 
+      a.actionType === 'user_defined' && 
+      (selectedUserActionIds.length === 0 || selectedUserActionIds.includes(a.id))
+    ),
   };
 
-  // Group connector actions by connector name
-  const connectorActions = actions.filter(a => a.actionType === 'connector');
+  // Group connector actions by connector name (filtered by selection)
+  const connectorActions = actions.filter(a => 
+    a.actionType === 'connector' &&
+    (selectedConnectorActionIds.length === 0 || selectedConnectorActionIds.includes(a.id))
+  );
   const connectorGroups: Record<string, Action[]> = {};
   connectorActions.forEach(action => {
     const connectorName = action.connector?.name || 'Unknown Connector';
@@ -98,6 +130,12 @@ export const CollapsibleActionPalette = ({
     }
     connectorGroups[connectorName].push(action);
   });
+  
+  // Get all available user actions for the modal (prepared for future integration)
+  // const allUserActions = actions.filter(a => a.actionType === 'user_defined');
+  
+  // Get all available connector actions for the modal (prepared for future integration)
+  // const allConnectorActions = actions.filter(a => a.actionType === 'connector');
 
   // Filter actions based on search
   const filteredActions = searchQuery.trim()
