@@ -115,6 +115,11 @@ export class OpenAPIImporterService {
       });
 
       logger.info(`Successfully created ${createdActions.length} connector actions`);
+      
+      // Sync connector actions to actions table for visibility in Actions library
+      logger.info('Syncing connector actions to actions table...');
+      await this.syncConnectorActionsToActionsTable(connectorId);
+      
       return {
         actionsCreated: createdActions.length,
         actions: createdActions,
@@ -123,6 +128,129 @@ export class OpenAPIImporterService {
       logger.error('Error importing OpenAPI spec:', error);
       throw new Error(`Failed to import OpenAPI spec: ${error.message}`);
     }
+  }
+  
+  /**
+   * Sync connector actions from connector_actions table to actions table
+   */
+  private async syncConnectorActionsToActionsTable(connectorId: number): Promise<void> {
+    try {
+      const connectorActions = await prisma.connectorAction.findMany({
+        where: { connectorId, isActive: true },
+        include: {
+          connector: {
+            select: {
+              id: true,
+              name: true,
+              connectorType: true,
+              createdBy: true,
+            },
+          },
+        },
+      });
+
+      for (const connectorAction of connectorActions) {
+        const actionName = `${connectorAction.connector.connectorType}_${connectorAction.connectorId}_${connectorAction.operation}`
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, '_');
+
+        const existing = await prisma.action.findUnique({
+          where: { name: actionName },
+        });
+
+        const actionData = {
+          name: actionName,
+          displayName: connectorAction.displayName,
+          description: connectorAction.description || `${connectorAction.connector.name} - ${connectorAction.displayName}`,
+          actionType: 'connector',
+          category: this.getCategoryFromConnectorType(connectorAction.connector.connectorType),
+          connectorId: connectorAction.connectorId,
+          connectorOperation: connectorAction.operation,
+          icon: this.getIconFromConnectorType(connectorAction.connector.connectorType),
+          color: this.getColorFromConnectorType(connectorAction.connector.connectorType),
+          configSchema: {
+            type: 'object',
+            properties: connectorAction.parameters || {},
+          },
+          inputSchema: {
+            type: 'object',
+            properties: typeof connectorAction.parameters === 'object' && connectorAction.parameters !== null
+              ? (connectorAction.parameters as any)
+              : {},
+          },
+          outputSchema: connectorAction.responses || {
+            type: 'object',
+            properties: {
+              data: { type: 'object' },
+              status: { type: 'number' },
+            },
+          },
+          executorType: 'connector',
+          executorConfig: {
+            connectorId: connectorAction.connectorId,
+            operation: connectorAction.operation,
+            method: connectorAction.method,
+            path: connectorAction.path,
+            parameters: connectorAction.parameters,
+            requestBody: connectorAction.requestBody,
+          },
+          isSystem: false,
+          isActive: connectorAction.isActive,
+          createdBy: connectorAction.connector.createdBy,
+          sharedWith: [],
+        };
+
+        if (existing) {
+          await prisma.action.update({
+            where: { id: existing.id },
+            data: actionData,
+          });
+        } else {
+          await prisma.action.create({ data: actionData });
+        }
+      }
+      
+      logger.info(`Synced ${connectorActions.length} connector actions to actions table`);
+    } catch (error: any) {
+      logger.error('Error syncing connector actions:', error);
+      // Don't throw - sync is not critical
+    }
+  }
+  
+  private getCategoryFromConnectorType(connectorType: string): string {
+    const categoryMap: Record<string, string> = {
+      rest: 'api',
+      database: 'storage',
+      s3: 'storage',
+      ftp: 'storage',
+      file: 'storage',
+      redis: 'storage',
+    };
+    return categoryMap[connectorType] || 'custom';
+  }
+
+  private getIconFromConnectorType(connectorType: string): string {
+    const iconMap: Record<string, string> = {
+      rest: 'Network',
+      database: 'Database',
+      s3: 'Save',
+      ftp: 'Upload',
+      file: 'FileText',
+      redis: 'Zap',
+    };
+    return iconMap[connectorType] || 'Plug';
+  }
+
+  private getColorFromConnectorType(connectorType: string): string {
+    const colorMap: Record<string, string> = {
+      rest: '#10b981',
+      database: '#3b82f6',
+      s3: '#f59e0b',
+      ftp: '#8b5cf6',
+      file: '#6366f1',
+      redis: '#ef4444',
+    };
+    return colorMap[connectorType] || '#6b7280';
   }
 
   /**

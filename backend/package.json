@@ -14,9 +14,10 @@
     "seed": "ts-node src/utils/seed.ts",
     "seed:once": "node dist/utils/seedOnce.js",
     "seed:actions": "ts-node src/utils/seedActions.ts",
+    "sync:connector-actions": "ts-node src/utils/syncConnectorActions.ts",
     "setup:demo": "prisma generate && prisma db push && npm run seed",
     "db:init": "psql $DATABASE_URL -f init-database.sql",
-    "postdeploy": "npm run seed:once && node dist/utils/seedActions.js",
+    "postdeploy": "npm run seed:once && node dist/utils/seedActions.js && node dist/utils/syncConnectorActions.js",
     "users": "ts-node src/scripts/users.ts"
   },
   "keywords": [
