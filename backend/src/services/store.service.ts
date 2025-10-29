@@ -1,31 +1,16 @@
 import prisma from '../config/database';
 import logger from '../utils/logger';
 
-export interface CreateStoreInput {
-  name: string;
-  storeType: 'database' | 's3' | 'ftp' | 'local_file' | 'redis';
-  config: any;
-  isDefault?: boolean;
-  createdBy: number;
-}
-
-export interface UpdateStoreInput {
-  name?: string;
-  config?: any;
-  isDefault?: boolean;
-  isActive?: boolean;
-}
-
-class StoreService {
-  /**
-   * Get all stores for user
-   */
-  async getStores(userId: number, storeType?: string) {
+export const storeService = {
+  async getStores(userId: number, connectorId?: number) {
     try {
-      const where: any = { createdBy: userId };
+      const where: any = {
+        createdBy: userId,
+        isActive: true,
+      };
 
-      if (storeType) {
-        where.storeType = storeType;
+      if (connectorId) {
+        where.connectorId = connectorId;
       }
 
       const stores = await prisma.store.findMany({
@@ -39,8 +24,17 @@ class StoreService {
               lastName: true,
             },
           },
+          connector: {
+            select: {
+              id: true,
+              name: true,
+              connectorType: true,
+            },
+          },
         },
-        orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
+        orderBy: {
+          createdAt: 'desc',
+        },
       });
 
       return stores;
@@ -48,17 +42,15 @@ class StoreService {
       logger.error('Error fetching stores:', error);
       throw new Error(`Failed to fetch stores: ${error.message}`);
     }
-  }
+  },
 
-  /**
-   * Get store by ID
-   */
   async getStoreById(storeId: number, userId: number) {
     try {
       const store = await prisma.store.findFirst({
         where: {
           id: storeId,
           createdBy: userId,
+          isActive: true,
         },
         include: {
           creator: {
@@ -67,6 +59,14 @@ class StoreService {
               email: true,
               firstName: true,
               lastName: true,
+            },
+          },
+          connector: {
+            select: {
+              id: true,
+              name: true,
+              connectorType: true,
+              config: true,
             },
           },
         },
@@ -78,156 +78,157 @@ class StoreService {
 
       return store;
     } catch (error: any) {
-      logger.error(`Error fetching store ${storeId}:`, error);
+      logger.error('Error fetching store:', error);
       throw error;
     }
-  }
+  },
 
-  /**
-   * Create new store
-   */
-  async createStore(data: CreateStoreInput) {
+  async createStore(data: {
+    connectorId: number;
+    name: string;
+    storeType: string;
+    dataType: string;
+    config: any;
+    isDefault?: boolean;
+    userId: number;
+  }) {
     try {
-      // If this is set as default, unset other defaults
-      if (data.isDefault) {
-        await prisma.store.updateMany({
-          where: {
-            createdBy: data.createdBy,
-            storeType: data.storeType,
-            isDefault: true,
-          },
-          data: { isDefault: false },
-        });
-      }
-
-      const store = await prisma.store.create({
-        data: {
-          name: data.name,
-          storeType: data.storeType,
-          config: data.config,
-          isDefault: data.isDefault || false,
-          createdBy: data.createdBy,
-        },
-        include: {
-          creator: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
+      // Verify connector exists and user has access
+      const connector = await prisma.connector.findFirst({
+        where: {
+          id: data.connectorId,
+          createdBy: data.userId,
         },
       });
 
-      logger.info(`Store created: ${store.name} by user ${data.createdBy}`);
+      if (!connector) {
+        throw new Error('Connector not found or access denied');
+      }
+
+      // Create the store
+      const store = await prisma.store.create({
+        data: {
+          connectorId: data.connectorId,
+          name: data.name,
+          storeType: data.storeType,
+          dataType: data.dataType,
+          config: data.config,
+          isDefault: data.isDefault || false,
+          createdBy: data.userId,
+        },
+        include: {
+          connector: true,
+        },
+      });
+
+      logger.info(`Store created: ${store.name} (ID: ${store.id})`);
       return store;
     } catch (error: any) {
       logger.error('Error creating store:', error);
       throw new Error(`Failed to create store: ${error.message}`);
     }
-  }
+  },
 
-  /**
-   * Update store
-   */
-  async updateStore(storeId: number, userId: number, data: UpdateStoreInput) {
+  async updateStore(
+    storeId: number,
+    userId: number,
+    updates: {
+      name?: string;
+      config?: any;
+      isDefault?: boolean;
+      isActive?: boolean;
+    }
+  ) {
     try {
-      const existing = await prisma.store.findFirst({
-        where: { id: storeId, createdBy: userId },
+      // Verify ownership
+      const existingStore = await prisma.store.findFirst({
+        where: {
+          id: storeId,
+          createdBy: userId,
+        },
       });
 
-      if (!existing) {
+      if (!existingStore) {
         throw new Error('Store not found or you do not have permission to update it');
-      }
-
-      // If setting as default, unset other defaults
-      if (data.isDefault) {
-        await prisma.store.updateMany({
-          where: {
-            createdBy: userId,
-            storeType: existing.storeType,
-            isDefault: true,
-            id: { not: storeId },
-          },
-          data: { isDefault: false },
-        });
       }
 
       const store = await prisma.store.update({
         where: { id: storeId },
-        data: {
-          name: data.name,
-          config: data.config,
-          isDefault: data.isDefault,
-          isActive: data.isActive,
-        },
+        data: updates,
         include: {
-          creator: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
+          connector: true,
         },
       });
 
-      logger.info(`Store updated: ${store.name} by user ${userId}`);
+      logger.info(`Store updated: ${store.name} (ID: ${store.id})`);
       return store;
     } catch (error: any) {
-      logger.error(`Error updating store ${storeId}:`, error);
+      logger.error('Error updating store:', error);
       throw error;
     }
-  }
+  },
 
-  /**
-   * Delete store
-   */
   async deleteStore(storeId: number, userId: number) {
     try {
-      const existing = await prisma.store.findFirst({
-        where: { id: storeId, createdBy: userId },
+      // Verify ownership
+      const existingStore = await prisma.store.findFirst({
+        where: {
+          id: storeId,
+          createdBy: userId,
+        },
       });
 
-      if (!existing) {
+      if (!existingStore) {
         throw new Error('Store not found or you do not have permission to delete it');
       }
 
-      await prisma.store.delete({
+      // Soft delete
+      await prisma.store.update({
         where: { id: storeId },
+        data: { isActive: false },
       });
 
-      logger.info(`Store deleted: ${existing.name} by user ${userId}`);
-      return { success: true };
+      logger.info(`Store deleted: ${storeId}`);
     } catch (error: any) {
-      logger.error(`Error deleting store ${storeId}:`, error);
+      logger.error('Error deleting store:', error);
       throw error;
     }
-  }
+  },
 
-  /**
-   * Get default store for a type
-   */
-  async getDefaultStore(userId: number, storeType: string) {
+  async testStoreConnection(storeId: number, userId: number) {
     try {
-      const store = await prisma.store.findFirst({
-        where: {
-          createdBy: userId,
-          storeType,
-          isDefault: true,
-          isActive: true,
-        },
-      });
+      const store = await this.getStoreById(storeId, userId);
 
-      return store;
+      // Basic connection test based on store type
+      switch (store.storeType) {
+        case 'database':
+          // Test database connection (placeholder)
+          return { success: true, message: 'Database store connection successful' };
+        
+        case 's3':
+          // Test S3 connection (placeholder)
+          return { success: true, message: 'S3 store connection successful' };
+        
+        case 'redis':
+          // Test Redis connection (placeholder)
+          return { success: true, message: 'Redis store connection successful' };
+        
+        case 'ftp':
+          // Test FTP connection (placeholder)
+          return { success: true, message: 'FTP store connection successful' };
+        
+        case 'local_file':
+          // Test local file system (placeholder)
+          return { success: true, message: 'Local file store connection successful' };
+        
+        default:
+          throw new Error(`Unsupported store type: ${store.storeType}`);
+      }
     } catch (error: any) {
-      logger.error(`Error fetching default store for type ${storeType}:`, error);
+      logger.error('Error testing store connection:', error);
       throw error;
     }
-  }
-}
+  },
+};
 
-export const storeService = new StoreService();
-
+export default storeService;

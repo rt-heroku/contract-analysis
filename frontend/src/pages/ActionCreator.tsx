@@ -245,6 +245,34 @@ export const ActionCreator: React.FC = () => {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
+                Display Name *
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.displayName}
+                onChange={(e) => {
+                  const displayName = e.target.value;
+                  // Auto-generate action name from display name if not manually edited
+                  const autoName = displayName
+                    .toLowerCase()
+                    .replace(/[^a-z0-9\s]/g, '')
+                    .replace(/\s+/g, '_')
+                    .replace(/^[0-9]+/, ''); // Remove leading numbers
+                  
+                  setFormData({ 
+                    ...formData, 
+                    displayName,
+                    name: autoName || formData.name
+                  });
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                placeholder="My Custom Action"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Action Name (identifier) *
               </label>
               <input
@@ -257,21 +285,7 @@ export const ActionCreator: React.FC = () => {
                 pattern="[a-z0-9_]+"
                 title="Lowercase letters, numbers, and underscores only"
               />
-              <p className="text-xs text-gray-500 mt-1">Lowercase letters, numbers, and underscores only</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Display Name *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.displayName}
-                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="My Custom Action"
-              />
+              <p className="text-xs text-gray-500 mt-1">Auto-generated from display name. You can edit if needed.</p>
             </div>
 
             <div>

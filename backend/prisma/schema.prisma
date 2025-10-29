@@ -103,6 +103,9 @@ model ActivityLog {
   id                Int      @id @default(autoincrement())
   userId            Int?     @map("user_id")
   jobId             String?  @map("job_id") @db.VarChar(100)
+  processId         Int?     @map("process_id") // For process-related logs
+  actionId          Int?     @map("action_id") // For action-related logs
+  logLevel          String?  @map("log_level") @db.VarChar(20) // 'debug', 'info', 'warn', 'error'
   actionType        String   @map("action_type") @db.VarChar(100)
   actionDescription String   @map("action_description") @db.Text
   ipAddress         String?  @map("ip_address") @db.VarChar(45)
@@ -115,7 +118,10 @@ model ActivityLog {
 
   @@index([userId])
   @@index([jobId])
+  @@index([processId])
+  @@index([actionId])
   @@index([actionType])
+  @@index([logLevel])
   @@index([createdAt(sort: Desc)])
   @@map("activity_logs")
 }
@@ -432,6 +438,7 @@ model Action {
   connectorId        Int?     @map("connector_id") // For connector actions
   connectorOperation String?  @map("connector_operation") @db.VarChar(200) // Operation name for connector actions
   icon               String?  @db.VarChar(50)
+  iconUrl            String?  @map("icon_url") @db.VarChar(500) // Custom icon URL (uploaded image, inherits from connector if not set)
   color              String?  @db.VarChar(20)
   configSchema       Json     @map("config_schema") // JSON schema for action configuration
   inputSchema        Json     @map("input_schema") // JSON schema for expected inputs
@@ -468,8 +475,9 @@ model Process {
   retryPolicy     Json?    @map("retry_policy")
   isActive        Boolean  @default(true) @map("is_active")
   isTemplate      Boolean  @default(false) @map("is_template")
-  triggerType     String   @default("manual") @map("trigger_type") @db.VarChar(50) // 'manual', 'ui_form', 'api', 'schedule', 'event'
+  triggerType     String   @default("manual") @map("trigger_type") @db.VarChar(50) // 'manual', 'ui_form', 'api', 'schedule', 'event', 'webhook', 'pubsub', 'stream'
   triggerConfig   Json?    @map("trigger_config") // Configuration for trigger (form fields, schedule, etc.)
+  triggerUrl      String?  @map("trigger_url") @db.VarChar(500) // Direct URL to execute this process (for menu integration, webhooks, etc.)
   createdBy       Int      @map("created_by")
   sharedWith      Json     @default("[]") @map("shared_with")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -539,12 +547,14 @@ model ActionExecution {
 model Connector {
   id            Int      @id @default(autoincrement())
   name          String   @db.VarChar(200)
-  connectorType String   @map("connector_type") @db.VarChar(50) // 'rest', 'database', 's3', 'ftp', 'file'
+  connectorType String   @map("connector_type") @db.VarChar(50) // 'rest', 'database', 's3', 'ftp', 'file', 'redis'
   version       String   @default("1.0.0") @db.VarChar(20)
   config        Json // Encrypted credentials, connection details
   authType      String?  @map("auth_type") @db.VarChar(50) // 'basic', 'bearer', 'oauth2', 'api_key'
   openApiSpec   Json?    @map("open_api_spec") // For REST connectors - OpenAPI/Swagger spec
+  iconUrl       String?  @map("icon_url") @db.VarChar(500) // Custom icon URL (uploaded image)
   isActive      Boolean  @default(true) @map("is_active")
+  isAutoCreated Boolean  @default(false) @map("is_auto_created") // Auto-detected from env vars
   createdBy     Int      @map("created_by")
   sharedWith    Json     @default("[]") @map("shared_with")
   createdAt     DateTime @default(now()) @map("created_at")
@@ -553,6 +563,7 @@ model Connector {
   creator          User              @relation("ConnectorCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   connectorActions ConnectorAction[]
   actions          Action[]          @relation("ConnectorActions")
+  stores           Store[]
 
   @@index([createdBy])
   @@index([connectorType])
@@ -585,17 +596,20 @@ model ConnectorAction {
 }
 
 model Store {
-  id        Int      @id @default(autoincrement())
-  name      String   @db.VarChar(200)
-  storeType String   @map("store_type") @db.VarChar(50) // 'database', 's3', 'ftp', 'local_file', 'redis'
-  config    Json // Encrypted connection details
-  isDefault Boolean  @default(false) @map("is_default")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdBy Int      @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          Int      @id @default(autoincrement())
+  connectorId Int      @map("connector_id") // FK to Connector
+  name        String   @db.VarChar(200)
+  storeType   String   @map("store_type") @db.VarChar(50) // 'database', 's3', 'ftp', 'local_file', 'redis'
+  dataType    String   @default("jsonb") @map("data_type") @db.VarChar(50) // 'jsonb', 'text', 'blob'
+  config      Json // Store-specific config (schema name, bucket, folder, etc.)
+  isDefault   Boolean  @default(false) @map("is_default")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdBy   Int      @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  creator User @relation("StoreCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  connector Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  creator   User      @relation("StoreCreator", fields: [createdBy], references: [id], onDelete: Cascade)
 
   @@index([createdBy])
   @@index([storeType])

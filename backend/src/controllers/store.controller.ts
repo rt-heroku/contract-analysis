@@ -11,10 +11,10 @@ export const storeController = {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const { storeType } = req.query;
+      const { connectorId } = req.query;
       const stores = await storeService.getStores(
         req.user.id,
-        storeType as string | undefined
+        connectorId ? parseInt(connectorId as string) : undefined
       );
 
       res.json({ stores });
@@ -46,15 +46,28 @@ export const storeController = {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
+      const { connectorId, name, storeType, dataType, config, isDefault } = req.body;
+
+      // Validation
+      if (!connectorId || !name || !storeType || !dataType) {
+        return res.status(400).json({ error: 'Missing required fields: connectorId, name, storeType, dataType' });
+      }
+
       const store = await storeService.createStore({
-        ...req.body,
-        createdBy: req.user.id,
+        connectorId: parseInt(connectorId),
+        name,
+        storeType,
+        dataType,
+        config,
+        isDefault,
+        userId: req.user.id,
       });
 
+      // Log activity
       await loggingService.logActivity({
         userId: req.user.id,
         actionType: 'store.create',
-        actionDescription: `Created store: ${store.name}`,
+        actionDescription: `Created store: ${name}`,
         ipAddress: getClientIp(req),
         userAgent: getUserAgent(req),
       });
@@ -73,8 +86,16 @@ export const storeController = {
       }
 
       const storeId = parseInt(req.params.id);
-      const store = await storeService.updateStore(storeId, req.user.id, req.body);
+      const { name, config, isDefault, isActive } = req.body;
 
+      const store = await storeService.updateStore(storeId, req.user.id, {
+        name,
+        config,
+        isDefault,
+        isActive,
+      });
+
+      // Log activity
       await loggingService.logActivity({
         userId: req.user.id,
         actionType: 'store.update',
@@ -99,6 +120,7 @@ export const storeController = {
       const storeId = parseInt(req.params.id);
       await storeService.deleteStore(storeId, req.user.id);
 
+      // Log activity
       await loggingService.logActivity({
         userId: req.user.id,
         actionType: 'store.delete',
@@ -107,11 +129,26 @@ export const storeController = {
         userAgent: getUserAgent(req),
       });
 
-      res.json({ success: true });
+      res.json({ message: 'Store deleted successfully' });
     } catch (error: any) {
       console.error('Error deleting store:', error);
       res.status(error.message.includes('not found') ? 404 : 500).json({ error: error.message });
     }
   },
-};
 
+  async testConnection(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const storeId = parseInt(req.params.id);
+      const result = await storeService.testStoreConnection(storeId, req.user.id);
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error testing store connection:', error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+};

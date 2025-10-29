@@ -19,7 +19,7 @@ import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { Play, Save, Download, ArrowLeft } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
-import { StartNode, EndNode } from '@/components/process-designer/StartEndNodes';
+import { StartNode } from '@/components/process-designer/StartEndNodes';
 import { CollapsibleActionPalette } from '@/components/process-designer/CollapsibleActionPalette';
 import { NodeContextMenu } from '@/components/process-designer/NodeContextMenu';
 import { NodeEditModal } from '@/components/process-designer/NodeEditModal';
@@ -69,7 +69,6 @@ export const ProcessDesigner: React.FC = () => {
   const nodeTypes: NodeTypes = useMemo(() => ({
     actionNode: ActionNode,
     start: StartNode,
-    end: EndNode,
   }), []);
 
   useEffect(() => {

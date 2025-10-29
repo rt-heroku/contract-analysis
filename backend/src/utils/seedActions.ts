@@ -457,6 +457,104 @@ export async function seedSystemActions() {
         executorType: 'builtin',
         executorConfig: {},
       },
+      {
+        name: 'log',
+        displayName: 'Log',
+        description: 'Log a message to activity logs',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'FileText',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            level: { type: 'string', enum: ['debug', 'info', 'warn', 'error'], default: 'info', description: 'Log level' },
+            message: { type: 'string', description: 'Log message (can reference {{input.field}})' },
+            metadata: { type: 'object', description: 'Additional metadata to log' },
+          },
+          required: ['message'],
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            logId: { type: 'number' },
+            timestamp: { type: 'string' },
+            level: { type: 'string' },
+            message: { type: 'string' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'redis_publish',
+        displayName: 'Redis Publish',
+        description: 'Publish a message to a Redis channel',
+        actionType: 'system',
+        category: 'messaging',
+        icon: 'Send',
+        color: '#ef4444',
+        configSchema: {
+          type: 'object',
+          properties: {
+            connectorId: { type: 'number', description: 'Redis connector ID' },
+            channel: { type: 'string', description: 'Redis channel name' },
+            message: { description: 'Message to publish (will be JSON stringified if object)' },
+          },
+          required: ['connectorId', 'channel', 'message'],
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            channel: { type: 'string' },
+            subscribersCount: { type: 'number' },
+            timestamp: { type: 'string' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'redis_subscribe',
+        displayName: 'Redis Subscribe',
+        description: 'Subscribe to a Redis channel and wait for a message',
+        actionType: 'system',
+        category: 'messaging',
+        icon: 'Inbox',
+        color: '#ef4444',
+        configSchema: {
+          type: 'object',
+          properties: {
+            connectorId: { type: 'number', description: 'Redis connector ID' },
+            channel: { type: 'string', description: 'Redis channel name' },
+            timeoutMs: { type: 'number', default: 5000, description: 'Timeout in milliseconds to wait for message' },
+            parseJson: { type: 'boolean', default: true, description: 'Auto-parse JSON messages' },
+          },
+          required: ['connectorId', 'channel'],
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            channel: { type: 'string' },
+            message: { description: 'Received message' },
+            timestamp: { type: 'string' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
     ];
 
     // Create or update system actions

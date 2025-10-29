@@ -138,6 +138,12 @@ async function seedOnce() {
     });
     logger.info('✓ Viewer user created/updated (demo@mulesoft.com / Demo@123)');
 
+    // Auto-detect and create connectors from environment variables
+    logger.info('');
+    logger.info('🔌 Auto-detecting connectors from environment variables...');
+    const autoConnectorService = (await import('../services/auto-connector.service')).default;
+    await autoConnectorService.detectAndCreateConnectors(adminUser.id);
+
     logger.info('');
     logger.info('✅ Database seeding completed successfully!');
     logger.info('');

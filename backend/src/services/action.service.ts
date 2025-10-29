@@ -44,10 +44,23 @@ class ActionService {
     isActive?: boolean;
   }) {
     try {
+      // Build base where clause - include:
+      // 1. Actions created by user
+      // 2. System actions
+      // 3. Connector actions (if user has access to the connector)
       const where: any = {
         OR: [
           { createdBy: userId },
           { isSystem: true },
+          { 
+            actionType: 'connector',
+            connector: {
+              OR: [
+                { createdBy: userId },
+                { sharedWith: { array_contains: userId } },
+              ],
+            },
+          },
         ],
       };
 
@@ -72,6 +85,14 @@ class ActionService {
               email: true,
               firstName: true,
               lastName: true,
+            },
+          },
+          connector: {
+            select: {
+              id: true,
+              name: true,
+              connectorType: true,
+              iconUrl: true,
             },
           },
         },
