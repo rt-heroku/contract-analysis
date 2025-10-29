@@ -1,13 +1,12 @@
 import { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { 
-  Network, Save, GitBranch, RefreshCw, Zap, FileText, 
-  Database, Box, Code, CheckCircle, Filter, Layers, Edit3, Plus
-} from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+import { Edit3, Plus } from 'lucide-react';
 
-const iconMap: Record<string, any> = {
-  Network, Save, GitBranch, RefreshCw, Zap, FileText,
-  Database, Box, Code, CheckCircle, Filter, Layers,
+// Helper to get icon component dynamically
+const getIconComponent = (iconName: string) => {
+  const Icon = (LucideIcons as any)[iconName];
+  return Icon || LucideIcons.Box;
 };
 
 interface ActionNodeData {
@@ -24,7 +23,7 @@ interface ActionNodeData {
 }
 
 export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) => {
-  const IconComponent = iconMap[data.icon || 'Zap'] || Zap;
+  const IconComponent = getIconComponent(data.icon || 'Zap');
   const bgColor = data.color || '#6366f1';
   
   const handleDoubleClick = () => {
@@ -88,11 +87,11 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
       ];
     }
     
-    // On Error: 2 handles (error, no-error)
+    // On Error: 2 handles (no-error left/green, error right/red)
     if (actionName.includes('on_error')) {
       return [
-        { id: 'error', label: 'error', position: 'left', color: '#ef4444' },
-        { id: 'no-error', label: '', position: 'right', color: '#22c55e' },
+        { id: 'no-error', label: '', position: 'left', color: '#22c55e' },
+        { id: 'error', label: 'error', position: 'right', color: '#ef4444' },
       ];
     }
     

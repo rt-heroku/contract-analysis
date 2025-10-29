@@ -308,9 +308,9 @@ const ProcessDesignerInner: React.FC = () => {
         return labels[connectionIndex] || 'branch';
       }
 
-      // On Error: "error" for first connection, nothing for second
+      // On Error: nothing for first (green/no-error), "error" for second
       if (actionName.includes('on_error')) {
-        return connectionIndex === 0 ? 'error' : undefined;
+        return connectionIndex === 1 ? 'error' : undefined;
       }
 
       // Switch Case: "case N" or "default" for last
