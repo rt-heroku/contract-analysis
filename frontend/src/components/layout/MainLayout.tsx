@@ -33,7 +33,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <TopBar />
         <main className="flex-1 relative overflow-hidden">
           <div className="absolute inset-0 overflow-y-auto">
-            <div className="container mx-auto px-4 pt-6 pb-2">
+            <div className=" mx-auto px-2 pt-2 pb-2">
               {children}
             </div>
           </div>

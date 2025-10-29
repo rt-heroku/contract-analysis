@@ -633,12 +633,14 @@ const ProcessDesignerInner: React.FC = () => {
     setCurrentZoom(reactFlowInstance.getZoom());
   }, [reactFlowInstance]);
   
-  // Initialize zoom on mount and set to 40%
+  // Initialize zoom on mount and set to 70% - only once
+  const hasSetInitialZoom = useRef(false);
   useEffect(() => {
-    if (reactFlowInstance && nodes.length > 0) {
-      // Set zoom to 40% explicitly
-      reactFlowInstance.setViewport({ x: 0, y: 0, zoom: 0.4 });
-      setCurrentZoom(0.4);
+    if (reactFlowInstance && nodes.length > 0 && !hasSetInitialZoom.current) {
+      // Set zoom to 70% explicitly - only on first load
+      reactFlowInstance.setViewport({ x: 0, y: 0, zoom: 0.7 });
+      setCurrentZoom(0.7);
+      hasSetInitialZoom.current = true;
     }
   }, [reactFlowInstance, nodes.length]);
   

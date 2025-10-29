@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, PlayCircle, XCircle, Search, X, Plus } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
-// import { ActionSelectionModal } from './ActionSelectionModal';
-// import { ConnectorSelectionModal } from './ConnectorSelectionModal';
+import { ActionSelectionModal } from './ActionSelectionModal';
+import { ConnectorSelectionModal } from './ConnectorSelectionModal';
 
 interface Action {
   id: number;
@@ -46,17 +46,17 @@ export const CollapsibleActionPalette = ({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Modal states (prepared for future integration)
-  // const [showActionModal, setShowActionModal] = useState(false);
-  // const [showConnectorModal, setShowConnectorModal] = useState(false);
+  // Modal states
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [showConnectorModal, setShowConnectorModal] = useState(false);
   
   // Selected action IDs (persisted in localStorage) - Only show selected
-  const [selectedUserActionIds /*, setSelectedUserActionIds */] = useState<number[]>(() => {
+  const [selectedUserActionIds, setSelectedUserActionIds] = useState<number[]>(() => {
     const saved = localStorage.getItem('selectedUserActions');
     return saved ? JSON.parse(saved) : [];
   });
   
-  const [selectedConnectorActionIds /*, setSelectedConnectorActionIds */] = useState<number[]>(() => {
+  const [selectedConnectorActionIds, setSelectedConnectorActionIds] = useState<number[]>(() => {
     const saved = localStorage.getItem('selectedConnectorActions');
     return saved ? JSON.parse(saved) : [];
   });
@@ -358,10 +358,7 @@ export const CollapsibleActionPalette = ({
                 {categoryActions.map(action => renderActionItem(action))}
                 {categoryName === 'User' && (
                   <button
-                    onClick={() => {
-                      // TODO: Open ActionSelectionModal
-                      console.log('Open User Actions selection modal');
-                    }}
+                    onClick={() => setShowActionModal(true)}
                     className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg border border-dashed border-blue-300 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
@@ -398,10 +395,7 @@ export const CollapsibleActionPalette = ({
             {!collapsed['User'] && (
               <div className="mt-1 space-y-1 pl-2">
                 <button
-                  onClick={() => {
-                    // TODO: Open ActionSelectionModal
-                    console.log('Open User Actions selection modal');
-                  }}
+                  onClick={() => setShowActionModal(true)}
                   className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg border border-dashed border-blue-300 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
@@ -466,10 +460,7 @@ export const CollapsibleActionPalette = ({
                 ))}
                 
                 <button
-                  onClick={() => {
-                    // TODO: Open ConnectorSelectionModal
-                    console.log('Open Connector selection modal');
-                  }}
+                  onClick={() => setShowConnectorModal(true)}
                   className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50 rounded-lg border border-dashed border-green-300 transition-colors mt-2"
                 >
                   <Plus className="w-4 h-4" />
@@ -528,6 +519,30 @@ export const CollapsibleActionPalette = ({
           </>
         )}
       </div>
+      
+      {/* Action Selection Modal */}
+      <ActionSelectionModal
+        isOpen={showActionModal}
+        onClose={() => setShowActionModal(false)}
+        selectedActionIds={selectedUserActionIds}
+        onSave={(newSelectedIds) => {
+          setSelectedUserActionIds(newSelectedIds);
+          localStorage.setItem('selectedUserActions', JSON.stringify(newSelectedIds));
+          setShowActionModal(false);
+        }}
+      />
+      
+      {/* Connector Selection Modal */}
+      <ConnectorSelectionModal
+        isOpen={showConnectorModal}
+        onClose={() => setShowConnectorModal(false)}
+        selectedConnectorActionIds={selectedConnectorActionIds}
+        onSave={(newSelectedIds) => {
+          setSelectedConnectorActionIds(newSelectedIds);
+          localStorage.setItem('selectedConnectorActions', JSON.stringify(newSelectedIds));
+          setShowConnectorModal(false);
+        }}
+      />
     </div>
   );
 };
