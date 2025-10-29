@@ -163,8 +163,8 @@ export const CollapsibleActionPalette = ({
   };
 
   // Group connector actions by connector name (filtered by selection) - ONLY show selected
-  const connectorActions = actions.filter(a => 
-    a.actionType === 'connector' &&
+  // Use allConnectorActions (fetched from connectors API) instead of actions prop
+  const connectorActions = allConnectorActions.filter(a => 
     selectedConnectorActionIds.includes(a.id)
   );
   const connectorGroups: Record<string, Action[]> = {};

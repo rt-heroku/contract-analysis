@@ -722,7 +722,7 @@ const ProcessDesignerInner: React.FC = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-full flex flex-col bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b px-4 py-2 flex items-center justify-between">
         <div className="flex items-center space-x-4">
