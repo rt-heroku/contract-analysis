@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
+import { IconUpload } from '@/components/common/IconUpload';
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -28,6 +29,7 @@ export const ActionCreator: React.FC = () => {
     category: 'custom',
     icon: 'Zap',
     color: '#6366f1',
+    iconUrl: null as string | null,
     executorType: 'rest_api',
     connectorId: null as number | null,
     
@@ -330,6 +332,13 @@ export const ActionCreator: React.FC = () => {
                 />
               </div>
             </div>
+
+            <IconUpload
+              currentIcon={formData.iconUrl || undefined}
+              onIconChange={(iconUrl) => setFormData({ ...formData, iconUrl })}
+              label="Custom Icon (Optional)"
+              helpText="Upload a custom icon for this action (PNG, JPG, SVG - max 512KB). If not provided, a default icon based on category will be used."
+            />
           </div>
         </Card>
 
