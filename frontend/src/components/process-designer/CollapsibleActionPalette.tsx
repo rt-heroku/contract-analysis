@@ -359,8 +359,8 @@ export const CollapsibleActionPalette = ({
                 {categoryName === 'User' && (
                   <button
                     onClick={() => {
-                      alert('User Actions selection modal - Coming soon!');
                       // TODO: Open ActionSelectionModal
+                      console.log('Open User Actions selection modal');
                     }}
                     className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg border border-dashed border-blue-300 transition-colors"
                   >
@@ -399,8 +399,8 @@ export const CollapsibleActionPalette = ({
               <div className="mt-1 space-y-1 pl-2">
                 <button
                   onClick={() => {
-                    alert('User Actions selection modal - Coming soon!');
                     // TODO: Open ActionSelectionModal
+                    console.log('Open User Actions selection modal');
                   }}
                   className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg border border-dashed border-blue-300 transition-colors"
                 >
@@ -467,8 +467,8 @@ export const CollapsibleActionPalette = ({
                 
                 <button
                   onClick={() => {
-                    alert('Connector selection modal - Coming soon!');
                     // TODO: Open ConnectorSelectionModal
+                    console.log('Open Connector selection modal');
                   }}
                   className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50 rounded-lg border border-dashed border-green-300 transition-colors mt-2"
                 >
@@ -506,8 +506,8 @@ export const CollapsibleActionPalette = ({
               <div className="mt-1 space-y-1 pl-2">
                 <button
                   onClick={() => {
-                    alert('Connector selection modal - Coming soon!');
                     // TODO: Open ConnectorSelectionModal
+                    console.log('Open Connector selection modal');
                   }}
                   className="w-full flex items-center space-x-2 px-3 py-2 text-sm text-green-600 hover:bg-green-50 rounded-lg border border-dashed border-green-300 transition-colors"
                 >

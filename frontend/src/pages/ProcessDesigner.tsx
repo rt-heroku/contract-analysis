@@ -633,17 +633,28 @@ const ProcessDesignerInner: React.FC = () => {
     setCurrentZoom(reactFlowInstance.getZoom());
   }, [reactFlowInstance]);
   
-  // Initialize zoom on mount
+  // Initialize zoom on mount and set to 40%
   useEffect(() => {
-    if (reactFlowInstance) {
-      setCurrentZoom(reactFlowInstance.getZoom());
+    if (reactFlowInstance && nodes.length > 0) {
+      // Set zoom to 40% explicitly
+      reactFlowInstance.setViewport({ x: 0, y: 0, zoom: 0.4 });
+      setCurrentZoom(0.4);
     }
-  }, [reactFlowInstance]);
+  }, [reactFlowInstance, nodes.length]);
   
   // Handle node selection for right properties panel
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     setSelectedNodeForProps(node);
   }, []);
+  
+  // Handle canvas click to show process properties
+  const onPaneClick = useCallback(() => {
+    setSelectedNodeForProps(null); // Clear node selection
+    if (rightPanelOpen) {
+      // If right panel is open, show process properties there
+      // For now, just clear the selected node
+    }
+  }, [rightPanelOpen]);
   
   // Canvas context menu handlers
   const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
@@ -712,7 +723,7 @@ const ProcessDesignerInner: React.FC = () => {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
+      <div className="bg-white border-b px-4 py-2 flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button
             onClick={() => navigate('/processes')}
@@ -773,13 +784,13 @@ const ProcessDesignerInner: React.FC = () => {
         {/* Left Panel Collapse Toggle */}
         <button
           onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-          className="w-6 flex-shrink-0 bg-gray-100 hover:bg-gray-200 border-r border-gray-300 flex items-center justify-center transition-colors"
+          className="w-3 flex-shrink-0 bg-gray-100 hover:bg-gray-200 border-r border-gray-300 flex items-center justify-center transition-colors"
           title={leftPanelCollapsed ? 'Show actions panel' : 'Hide actions panel'}
         >
           {leftPanelCollapsed ? (
-            <ChevronRight className="w-4 h-4 text-gray-600" />
+            <ChevronRight className="w-3 h-3 text-gray-600" />
           ) : (
-            <ChevronLeft className="w-4 h-4 text-gray-600" />
+            <ChevronLeft className="w-3 h-3 text-gray-600" />
           )}
         </button>
 
@@ -821,7 +832,7 @@ const ProcessDesignerInner: React.FC = () => {
           ) : (
             <>
               {/* Controls Bar - Top of canvas */}
-              <div className="bg-white border-b px-4 py-2 flex items-center justify-between shadow-sm z-10">
+              <div className="bg-white border-b px-3 py-1.5 flex items-center justify-between shadow-sm z-10">
                 <div className="text-sm text-gray-600">
                   {nodes.length} nodes, {edges.length} connections
                 </div>
@@ -842,12 +853,12 @@ const ProcessDesignerInner: React.FC = () => {
                   onDrop={onDrop}
                   onDragOver={onDragOver}
                   onNodeClick={onNodeClick}
+                  onPaneClick={onPaneClick}
                   onNodeContextMenu={onNodeContextMenu}
                   onPaneContextMenu={onPaneContextMenu}
                   onMoveEnd={onMoveEnd}
                   nodeTypes={nodeTypes}
                   edgeTypes={edgeTypes}
-                  fitView
                   defaultViewport={{ x: 0, y: 0, zoom: 0.4 }}
                   minZoom={0.1}
                   maxZoom={2}
@@ -916,13 +927,13 @@ const ProcessDesignerInner: React.FC = () => {
         {/* Right Panel Collapse Toggle */}
         <button
           onClick={() => setRightPanelOpen(!rightPanelOpen)}
-          className="w-6 flex-shrink-0 bg-gray-100 hover:bg-gray-200 border-l border-gray-300 flex items-center justify-center transition-colors"
+          className="w-3 flex-shrink-0 bg-gray-100 hover:bg-gray-200 border-l border-gray-300 flex items-center justify-center transition-colors"
           title={rightPanelOpen ? 'Hide properties panel' : 'Show properties panel'}
         >
           {rightPanelOpen ? (
-            <ChevronRight className="w-4 h-4 text-gray-600" />
+            <ChevronRight className="w-3 h-3 text-gray-600" />
           ) : (
-            <ChevronLeft className="w-4 h-4 text-gray-600" />
+            <ChevronLeft className="w-3 h-3 text-gray-600" />
           )}
         </button>
         
@@ -992,10 +1003,59 @@ const ProcessDesignerInner: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex items-center justify-center p-4">
-                <div className="text-center text-gray-500">
-                  <p className="text-sm">No node selected</p>
-                  <p className="text-xs mt-1">Click on a node to view properties</p>
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="space-y-4">
+                  <div className="text-sm text-gray-600 mb-4">
+                    <p className="font-medium text-gray-900 mb-2">Process Properties</p>
+                    <p className="text-xs">Configure the process settings</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Process Name
+                    </label>
+                    <input
+                      type="text"
+                      value={processName}
+                      onChange={(e) => setProcessName(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter process name"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      value={processDescription}
+                      onChange={(e) => setProcessDescription(e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                      placeholder="Add description..."
+                    />
+                  </div>
+                  
+                  <div className="pt-4 border-t border-gray-200">
+                    <p className="text-xs font-medium text-gray-700 mb-2">Statistics</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-gray-50 p-2 rounded">
+                        <p className="text-xs text-gray-500">Nodes</p>
+                        <p className="text-lg font-semibold text-gray-900">{nodes.length}</p>
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded">
+                        <p className="text-xs text-gray-500">Connections</p>
+                        <p className="text-lg font-semibold text-gray-900">{edges.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button
+                    onClick={() => setProcessPropertiesOpen(true)}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-2"
+                  >
+                    Full Settings
+                  </Button>
                 </div>
               </div>
             )}
