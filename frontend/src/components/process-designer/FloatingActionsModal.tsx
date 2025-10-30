@@ -171,7 +171,7 @@ export const FloatingActionsModal: React.FC<FloatingActionsModalProps> = ({
       <div className="bg-white shadow-2xl w-80 h-full flex flex-col border-r-2 border-gray-300">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <h2 className="text-lg font-bold text-gray-900">Nodes Library</h2>
+          <h2 className="text-lg font-bold text-gray-900">Actions Library</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"

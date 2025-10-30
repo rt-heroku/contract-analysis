@@ -597,10 +597,130 @@ export async function seedSystemActions() {
         configSchema: {
           type: 'object',
           properties: {
-            condition: { type: 'string', description: 'JavaScript condition to evaluate' },
-            maxIterations: { type: 'number', default: 100, description: 'Maximum iterations' },
+            conditions: {
+              type: 'array',
+              description: 'Conditional groups (same as IF THEN ELSE)',
+              items: {
+                type: 'object',
+                properties: {
+                  operator: { type: 'string', enum: ['AND', 'OR'] },
+                  conditions: { type: 'array' },
+                },
+              },
+            },
+            maxIterations: { type: 'number', default: 1000, description: 'Maximum iterations' },
             delayBetweenIterations: { type: 'number', default: 0, description: 'Delay in ms between iterations' },
-            subAction: { type: 'object', description: 'Action to execute in each iteration' },
+          },
+          required: ['conditions'],
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            iterations: { type: 'number' },
+            results: { type: 'array' },
+            completed: { type: 'boolean' },
+            maxIterationsReached: { type: 'boolean' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'break',
+        displayName: 'Break',
+        description: 'Exit the current loop immediately',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'CornerUpLeft',
+        color: '#ea580c',
+        configSchema: {
+          type: 'object',
+          properties: {
+            returnValue: { description: 'Optional value to return when breaking' },
+          },
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            broke: { type: 'boolean', default: true },
+            returnValue: { description: 'Value returned from break' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          breaksLoop: true,
+        },
+      },
+      {
+        name: 'continue',
+        displayName: 'Continue',
+        description: 'Skip to the next iteration of the current loop',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'CornerDownRight',
+        color: '#22c55e',
+        configSchema: {
+          type: 'object',
+          properties: {
+            skipCount: { type: 'number', default: 1, description: 'Number of iterations to skip' },
+          },
+        },
+        inputSchema: {
+          type: 'object',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            continued: { type: 'boolean', default: true },
+            skipped: { type: 'number' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          continuesLoop: true,
+        },
+      },
+      {
+        name: 'for_loop',
+        displayName: 'For Loop',
+        description: 'Traditional for loop with initialization, condition, and increment',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'Repeat',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            variableName: { 
+              type: 'string', 
+              default: 'i', 
+              description: 'Loop variable name (e.g., "i")' 
+            },
+            initialValue: { 
+              type: 'number', 
+              default: 0, 
+              description: 'Starting value (e.g., 0)' 
+            },
+            condition: { 
+              type: 'string', 
+              description: 'Loop condition (e.g., "i < 10")' 
+            },
+            increment: { 
+              type: 'string', 
+              default: 'i++', 
+              description: 'Increment expression (e.g., "i++", "i += 2")' 
+            },
+            maxIterations: { 
+              type: 'number', 
+              default: 10000, 
+              description: 'Safety limit for max iterations' 
+            },
           },
           required: ['condition'],
         },
@@ -611,6 +731,7 @@ export async function seedSystemActions() {
           type: 'object',
           properties: {
             iterations: { type: 'number' },
+            finalValue: { description: 'Final value of loop variable' },
             results: { type: 'array' },
             completed: { type: 'boolean' },
             maxIterationsReached: { type: 'boolean' },

@@ -29,6 +29,8 @@ import { StartNode, TriggerConfig } from '@/components/process-designer/StartNod
 import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
 import { IfThenElseNode } from '@/components/process-designer/IfThenElseNode';
 import { LoopContainerNode } from '@/components/process-designer/LoopContainerNode';
+import { BreakNode } from '@/components/process-designer/BreakNode';
+import { ContinueNode } from '@/components/process-designer/ContinueNode';
 import { FloatingActionsModal } from '@/components/process-designer/FloatingActionsModal';
 import { FloatingPropertiesPanel } from '@/components/process-designer/FloatingPropertiesPanel';
 import { NodeContextMenu } from '@/components/process-designer/NodeContextMenu';
@@ -258,6 +260,8 @@ const ProcessDesignerInner: React.FC = () => {
     globalError: GlobalErrorNode,
     ifThenElse: IfThenElseNode,
     loopContainer: LoopContainerNode,
+    break: BreakNode,
+    continue: ContinueNode,
   }), []);
 
   const edgeTypes: EdgeTypes = useMemo(() => ({
@@ -967,10 +971,67 @@ const ProcessDesignerInner: React.FC = () => {
     (event: React.DragEvent) => {
       event.preventDefault();
 
+      if (!reactFlowWrapper.current) return;
+
+      // Check if it's a break/continue drag from loop container
+      const loopActionType = event.dataTransfer.getData('application/reactflow');
+      if (loopActionType === 'break' || loopActionType === 'continue') {
+        const position = screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        });
+
+        const nodeId = `${loopActionType}-${Date.now()}`;
+        
+        // Check if dropping inside a loop container
+        let parentNodeId: string | undefined = undefined;
+        let relativePosition = position;
+        
+        for (const node of nodes) {
+          if (node.type === 'loopContainer') {
+            const nodeWidth = typeof node.style?.width === 'number' ? node.style.width : 600;
+            const nodeHeight = typeof node.style?.height === 'number' ? node.style.height : 400;
+            
+            if (
+              position.x >= node.position.x &&
+              position.x <= node.position.x + nodeWidth &&
+              position.y >= node.position.y &&
+              position.y <= node.position.y + nodeHeight
+            ) {
+              parentNodeId = node.id;
+              relativePosition = {
+                x: position.x - node.position.x,
+                y: position.y - node.position.y,
+              };
+              break;
+            }
+          }
+        }
+
+        // Create break or continue node
+        const newNode: Node = {
+          id: nodeId,
+          type: loopActionType,
+          position: parentNodeId ? relativePosition : position,
+          data: {
+            label: loopActionType === 'break' ? 'Break' : 'Continue',
+            layoutDirection: layoutDirection,
+            onEdit: () => handleEditNode(nodeId),
+            ...(loopActionType === 'continue' && { skipCount: 1 }),
+          },
+          ...(parentNodeId && { 
+            parentNode: parentNodeId,
+            extent: 'parent' as const,
+          }),
+        };
+
+        setNodes((nds) => nds.concat(newNode));
+        return;
+      }
+
+      // Handle regular action drops
       const actionData = event.dataTransfer.getData('application/json');
       if (!actionData) return;
-
-      if (!reactFlowWrapper.current) return;
 
       const action: Action = JSON.parse(actionData);
       
