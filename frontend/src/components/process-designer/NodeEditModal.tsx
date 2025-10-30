@@ -97,6 +97,11 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
       return renderSmartRouterFields();
     }
 
+    // Call Process / Workflow
+    if (actionName.includes('call_process') || actionName.includes('workflow')) {
+      return renderCallProcessFields();
+    }
+
     // Transform
     if (actionName.includes('transform')) {
       return renderTransformFields();
@@ -1092,6 +1097,161 @@ Consider: priority, amount, customer tier, and special requirements."
             </div>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  const renderCallProcessFields = () => {
+    // TODO: Fetch available processes from API (excluding current process)
+    const availableProcesses = [
+      { id: '1', name: 'bold-temple', hasInputTrigger: true, inputFields: ['orderId', 'priority', 'customerEmail'] },
+      { id: '2', name: 'order-processing', hasInputTrigger: false, inputFields: [] },
+      { id: '3', name: 'approval-workflow', hasInputTrigger: true, inputFields: ['amount', 'requestor'] },
+    ];
+
+    const selectedProcess = availableProcesses.find(p => p.id === formData.processId);
+
+    return (
+      <div className="space-y-6">
+        {/* Workflow Selection */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <span className="text-red-500">*</span> Select Workflow
+          </label>
+          <select
+            value={formData.processId || ''}
+            onChange={(e) => {
+              const process = availableProcesses.find(p => p.id === e.target.value);
+              setFormData({ 
+                ...formData, 
+                processId: e.target.value,
+                processName: process?.name || '',
+                inputMapping: {}, // Reset input mapping when workflow changes
+              });
+            }}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Select a workflow...</option>
+            {availableProcesses.map(process => (
+              <option key={process.id} value={process.id}>
+                {process.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Input Mapping Section */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center space-x-2">
+            <span>Input Mapping</span>
+            <div className="relative group">
+              <div className="w-4 h-4 rounded-full border-2 border-gray-400 flex items-center justify-center text-gray-400 text-xs cursor-help">
+                i
+              </div>
+              <div className="absolute left-0 top-6 w-64 bg-gray-900 text-white text-xs rounded-lg p-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                Map parent variables to child workflow input fields. The mapped values are what the child receives.
+              </div>
+            </div>
+          </label>
+
+          {!formData.processId ? (
+            <div className="border border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <div className="text-gray-400 mb-2">
+                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <p className="text-gray-500 font-medium">Select a workflow first</p>
+              <p className="text-xs text-gray-400 mt-1">Choose a workflow above to configure input mapping</p>
+            </div>
+          ) : !selectedProcess?.hasInputTrigger || selectedProcess.inputFields.length === 0 ? (
+            <div className="border border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <div className="text-gray-400 mb-2">
+                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <p className="text-gray-500 font-medium">No input fields defined</p>
+              <p className="text-xs text-gray-400 mt-1">The selected workflow needs an Input Trigger with defined fields</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {selectedProcess.inputFields.map((field) => (
+                <div key={field} className="flex items-center space-x-3">
+                  <label className="w-1/3 text-sm font-medium text-gray-700">
+                    {field}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.inputMapping?.[field] || ''}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        inputMapping: {
+                          ...formData.inputMapping,
+                          [field]: e.target.value,
+                        },
+                      });
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder={`{{parent.${field}}}`}
+                  />
+                </div>
+              ))}
+              <p className="text-xs text-gray-500 mt-2">
+                Use {`{{variable}}`} to reference parent workflow variables
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Advanced Options */}
+        {formData.processId && (
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Advanced Options</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Wait for Completion</label>
+                  <p className="text-xs text-gray-500">Block until child workflow finishes</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={formData.waitForCompletion ?? true}
+                  onChange={(e) => setFormData({ ...formData, waitForCompletion: e.target.checked })}
+                  className="w-10 h-5 rounded-full"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Timeout (ms)</label>
+                <input
+                  type="number"
+                  value={formData.timeoutMs || 300000}
+                  onChange={(e) => setFormData({ ...formData, timeoutMs: parseInt(e.target.value) || 300000 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  min="1000"
+                  step="1000"
+                  placeholder="300000"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Default: 5 minutes (300000ms)
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Output Information */}
+        {formData.processId && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="text-sm font-semibold text-blue-900 mb-2">Output Variables</h4>
+            <div className="space-y-1 text-xs text-blue-800">
+              <div><code className="bg-blue-100 px-1 py-0.5 rounded">result</code> – The child workflow's final response</div>
+              <div><code className="bg-blue-100 px-1 py-0.5 rounded">success</code> – Whether it ran without errors</div>
+              <div><code className="bg-blue-100 px-1 py-0.5 rounded">error</code> – Message when the run fails</div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };

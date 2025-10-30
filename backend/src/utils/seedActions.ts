@@ -514,39 +514,70 @@ export async function seedSystemActions() {
       {
         name: 'call_process',
         displayName: 'Call Process',
-        description: 'Execute another process as a sub-process',
+        description: 'Run another workflow inside the current flow',
         actionType: 'system',
-        category: 'control_flow',
+        category: 'execution',
         icon: 'Workflow',
         color: '#6366f1',
         configSchema: {
           type: 'object',
           properties: {
-            processId: { type: 'string', description: 'ID of the process to call' },
-            processName: { type: 'string', description: 'Name of the process to call (for display)' },
-            waitForCompletion: { type: 'boolean', default: true, description: 'Wait for sub-process to complete' },
-            inheritContext: { type: 'boolean', default: true, description: 'Pass current context to sub-process' },
-            timeoutMs: { type: 'number', default: 300000, description: 'Timeout in milliseconds (5 min default)' },
+            processId: { 
+              type: 'string', 
+              description: 'ID of the process to call (self-references blocked)' 
+            },
+            processName: { 
+              type: 'string', 
+              description: 'Name of the process to call (for display)' 
+            },
+            inputMapping: {
+              type: 'object',
+              description: 'Map parent variables to child workflow input fields',
+              additionalProperties: true,
+            },
+            waitForCompletion: { 
+              type: 'boolean', 
+              default: true, 
+              description: 'Wait for child workflow to complete' 
+            },
+            timeoutMs: { 
+              type: 'number', 
+              default: 300000, 
+              description: 'Timeout in milliseconds (5 min default)' 
+            },
           },
           required: ['processId'],
         },
         inputSchema: {
           type: 'object',
-          description: 'Input data to pass to the sub-process',
+          description: 'Parent workflow variables available for mapping',
         },
         outputSchema: {
           type: 'object',
           properties: {
-            executionId: { type: 'string', description: 'Execution ID of the sub-process' },
-            status: { type: 'string', description: 'Status of the sub-process execution' },
-            result: { description: 'Result from the sub-process' },
+            result: { 
+              description: 'The child workflow\'s final response' 
+            },
+            success: { 
+              type: 'boolean', 
+              description: 'Whether it ran without errors' 
+            },
+            error: { 
+              type: 'string', 
+              description: 'Message when the run fails' 
+            },
+            executionId: { 
+              type: 'string', 
+              description: 'Execution ID of the child workflow' 
+            },
             startedAt: { type: 'string' },
             completedAt: { type: 'string' },
           },
         },
         executorType: 'builtin',
         executorConfig: {
-          maxBranches: 1,
+          usesDeploymentVersion: true,
+          preventSelfReference: true,
         },
       },
       {
