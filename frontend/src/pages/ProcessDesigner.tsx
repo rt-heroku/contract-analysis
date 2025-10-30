@@ -1001,7 +1001,7 @@ const ProcessDesignerInner: React.FC = () => {
                   />
                   
                   {/* Process Properties Button - Next to Controls */}
-                  <div className="absolute top-4 left-4" style={{ marginLeft: '52px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '52px' }}>
                     <button
                       onClick={() => setProcessPropertiesOpen(true)}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1012,7 +1012,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Multi-Select Mode Button - Next to Gear */}
-                  <div className="absolute top-4 left-4" style={{ marginLeft: '104px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '104px' }}>
                     <button
                       onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
                       className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors ${
@@ -1025,7 +1025,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Zoom Percentage Display */}
-                  <div className="absolute top-4 left-4" style={{ marginLeft: '156px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '156px' }}>
                     <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 flex items-center space-x-2">
                       <span className="text-xs font-semibold text-gray-700">
                         {Math.round(currentZoom * 100)}%
