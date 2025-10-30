@@ -23,7 +23,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ZoomIn, ZoomOut, RefreshCw, Upload, ArrowLeftRight, ArrowUpDown, DatabaseZap, MousePointerSquareDashed, Variable } from 'lucide-react';
+import { Play, Save, Download, Search, Plus, Settings, ZoomIn, ZoomOut, RefreshCw, ArrowLeftRight, ArrowUpDown, DatabaseZap, MousePointerSquareDashed, Variable, FileUp, Edit2 } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
 import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
@@ -92,6 +92,7 @@ const ProcessDesignerInner: React.FC = () => {
   }, [nodes, onNodesChangeRaw]);
   const [processName, setProcessName] = useState('Untitled Process');
   const [processDescription, setProcessDescription] = useState('');
+  const [editingProcessName, setEditingProcessName] = useState(false);
   
   // Comprehensive process properties
   const [processProperties, setProcessProperties] = useState<ProcessProperties>({
@@ -1572,57 +1573,7 @@ const ProcessDesignerInner: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button
-            onClick={() => navigate('/processes')}
-            className="flex items-center space-x-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
-          </Button>
-          
-          <div>
-            <input
-              type="text"
-              value={processName}
-              onChange={(e) => setProcessName(e.target.value)}
-              className="text-2xl font-bold border-none outline-none focus:ring-0 bg-transparent"
-              placeholder="Process Name"
-            />
-            <input
-              type="text"
-              value={processDescription}
-              onChange={(e) => setProcessDescription(e.target.value)}
-              className="text-sm text-gray-600 border-none outline-none focus:ring-0 bg-transparent mt-1"
-              placeholder="Add description..."
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Button onClick={handleExport} className="flex items-center space-x-2">
-            <Download className="w-4 h-4" />
-            <span>Export</span>
-          </Button>
-          <Button onClick={handleSave} disabled={saving} className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white">
-            <Save className="w-4 h-4" />
-            <span>{saving ? 'Saving...' : 'Save'}</span>
-          </Button>
-          <Button onClick={handlePublish} disabled={saving} className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white">
-            <Upload className="w-4 h-4" />
-            <span>Publish</span>
-          </Button>
-          <Button onClick={handleExecute} className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white">
-            <Play className="w-4 h-4" />
-            <span>Run</span>
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex-1 flex overflow-hidden" onClick={closeCanvasContextMenu}>
+    <div className="h-screen flex overflow-hidden bg-gray-50" onClick={closeCanvasContextMenu}>
         {/* Left Panel - Collapsible Action Palette */}
         {/* Left Panel Hidden - Now using Floating Actions Modal */}
 
@@ -1664,18 +1615,8 @@ const ProcessDesignerInner: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Controls Bar - Top of canvas */}
-              <div className="bg-white border-b px-3 py-1.5 flex items-center justify-between shadow-sm z-10">
-                <div className="text-sm text-gray-600">
-                  {nodes.length} nodes, {edges.length} connections
-                </div>
-                <div className="text-xs text-gray-500">
-                  Scroll to zoom • Drag to pan • Right-click for options
-                </div>
-              </div>
-
-              {/* ReactFlow Canvas */}
-              <div className="flex-1 w-full h-full">
+              {/* ReactFlow Canvas - Full height */}
+              <div className="relative w-full h-full">
                 <ReactFlow
                   style={{ width: '100%', height: '100%' }}
                   nodes={nodes}
@@ -1802,6 +1743,96 @@ const ProcessDesignerInner: React.FC = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* Process Name/Description - Center */}
+                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
+                    {editingProcessName ? (
+                      <div className="bg-white shadow-lg rounded-lg border border-gray-200 p-3" style={{ minWidth: '300px' }}>
+                        <input
+                          type="text"
+                          value={processName}
+                          onChange={(e) => setProcessName(e.target.value)}
+                          className="w-full text-lg font-bold border-none outline-none focus:ring-0 bg-transparent mb-2"
+                          placeholder="Process Name"
+                          autoFocus
+                        />
+                        <input
+                          type="text"
+                          value={processDescription}
+                          onChange={(e) => setProcessDescription(e.target.value)}
+                          className="w-full text-sm text-gray-600 border-none outline-none focus:ring-0 bg-transparent"
+                          placeholder="Add description..."
+                        />
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            onClick={() => setEditingProcessName(false)}
+                            className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                          >
+                            Done
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setEditingProcessName(true)}
+                        className="bg-white shadow-lg rounded-lg border border-gray-200 px-4 py-2 h-10 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                        title="Edit Process Name"
+                      >
+                        <div className="text-left">
+                          <div className="text-sm font-semibold text-gray-900">{processName}</div>
+                          {processDescription && (
+                            <div className="text-xs text-gray-500 truncate max-w-xs">{processDescription}</div>
+                          )}
+                        </div>
+                        <Edit2 className="w-3 h-3 text-gray-400" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Right Side Buttons - Export, Save, Publish, Run */}
+                  <div className="absolute top-4 right-4 z-10 flex items-center space-x-2">
+                    {/* Export Button */}
+                    <button
+                      onClick={handleExport}
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                      title="Export Process"
+                    >
+                      <Download className="w-4 h-4 text-gray-600" />
+                    </button>
+
+                    {/* Save Button */}
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center ${
+                        saving ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                      title="Save Process"
+                    >
+                      <Save className="w-4 h-4 text-blue-600" />
+                    </button>
+
+                    {/* Publish Button */}
+                    <button
+                      onClick={handlePublish}
+                      disabled={saving}
+                      className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center ${
+                        saving ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                      title="Publish Process"
+                    >
+                      <FileUp className="w-4 h-4 text-purple-600" />
+                    </button>
+
+                    {/* Run Button */}
+                    <button
+                      onClick={handleExecute}
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                      title="Run Process"
+                    >
+                      <Play className="w-4 h-4 text-green-600" />
+                    </button>
+                  </div>
                   
                   {/* MiniMap positioned at bottom-right */}
                   <MiniMap
@@ -1824,7 +1855,6 @@ const ProcessDesignerInner: React.FC = () => {
         </div>
         
         {/* Right Panel Hidden - Now using Floating Properties Panel */}
-      </div>
 
       {/* Context Menu */}
       {contextMenu && (
