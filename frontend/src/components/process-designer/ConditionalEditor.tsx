@@ -219,7 +219,7 @@ export const ConditionalEditor: React.FC<ConditionalEditorProps> = ({
                     {/* Field Input */}
                     <input
                       type="text"
-                      placeholder="Variable or field name"
+                      placeholder="Variable, field, or object property (e.g., order.status, user.email)"
                       value={condition.field}
                       onChange={(e) => updateCondition(groupIndex, conditionIndex, 'field', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
