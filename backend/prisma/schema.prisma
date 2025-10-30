@@ -49,6 +49,7 @@ model User {
   idpExecutions    IdpExecution[]
   actions          Action[]           @relation("ActionCreator")
   processes        Process[]          @relation("ProcessCreator")
+  modifiedProcesses Process[]         @relation("ProcessModifier")
   processExecutions ProcessExecution[] @relation("ProcessExecutionUser")
   connectors       Connector[]        @relation("ConnectorCreator")
   stores           Store[]            @relation("StoreCreator")
@@ -467,29 +468,79 @@ model Action {
 model Process {
   id              Int      @id @default(autoincrement())
   name            String   @db.VarChar(200)
+  processKey      String?  @map("process_key") @db.VarChar(200) // Unique identifier for technical users
   description     String?  @db.Text
+  version         String   @default("v1.0") @db.VarChar(20)
+  tags            Json     @default("[]") // Array of tags for categorization
   category        String?  @db.VarChar(100)
+  status          String   @default("draft") @db.VarChar(20) // 'draft', 'published', 'active', 'deprecated', 'archived'
+  priority        String   @default("medium") @db.VarChar(20) // 'high', 'medium', 'low'
+  
+  // Core process definition
   flowDefinition  Json     @map("flow_definition") // ReactFlow nodes/edges + metadata
   executionMode   String   @default("sequential") @map("execution_mode") @db.VarChar(20) // 'sequential', 'parallel', 'hybrid'
-  timeoutSeconds  Int?     @map("timeout_seconds")
+  
+  // Execution settings
+  timeoutSeconds  Int?     @default(1800) @map("timeout_seconds")
   retryPolicy     Json?    @map("retry_policy")
+  concurrencyConfig Json?  @map("concurrency_config") // Max concurrent executions, queue behavior
+  errorHandlingStrategy String @default("stop") @map("error_handling_strategy") @db.VarChar(20) // 'continue', 'stop', 'custom'
+  
+  // Variables & Parameters
+  inputParameters Json?    @map("input_parameters") // Array of input parameter definitions
+  environmentVariables Json? @map("environment_variables") // Key-value pairs
+  globalConstants Json?    @map("global_constants") // Key-value pairs
+  outputVariables Json?    @map("output_variables") // Array of output variable definitions
+  
+  // Security & Permissions
+  permissions     Json?    // Who can view, edit, execute, delete
+  dataClassification String? @map("data_classification") @db.VarChar(20) // 'public', 'internal', 'confidential', 'restricted'
+  complianceTags  Json     @default("[]") @map("compliance_tags") // Array of compliance tags (GDPR, HIPAA, etc.)
+  
+  // Notifications & Alerts
+  notificationConfig Json? @map("notification_config") // On success, failure, approval needed, channels, recipients
+  
+  // Performance & Monitoring
+  loggingConfig   Json?    @map("logging_config") // enabled, logLevel
+  metricsEnabled  Boolean  @default(true) @map("metrics_enabled")
+  performanceSLA  Json?    @map("performance_sla") // expectedDuration, alertThreshold
+  
+  // Documentation
+  documentation   String?  @db.Text // Markdown documentation
+  changelog       String?  @db.Text // Version history
+  relatedProcesses Json?   @map("related_processes") // Array of process IDs or references
+  referenceUrls   Json?    @map("reference_urls") // Array of documentation URLs
+  
+  // Deployment & Environment
+  environment     String   @default("dev") @db.VarChar(20) // 'dev', 'staging', 'production'
+  deploymentStatus String? @map("deployment_status") @db.VarChar(50)
+  
+  // Legacy fields (maintained for compatibility)
   isActive        Boolean  @default(true) @map("is_active")
   isTemplate      Boolean  @default(false) @map("is_template")
   triggerType     String   @default("manual") @map("trigger_type") @db.VarChar(50) // 'manual', 'ui_form', 'api', 'schedule', 'event', 'webhook', 'pubsub', 'stream'
   triggerConfig   Json?    @map("trigger_config") // Configuration for trigger (form fields, schedule, etc.)
   triggerUrl      String?  @map("trigger_url") @db.VarChar(500) // Direct URL to execute this process (for menu integration, webhooks, etc.)
+  
+  // Audit fields
   createdBy       Int      @map("created_by")
+  lastModifiedBy  Int?     @map("last_modified_by") // Track who last modified
   sharedWith      Json     @default("[]") @map("shared_with")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   creator           User               @relation("ProcessCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  modifier          User?              @relation("ProcessModifier", fields: [lastModifiedBy], references: [id])
   processExecutions ProcessExecution[]
 
   @@index([createdBy])
+  @@index([lastModifiedBy])
   @@index([isActive])
   @@index([category])
   @@index([triggerType])
+  @@index([status])
+  @@index([priority])
+  @@index([environment])
   @@map("processes")
 }
 

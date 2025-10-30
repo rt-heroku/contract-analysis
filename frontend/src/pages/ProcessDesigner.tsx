@@ -21,7 +21,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
+import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RefreshCw, MousePointer2 } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
 import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
@@ -30,6 +30,7 @@ import { NodeContextMenu } from '@/components/process-designer/NodeContextMenu';
 import { NodeEditModal } from '@/components/process-designer/NodeEditModal';
 import { TriggerConfigPanel } from '@/components/process-designer/TriggerConfigPanel';
 import { LabeledEdge } from '@/components/process-designer/LabeledEdge';
+import { ProcessPropertiesModal, ProcessProperties } from '@/components/process-designer/ProcessPropertiesModal';
 
 interface Action {
   id: number;
@@ -76,6 +77,37 @@ const ProcessDesignerInner: React.FC = () => {
   }, [nodes, onNodesChangeRaw]);
   const [processName, setProcessName] = useState('Untitled Process');
   const [processDescription, setProcessDescription] = useState('');
+  
+  // Comprehensive process properties
+  const [processProperties, setProcessProperties] = useState<ProcessProperties>({
+    name: 'Untitled Process',
+    version: 'v1.0',
+    tags: [],
+    status: 'draft',
+    priority: 'medium',
+    errorHandlingStrategy: 'stop',
+    timeout: 1800,
+    retryPolicy: {
+      maxRetries: 3,
+      retryInterval: 60,
+      exponentialBackoff: false,
+    },
+    concurrency: {
+      maxConcurrent: 5,
+      queueBehavior: 'wait',
+    },
+    logging: {
+      enabled: true,
+      logLevel: 'info',
+    },
+    metricsEnabled: true,
+    performanceSLA: {
+      expectedDuration: 300,
+      alertThreshold: 600,
+    },
+    environment: 'dev',
+  });
+  
   const [actions, setActions] = useState<Action[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -118,6 +150,9 @@ const ProcessDesignerInner: React.FC = () => {
   
   // Zoom state
   const [currentZoom, setCurrentZoom] = useState(0.4);
+  
+  // Multiselect mode state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   
   // Canvas context menu
   const [canvasContextMenu, setCanvasContextMenu] = useState<{
@@ -947,8 +982,9 @@ const ProcessDesignerInner: React.FC = () => {
                   snapGrid={[15, 15]}
                   panOnScroll={false}
                   zoomOnScroll={true}
-                  panOnDrag={true}
-                  selectNodesOnDrag={false}
+                  panOnDrag={!isMultiSelectMode}
+                  selectNodesOnDrag={isMultiSelectMode}
+                  selectionOnDrag={isMultiSelectMode}
                   deleteKeyCode="Delete"
                 >
                   <Background 
@@ -975,8 +1011,21 @@ const ProcessDesignerInner: React.FC = () => {
                     </button>
                   </div>
                   
-                  {/* Zoom Percentage Display */}
+                  {/* Multi-Select Mode Button - Next to Gear */}
                   <div className="absolute top-4 left-4" style={{ marginLeft: '104px' }}>
+                    <button
+                      onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
+                      className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors ${
+                        isMultiSelectMode ? 'bg-blue-50 border-blue-400' : ''
+                      }`}
+                      title={isMultiSelectMode ? 'Disable Multi-Select' : 'Enable Multi-Select'}
+                    >
+                      <MousePointer2 className={`w-4 h-4 ${isMultiSelectMode ? 'text-blue-600' : 'text-gray-600'}`} />
+                    </button>
+                  </div>
+                  
+                  {/* Zoom Percentage Display */}
+                  <div className="absolute top-4 left-4" style={{ marginLeft: '156px' }}>
                     <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 flex items-center space-x-2">
                       <span className="text-xs font-semibold text-gray-700">
                         {Math.round(currentZoom * 100)}%
@@ -1477,127 +1526,16 @@ const ProcessDesignerInner: React.FC = () => {
       )}
 
       {/* Process Properties Modal */}
-      {processPropertiesOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full shadow-2xl">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Process Properties</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  Configure process settings and metadata
-                </p>
-              </div>
-              <button
-                onClick={() => setProcessPropertiesOpen(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* Process Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Process Name *
-                </label>
-                <input
-                  type="text"
-                  value={processName}
-                  onChange={(e) => setProcessName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter process name"
-                />
-              </div>
-
-              {/* Process Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={processDescription}
-                  onChange={(e) => setProcessDescription(e.target.value)}
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Add a description for this process..."
-                />
-              </div>
-
-              {/* Process Statistics (read-only) */}
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Process Statistics</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-xs text-gray-500">Total Nodes</div>
-                    <div className="text-lg font-semibold text-gray-900">{nodes.length}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Total Connections</div>
-                    <div className="text-lg font-semibold text-gray-900">{edges.length}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Trigger Type</div>
-                    <div className="text-sm font-medium text-gray-900">
-                      {currentTriggerConfig.type === 'none' ? 'Not configured' : 
-                       currentTriggerConfig.type.charAt(0).toUpperCase() + currentTriggerConfig.type.slice(1)}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500">Status</div>
-                    <div className="text-sm font-medium text-green-600">
-                      {nodes.length > 0 ? 'Active' : 'Empty'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Grid Settings */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Grid Settings
-                </label>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      defaultChecked={true}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Show grid</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      defaultChecked={true}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Snap to grid</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-              <Button
-                onClick={() => setProcessPropertiesOpen(false)}
-                className="bg-gray-200 hover:bg-gray-300"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  setProcessPropertiesOpen(false);
-                  // Properties are already updated via state binding
-                }}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ProcessPropertiesModal
+        isOpen={processPropertiesOpen}
+        properties={processProperties}
+        onClose={() => setProcessPropertiesOpen(false)}
+        onSave={(updatedProperties) => {
+          setProcessProperties(updatedProperties);
+          setProcessName(updatedProperties.name);
+          setProcessDescription(updatedProperties.description || '');
+        }}
+      />
 
       {/* Action Search Modal */}
       {showActionSearch && (

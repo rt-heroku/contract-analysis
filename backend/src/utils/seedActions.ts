@@ -735,7 +735,68 @@ export async function seedSystemActions() {
           },
         },
         executorType: 'builtin',
-        executorConfig: {},
+        executorConfig: {
+          async: true, // Log is async
+        },
+      },
+      {
+        name: 'notify',
+        displayName: 'Notify',
+        description: 'Send notification to users (internal or via API)',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'Bell',
+        color: '#f59e0b',
+        configSchema: {
+          type: 'object',
+          properties: {
+            notificationType: { 
+              type: 'string', 
+              enum: ['internal', 'api'], 
+              default: 'internal',
+              description: 'Notification type: internal (in-app) or external (via API connector)' 
+            },
+            recipients: {
+              type: 'object',
+              properties: {
+                self: { type: 'boolean', default: false, description: 'Notify current user' },
+                users: { type: 'array', items: { type: 'number' }, description: 'User IDs to notify' },
+                admins: { type: 'boolean', default: false, description: 'Notify all admins' },
+              },
+            },
+            message: { type: 'string', description: 'Notification message' },
+            title: { type: 'string', description: 'Notification title' },
+            link: { type: 'string', description: 'Optional link/URL for the notification' },
+            connectorId: { 
+              type: 'number', 
+              description: 'Connector ID for API-based notifications (required if notificationType=api)' 
+            },
+            priority: { 
+              type: 'string', 
+              enum: ['low', 'normal', 'high'], 
+              default: 'normal',
+              description: 'Notification priority' 
+            },
+          },
+          required: ['recipients', 'message'],
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Input data can be referenced in message using {{input.field}}',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            notificationIds: { type: 'array', items: { type: 'number' } },
+            recipientCount: { type: 'number' },
+            timestamp: { type: 'string' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          async: true, // Notify is async
+        },
       },
       {
         name: 'redis_publish',
