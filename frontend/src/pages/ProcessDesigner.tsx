@@ -600,6 +600,7 @@ const ProcessDesignerInner: React.FC = () => {
             label: 'START',
             trigger: currentTriggerConfig,
             showPlusButton: true,
+            layoutDirection: layoutDirection,
             onAddNext: () => {
               setTargetNodeForPlus('start-1');
               setShowActionSearch(true);
@@ -618,6 +619,7 @@ const ProcessDesignerInner: React.FC = () => {
             label: 'GLOBAL ERROR',
             config: currentGlobalErrorConfig,
             showPlusButton: true,
+            layoutDirection: layoutDirection,
             onAddNext: () => {
               setTargetNodeForPlus('global-error-1');
               setShowActionSearch(true);
@@ -935,6 +937,7 @@ const ProcessDesignerInner: React.FC = () => {
             label: 'START',
             trigger: currentTriggerConfig,
             showPlusButton: true, // Will be updated by effect
+            layoutDirection: layoutDirection,
             onAddNext: () => {
               setTargetNodeForPlus(nodeId);
               setShowActionSearch(true);
@@ -972,6 +975,7 @@ const ProcessDesignerInner: React.FC = () => {
           data: {
             label: 'GLOBAL ERROR',
             config: currentGlobalErrorConfig,
+            layoutDirection: layoutDirection,
             onConfigure: () => {
               setGlobalErrorConfigOpen(true);
             },
@@ -998,6 +1002,7 @@ const ProcessDesignerInner: React.FC = () => {
         actionName: action.name,
         config: {},
         showPlusButton: true, // Will be updated by effect
+        layoutDirection: layoutDirection,
         onEdit: () => handleEditNode(nodeId),
         onAddNext: () => {
           setTargetNodeForPlus(nodeId);
@@ -1017,6 +1022,7 @@ const ProcessDesignerInner: React.FC = () => {
           label: 'Loop',
           loopType: 'for_each',
           condition: '',
+          layoutDirection: layoutDirection,
           onEdit: () => handleEditNode(nodeId),
           onAddNext: () => {
             setTargetNodeForPlus(nodeId);
@@ -1389,6 +1395,7 @@ const ProcessDesignerInner: React.FC = () => {
                         label: 'START',
                         trigger: currentTriggerConfig,
                         showPlusButton: true, // Will be updated by effect
+                        layoutDirection: layoutDirection,
                         onAddNext: () => {
                           setTargetNodeForPlus('start-1');
                           setShowActionSearch(true);
@@ -1470,15 +1477,16 @@ const ProcessDesignerInner: React.FC = () => {
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '52px' }}>
                     <button
                       onClick={() => setActionsModalOpen(true)}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50 transition-colors flex items-center space-x-2"
                       title="Actions Library"
                     >
                       <Layers className="w-4 h-4 text-gray-600" />
+                      <span className="text-sm font-medium text-gray-700">Actions</span>
                     </button>
                   </div>
                   
                   {/* Process Properties Button - After Actions */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '104px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '140px' }}>
                     <button
                       onClick={() => setProcessPropertiesOpen(true)}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1489,7 +1497,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Variables Button - After Gear */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '156px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '192px' }}>
                     <button
                       onClick={() => setVariablesPanelOpen(true)}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1500,7 +1508,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Multi-Select Mode Button - After Variables */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '208px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '244px' }}>
                     <button
                       onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
                       className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors ${
@@ -1513,7 +1521,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Layout Toggle Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '260px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '296px' }}>
                     <button
                       onClick={toggleLayout}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1528,7 +1536,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Auto-Arrange Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '312px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '348px' }}>
                     <button
                       onClick={autoArrange}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1539,7 +1547,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Zoom Percentage Display */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '364px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '400px' }}>
                     <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 flex items-center space-x-2">
                       <span className="text-xs font-semibold text-gray-700">
                         {Math.round(currentZoom * 100)}%
@@ -2004,6 +2012,7 @@ const ProcessDesignerInner: React.FC = () => {
                           actionName: action.name,
                           config: {},
                           showPlusButton: true,
+                          layoutDirection: layoutDirection,
                           onEdit: () => handleEditNode(nodeId),
                           onAddNext: () => {
                             setTargetNodeForPlus(nodeId);
@@ -2023,6 +2032,7 @@ const ProcessDesignerInner: React.FC = () => {
                             label: 'Loop',
                             loopType: 'for_each',
                             condition: '',
+                            layoutDirection: layoutDirection,
                             onEdit: () => handleEditNode(nodeId),
                             onAddNext: () => {
                               setTargetNodeForPlus(nodeId);
