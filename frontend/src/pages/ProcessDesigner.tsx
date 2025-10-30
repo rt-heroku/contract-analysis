@@ -869,10 +869,25 @@ const ProcessDesignerInner: React.FC = () => {
 
   // Handle node editing
   const handleEditNode = useCallback((nodeId: string) => {
+    console.log('📝 ProcessDesigner - handleEditNode called for node:', nodeId);
     const node = nodes.find((n) => n.id === nodeId);
+    console.log('🔍 ProcessDesigner - Found node:', node);
+    
+    // Loop containers should use loop condition modal instead
+    if (node && node.type === 'loopContainer') {
+      console.log('⚠️ ProcessDesigner - Loop container detected, opening condition modal instead');
+      setCurrentLoopNodeId(nodeId);
+      setCurrentLoopConditions(node.data.conditions || []);
+      setLoopConditionModalOpen(true);
+      return;
+    }
+    
     if (node) {
+      console.log('✅ ProcessDesigner - Opening NodeEditModal for node type:', node.type);
       setSelectedNode(node);
       setEditModalOpen(true);
+    } else {
+      console.log('❌ ProcessDesigner - Node not found');
     }
   }, [nodes]);
 
@@ -2164,10 +2179,14 @@ const ProcessDesignerInner: React.FC = () => {
         nodes={nodes}
         edges={edges}
         onClose={() => {
+          console.log('🚪 ProcessDesigner - NodeEditModal onClose called');
+          console.log('📊 Current state - editModalOpen:', editModalOpen);
           setEditModalOpen(false);
           setSelectedNode(null);
+          console.log('✅ ProcessDesigner - NodeEditModal state set to false');
         }}
         onSave={(nodeId, newConfig, newOutputSchema, newInputSchema) => {
+          console.log('💾 ProcessDesigner - NodeEditModal onSave called');
           setNodes((nds) =>
             nds.map((n) =>
               n.id === nodeId
@@ -2186,6 +2205,7 @@ const ProcessDesignerInner: React.FC = () => {
           );
           setEditModalOpen(false);
           setSelectedNode(null);
+          console.log('✅ ProcessDesigner - NodeEditModal closed after save');
         }}
         onDeleteEdge={(edgeId) => {
           setEdges((eds) => eds.filter((e) => e.id !== edgeId));
