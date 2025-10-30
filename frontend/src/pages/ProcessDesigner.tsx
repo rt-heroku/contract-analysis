@@ -15,6 +15,7 @@ import ReactFlow, {
   ConnectionLineType,
   useReactFlow,
   ReactFlowProvider,
+  useUpdateNodeInternals,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import dagre from 'dagre';
@@ -54,6 +55,7 @@ const ProcessDesignerInner: React.FC = () => {
   const navigate = useNavigate();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
+  const updateNodeInternals = useUpdateNodeInternals();
   
   // Layout Configuration - Node Positions
   const LAYOUT_CONFIG = {
@@ -516,10 +518,18 @@ const ProcessDesignerInner: React.FC = () => {
     // Apply all node updates in a single synchronous operation
     setNodes(newNodes);
     
-    // Force ReactFlow to recalculate edge paths after nodes are positioned
+    // Force ReactFlow to recalculate handle positions and edge paths
     setTimeout(() => {
+      // Update node internals to recalculate handle positions
+      // This is critical for handles to switch between top/bottom and left/right
+      newNodes.forEach(node => {
+        updateNodeInternals(node.id);
+      });
+      
+      console.log('  - 🔄 Updated handle positions for all nodes');
+      
+      // Trigger viewport update to force edge recalculation
       if (reactFlowInstance) {
-        // Trigger viewport update to force edge recalculation
         const viewport = reactFlowInstance.getViewport();
         reactFlowInstance.setViewport({ ...viewport });
         
@@ -539,7 +549,7 @@ const ProcessDesignerInner: React.FC = () => {
         }, 450);
       }, 50);
     }
-  }, [nodes, edges, layoutDirection, setNodes, reactFlowInstance]);
+  }, [nodes, edges, layoutDirection, setNodes, reactFlowInstance, updateNodeInternals]);
 
   // Auto-arrange with fitView
   const autoArrange = useCallback(() => {
