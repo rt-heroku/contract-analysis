@@ -21,7 +21,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RefreshCw, MousePointer2, Upload, ArrowLeftRight, ArrowUpDown } from 'lucide-react';
+import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RefreshCw, MousePointer2, Upload, ArrowLeftRight, ArrowUpDown, Database } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
 import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
@@ -34,6 +34,7 @@ import { TriggerConfigPanel } from '@/components/process-designer/TriggerConfigP
 import { LabeledEdge } from '@/components/process-designer/LabeledEdge';
 import { ProcessPropertiesModal, ProcessProperties } from '@/components/process-designer/ProcessPropertiesModal';
 import { SaveProcessModal } from '@/components/process-designer/SaveProcessModal';
+import { VariablesPanel, ProcessVariable } from '@/components/process-designer/VariablesPanel';
 
 interface Action {
   id: number;
@@ -167,6 +168,57 @@ const ProcessDesignerInner: React.FC = () => {
   
   // Layout direction state
   const [layoutDirection, setLayoutDirection] = useState<'horizontal' | 'vertical'>('vertical');
+  
+  // Variables panel state
+  const [variablesPanelOpen, setVariablesPanelOpen] = useState(false);
+  const [processVariables, setProcessVariables] = useState<ProcessVariable[]>([
+    // System variables - always present
+    {
+      id: 'sys-payload',
+      name: 'payload',
+      type: 'any',
+      value: null,
+      description: 'Main data payload passed through the process',
+      isSystem: true,
+      readonly: false,
+    },
+    {
+      id: 'sys-attributes',
+      name: 'attributes',
+      type: 'object',
+      value: {},
+      description: 'Request attributes (query params, path params, headers, session)',
+      isSystem: true,
+      readonly: false,
+    },
+    {
+      id: 'sys-processProperties',
+      name: 'processProperties',
+      type: 'object',
+      value: {},
+      description: 'Process configuration and metadata',
+      isSystem: true,
+      readonly: true,
+    },
+    {
+      id: 'sys-jobId',
+      name: 'jobId',
+      type: 'string',
+      value: '',
+      description: 'Unique identifier for this process execution',
+      isSystem: true,
+      readonly: true,
+    },
+    {
+      id: 'sys-trigger',
+      name: 'trigger',
+      type: 'object',
+      value: {},
+      description: 'Information about how the process was triggered',
+      isSystem: true,
+      readonly: true,
+    },
+  ]);
   
   // Canvas context menu
   const [canvasContextMenu, setCanvasContextMenu] = useState<{
@@ -1414,8 +1466,19 @@ const ProcessDesignerInner: React.FC = () => {
                     </button>
                   </div>
                   
-                  {/* Multi-Select Mode Button - Next to Gear */}
+                  {/* Variables Button - Next to Gear */}
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '104px' }}>
+                    <button
+                      onClick={() => setVariablesPanelOpen(true)}
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
+                      title="Process Variables"
+                    >
+                      <Database className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                  
+                  {/* Multi-Select Mode Button - After Variables */}
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '156px' }}>
                     <button
                       onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
                       className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors ${
@@ -1428,7 +1491,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Layout Toggle Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '156px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '208px' }}>
                     <button
                       onClick={toggleLayout}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1443,7 +1506,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Auto-Arrange Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '208px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '260px' }}>
                     <button
                       onClick={autoArrange}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1454,7 +1517,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Zoom Percentage Display */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '260px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '312px' }}>
                     <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 flex items-center space-x-2">
                       <span className="text-xs font-semibold text-gray-700">
                         {Math.round(currentZoom * 100)}%
@@ -1978,6 +2041,14 @@ const ProcessDesignerInner: React.FC = () => {
         currentVersion={processProperties.version}
         isPublished={processProperties.status === 'published' || processProperties.status === 'active'}
         requireVersionUpdate={saveModalAction === 'publish' || processProperties.status === 'published' || processProperties.status === 'active'}
+      />
+
+      {/* Variables Panel */}
+      <VariablesPanel
+        isOpen={variablesPanelOpen}
+        onClose={() => setVariablesPanelOpen(false)}
+        variables={processVariables}
+        onSave={(variables) => setProcessVariables(variables)}
       />
 
       {/* Action Search Modal */}
