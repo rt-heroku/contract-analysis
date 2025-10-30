@@ -23,11 +23,18 @@ interface ActionNodeData {
   onEdit?: () => void;
   onAddNext?: () => void;
   showPlusButton?: boolean;
+  layoutDirection?: 'horizontal' | 'vertical';
 }
 
 export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) => {
   const IconComponent = getIconComponent(data.icon || 'Zap');
   const bgColor = data.color || '#6366f1';
+  const layoutDirection = data.layoutDirection || 'horizontal';
+  
+  // Dynamic handle positions based on layout direction
+  const inputHandlePosition = layoutDirection === 'horizontal' ? Position.Left : Position.Top;
+  const outputHandlePosition = layoutDirection === 'horizontal' ? Position.Right : Position.Bottom;
+  const errorHandlePosition = outputHandlePosition;
   
   const handleDoubleClick = () => {
     if (data.onEdit) {
@@ -139,12 +146,16 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
       `}
       style={{ minWidth: '240px', maxWidth: '300px' }}
     >
-      {/* Top Handle */}
+      {/* Input Handle */}
       <Handle
         type="target"
-        position={Position.Top}
+        position={inputHandlePosition}
         className="w-3 h-3 !bg-blue-500 !border-2 !border-white"
-        style={{ top: -6 }}
+        style={
+          layoutDirection === 'horizontal'
+            ? { left: -6, top: '50%', transform: 'translateY(-50%)' }
+            : { top: -6, left: '50%', transform: 'translateX(-50%)' }
+        }
       />
 
       {/* Card Content */}
@@ -213,14 +224,31 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
 
       {/* Dynamic Output Handles */}
       {outputHandles.map((handle, index) => {
-        const positionMap: Record<string, any> = {
-          bottom: { position: Position.Bottom, style: { bottom: -6, left: `${(index + 1) * (100 / (outputHandles.length + 1))}%` } },
-          left: { position: Position.Left, style: { left: -6, top: '50%' } },
-          right: { position: Position.Right, style: { right: -6, top: '50%' } },
-          top: { position: Position.Top, style: { top: -6, left: '50%' } },
-        };
-
-        const { position, style } = positionMap[handle.position] || positionMap.bottom;
+        // Calculate position based on layout direction
+        let position, style;
+        if (layoutDirection === 'horizontal') {
+          // Horizontal layout: outputs on right
+          position = Position.Right;
+          if (outputHandles.length > 1) {
+            // Multiple outputs: stack vertically on right
+            const offset = (100 / (outputHandles.length + 1)) * (index + 1);
+            style = { right: -6, top: `${offset}%`, transform: 'translateY(-50%)' };
+          } else {
+            // Single output: centered on right
+            style = { right: -6, top: '50%', transform: 'translateY(-50%)' };
+          }
+        } else {
+          // Vertical layout: outputs on bottom
+          position = Position.Bottom;
+          if (outputHandles.length > 1) {
+            // Multiple outputs: spread horizontally on bottom
+            const offset = (100 / (outputHandles.length + 1)) * (index + 1);
+            style = { bottom: -6, left: `${offset}%`, transform: 'translateX(-50%)' };
+          } else {
+            // Single output: centered on bottom
+            style = { bottom: -6, left: '50%', transform: 'translateX(-50%)' };
+          }
+        }
         
         return (
           <div key={handle.id}>
@@ -234,16 +262,21 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
             {handle.label && (
               <div
                 className="absolute text-xs font-medium px-2 py-0.5 bg-white rounded shadow-sm border border-gray-300 whitespace-nowrap pointer-events-none"
-                style={{
-                  ...(handle.position === 'left' && { left: -50, top: 'calc(50% - 10px)' }),
-                  ...(handle.position === 'right' && { right: -50, top: 'calc(50% - 10px)' }),
-                  ...(handle.position === 'bottom' && { 
-                    bottom: -30, 
-                    left: `${(index + 1) * (100 / (outputHandles.length + 1))}%`,
-                    transform: 'translateX(-50%)'
-                  }),
-                  color: handle.color,
-                }}
+                style={
+                  layoutDirection === 'horizontal'
+                    ? {
+                        right: -65,
+                        top: `${(100 / (outputHandles.length + 1)) * (index + 1)}%`,
+                        transform: 'translateY(-50%)',
+                        color: handle.color,
+                      }
+                    : {
+                        bottom: -28,
+                        left: `${(100 / (outputHandles.length + 1)) * (index + 1)}%`,
+                        transform: 'translateX(-50%)',
+                        color: handle.color,
+                      }
+                }
               >
                 {handle.label}
               </div>
@@ -276,14 +309,22 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
           <>
             <Handle
               type="source"
-              position={Position.Right}
+              position={errorHandlePosition}
               id="error"
               className="w-3 h-3 !bg-red-500 !border-2 !border-white"
-              style={{ right: -6, top: '75%' }}
+              style={
+                layoutDirection === 'horizontal'
+                  ? { right: -6, top: '75%', transform: 'translateY(-50%)' }
+                  : { bottom: -6, left: '75%', transform: 'translateX(-50%)' }
+              }
             />
             <div
               className="absolute text-xs font-medium px-2 py-0.5 bg-white rounded shadow-sm border border-red-300 whitespace-nowrap pointer-events-none"
-              style={{ right: -50, top: 'calc(75% - 10px)', color: '#ef4444' }}
+              style={
+                layoutDirection === 'horizontal'
+                  ? { right: -55, top: '75%', transform: 'translateY(-50%)', color: '#ef4444' }
+                  : { bottom: -28, left: '75%', transform: 'translateX(-50%)', color: '#ef4444' }
+              }
             >
               error
             </div>
@@ -291,11 +332,15 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
         ) : null;
       })()}
 
-      {/* Plus Button Below Node - Only show if not connected or if multi-branch action */}
+      {/* Plus Button - Dynamic position based on layout */}
       {data.onAddNext && data.showPlusButton && (
         <div
-          className="absolute left-1/2 transform -translate-x-1/2"
-          style={{ bottom: -40 }}
+          className="absolute"
+          style={
+            layoutDirection === 'horizontal'
+              ? { right: -40, top: '50%', transform: 'translateY(-50%)' }
+              : { bottom: -40, left: '50%', transform: 'translateX(-50%)' }
+          }
         >
           <button
             onClick={(e) => {

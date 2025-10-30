@@ -12,11 +12,14 @@ interface GlobalErrorNodeData {
   showPlusButton?: boolean;
   onConfigure?: () => void;
   onAddNext?: () => void;
+  layoutDirection?: 'horizontal' | 'vertical';
 }
 
 export const GlobalErrorNode = memo(({ data, selected }: NodeProps<GlobalErrorNodeData>) => {
   const config = data.config || {};
   const hasConfig = config.logError || config.notifyOnError;
+  const layoutDirection = data.layoutDirection || 'horizontal';
+  const handlePosition = layoutDirection === 'horizontal' ? Position.Left : Position.Top;
 
   const getSummary = (): string => {
     const parts = [];
@@ -51,12 +54,16 @@ export const GlobalErrorNode = memo(({ data, selected }: NodeProps<GlobalErrorNo
         </button>
       )}
 
-      {/* Top Handle (invisible - errors come from anywhere) */}
+      {/* Input Handle (invisible - errors come from anywhere) */}
       <Handle
         type="target"
-        position={Position.Top}
+        position={handlePosition}
         className="w-3 h-3 !bg-red-500 !border-2 !border-white opacity-0"
-        style={{ top: -6 }}
+        style={
+          layoutDirection === 'horizontal'
+            ? { left: -6, top: '50%', transform: 'translateY(-50%)' }
+            : { top: -6, left: '50%', transform: 'translateX(-50%)' }
+        }
       />
 
       {/* Main Content */}
@@ -113,9 +120,16 @@ export const GlobalErrorNode = memo(({ data, selected }: NodeProps<GlobalErrorNo
         style={{ bottom: -6 }}
       />
       
-      {/* Plus Button for adding error handling actions */}
+      {/* Plus Button - Dynamic position */}
       {data.showPlusButton && data.onAddNext && (
-        <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2">
+        <div
+          className="absolute"
+          style={
+            layoutDirection === 'horizontal'
+              ? { right: -40, top: '50%', transform: 'translateY(-50%)' }
+              : { bottom: -40, left: '50%', transform: 'translateX(-50%)' }
+          }
+        >
           <button
             onClick={(e) => {
               e.stopPropagation();

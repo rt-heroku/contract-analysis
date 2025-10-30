@@ -10,9 +10,12 @@ interface IfThenElseNodeData {
   onEdit?: () => void;
   onAddNext?: () => void;
   showPlusButton?: boolean;
+  layoutDirection?: 'horizontal' | 'vertical';
 }
 
 export const IfThenElseNode = memo(({ data, selected }: NodeProps<IfThenElseNodeData>) => {
+  const layoutDirection = data.layoutDirection || 'horizontal';
+  
   const handleDoubleClick = () => {
     if (data.onEdit) {
       data.onEdit();
@@ -93,36 +96,55 @@ export const IfThenElseNode = memo(({ data, selected }: NodeProps<IfThenElseNode
         </div>
       </div>
 
-      {/* Input Handle (Top) */}
+      {/* Input Handle - Dynamic position */}
       <Handle
         type="target"
-        position={Position.Top}
+        position={layoutDirection === 'horizontal' ? Position.Left : Position.Top}
         id="input"
         className="w-3 h-3 !bg-blue-500 !border-2 !border-white"
-        style={{ top: -6 }}
+        style={
+          layoutDirection === 'horizontal'
+            ? { left: -6, top: '50%', transform: 'translateY(-50%)' }
+            : { top: -6, left: '50%', transform: 'translateX(-50%)' }
+        }
       />
 
-      {/* IF Output Handle (Left) - Green */}
+      {/* IF Output Handle - Green */}
       <Handle
         type="source"
-        position={Position.Left}
+        position={layoutDirection === 'horizontal' ? Position.Right : Position.Bottom}
         id="if"
         className="w-3 h-3 !bg-green-500 !border-2 !border-white"
-        style={{ left: -6, top: '75%' }}
+        style={
+          layoutDirection === 'horizontal'
+            ? { right: -6, top: '33%', transform: 'translateY(-50%)' }
+            : { bottom: -6, left: '33%', transform: 'translateX(-50%)' }
+        }
       />
 
-      {/* ELSE Output Handle (Right) - Red */}
+      {/* ELSE Output Handle - Red */}
       <Handle
         type="source"
-        position={Position.Right}
+        position={layoutDirection === 'horizontal' ? Position.Right : Position.Bottom}
         id="else"
         className="w-3 h-3 !bg-red-500 !border-2 !border-white"
-        style={{ right: -6, top: '75%' }}
+        style={
+          layoutDirection === 'horizontal'
+            ? { right: -6, top: '67%', transform: 'translateY(-50%)' }
+            : { bottom: -6, left: '67%', transform: 'translateX(-50%)' }
+        }
       />
 
-      {/* Plus Button */}
+      {/* Plus Button - Dynamic position */}
       {data.showPlusButton && data.onAddNext && (
-        <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2">
+        <div
+          className="absolute"
+          style={
+            layoutDirection === 'horizontal'
+              ? { right: -40, top: '50%', transform: 'translateY(-50%)' }
+              : { bottom: -40, left: '50%', transform: 'translateX(-50%)' }
+          }
+        >
           <button
             onClick={(e) => {
               e.stopPropagation();

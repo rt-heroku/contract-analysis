@@ -172,6 +172,19 @@ const ProcessDesignerInner: React.FC = () => {
   // Layout direction state
   const [layoutDirection, setLayoutDirection] = useState<'horizontal' | 'vertical'>('vertical');
   
+  // Update all nodes with layout direction when it changes
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          layoutDirection,
+        },
+      }))
+    );
+  }, [layoutDirection, setNodes]);
+  
   // Variables panel state
   const [variablesPanelOpen, setVariablesPanelOpen] = useState(false);
   const [processVariables, setProcessVariables] = useState<ProcessVariable[]>([

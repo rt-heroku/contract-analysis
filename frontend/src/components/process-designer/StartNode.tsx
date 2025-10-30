@@ -13,6 +13,7 @@ interface StartNodeData {
   onConfigure?: () => void;
   onAddNext?: () => void;
   showPlusButton?: boolean;
+  layoutDirection?: 'horizontal' | 'vertical';
 }
 
 const getTriggerIcon = (triggerType: string) => {
@@ -82,6 +83,8 @@ export const StartNode = memo(({ data, selected }: NodeProps<StartNodeData>) => 
   const triggerColor = getTriggerColor(triggerType);
   const summary = getTriggerSummary(data.trigger);
   const hasConfig = triggerType !== 'none';
+  const layoutDirection = data.layoutDirection || 'horizontal';
+  const handlePosition = layoutDirection === 'horizontal' ? Position.Right : Position.Bottom;
 
   return (
     <div
@@ -162,19 +165,27 @@ export const StartNode = memo(({ data, selected }: NodeProps<StartNodeData>) => 
         )}
       </div>
 
-      {/* Bottom Handle */}
+      {/* Dynamic Handle */}
       <Handle
         type="source"
-        position={Position.Bottom}
+        position={handlePosition}
         className="w-3 h-3 !bg-green-500 !border-2 !border-white"
-        style={{ bottom: -6 }}
+        style={
+          layoutDirection === 'horizontal'
+            ? { right: -6, top: '50%', transform: 'translateY(-50%)' }
+            : { bottom: -6, left: '50%', transform: 'translateX(-50%)' }
+        }
       />
 
       {/* Plus Button */}
       {data.onAddNext && data.showPlusButton && (
         <div
-          className="absolute left-1/2 transform -translate-x-1/2"
-          style={{ bottom: -40 }}
+          className="absolute"
+          style={
+            layoutDirection === 'horizontal'
+              ? { right: -40, top: '50%', transform: 'translateY(-50%)' }
+              : { bottom: -40, left: '50%', transform: 'translateX(-50%)' }
+          }
         >
           <button
             onClick={(e) => {
