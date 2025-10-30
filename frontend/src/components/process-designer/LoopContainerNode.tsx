@@ -64,19 +64,19 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
 
   return (
     <>
-      {/* Node Resizer */}
+      {/* Node Resizer - Must be first for proper z-index */}
       <NodeResizer
         minWidth={400}
         minHeight={300}
         isVisible={selected}
-        lineClassName="border-blue-500"
-        handleClassName="w-3 h-3 bg-blue-500 border-2 border-white rounded-full"
+        lineClassName="!border-blue-500 !border-2"
+        handleClassName="!w-4 !h-4 !bg-blue-500 !border-2 !border-white !rounded-full"
       />
       
       {/* TITLE BAR - OUTSIDE CONTAINER */}
       <div 
-        className="absolute -top-12 left-0 flex items-center space-x-2 z-10"
-        style={{ pointerEvents: 'all' }}
+        className="absolute -top-12 left-0 flex items-center space-x-2"
+        style={{ pointerEvents: 'auto', zIndex: 20 }}
       >
         {/* Loop Label with Icon */}
         <div className="flex items-center space-x-2 bg-white rounded-lg shadow-md px-3 py-2 border border-blue-200">
@@ -102,7 +102,8 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
       </div>
       
       <div 
-        className="relative group w-full h-full" 
+        className="relative group w-full h-full"
+        style={{ pointerEvents: 'none' }} 
         onDoubleClick={handleDoubleClick}
       >
         {/* Container Box with Dashed Border */}
@@ -116,6 +117,7 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
             height: '100%',
             minHeight: '300px',
             padding: '30px 20px 20px 20px', // Reduced top padding since title is outside
+            pointerEvents: 'auto', // Re-enable for container content
           }}
         >
 
@@ -140,18 +142,23 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
         {/* Break and Continue Buttons - Inside Blue Box */}
         <div 
           className="absolute flex items-center space-x-3"
-          style={{ top: '20px', right: '20px', pointerEvents: 'all' }}
+          style={{ top: '20px', right: '20px', pointerEvents: 'auto', zIndex: 10 }}
         >
           {/* Add Break Button */}
           {data.onAddBreak && (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
+                console.log('🟠 Break button clicked!');
                 // Calculate position relative to container center
                 const position = { x: 200, y: 150 };
-                data.onAddBreak?.(position);
+                if (data.onAddBreak) {
+                  data.onAddBreak(position);
+                }
               }}
-              className="flex items-center space-x-1 bg-orange-50 hover:bg-orange-100 rounded-lg shadow-md px-3 py-2 border border-orange-200 transition-colors"
+              className="flex items-center space-x-1 bg-orange-50 hover:bg-orange-100 rounded-lg shadow-md px-3 py-2 border border-orange-200 transition-colors cursor-pointer"
               title="Add Break"
             >
               <CornerUpLeft className="w-4 h-4 text-orange-600" />
@@ -163,13 +170,18 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
           {/* Add Continue Button */}
           {data.onAddContinue && (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
+                console.log('🟢 Continue button clicked!');
                 // Calculate position relative to container center
                 const position = { x: 200, y: 200 };
-                data.onAddContinue?.(position);
+                if (data.onAddContinue) {
+                  data.onAddContinue(position);
+                }
               }}
-              className="flex items-center space-x-1 bg-green-50 hover:bg-green-100 rounded-lg shadow-md px-3 py-2 border border-green-200 transition-colors"
+              className="flex items-center space-x-1 bg-green-50 hover:bg-green-100 rounded-lg shadow-md px-3 py-2 border border-green-200 transition-colors cursor-pointer"
               title="Add Continue"
             >
               <CornerDownRight className="w-4 h-4 text-green-600" />

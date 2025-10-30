@@ -771,23 +771,51 @@ const ProcessDesignerInner: React.FC = () => {
             console.log('🔷 Fixed Global Error position to', fixedPosition, 'for', layoutDirection);
           }
           
+          // Build node data with appropriate callbacks based on type
+          const baseData = {
+            ...node.data,
+            layoutDirection: layoutDirection, // Always set to current layout direction
+          };
+          
+          // Add type-specific callbacks
+          if (node.type === 'loopContainer') {
+            baseData.onEdit = () => handleEditLoopCondition(node.id);
+            baseData.onAddBreak = (position: { x: number; y: number }) => handleAddBreakToLoop(node.id, position);
+            baseData.onAddContinue = (position: { x: number; y: number }) => handleAddContinueToLoop(node.id, position);
+            baseData.onAddNext = () => {
+              setTargetNodeForPlus(node.id);
+              setShowActionSearch(true);
+            };
+          } else if (node.type === 'actionNode' || node.type === 'ifThenElse') {
+            baseData.onEdit = () => handleEditNode(node.id);
+            baseData.onAddNext = () => {
+              setTargetNodeForPlus(node.id);
+              setShowActionSearch(true);
+            };
+          } else if (node.type === 'start') {
+            baseData.onAddNext = () => {
+              setTargetNodeForPlus(node.id);
+              setShowActionSearch(true);
+            };
+            baseData.onConfigure = () => {
+              setTriggerConfigOpen(true);
+            };
+          } else if (node.type === 'globalError') {
+            baseData.onAddNext = () => {
+              setTargetNodeForPlus(node.id);
+              setShowActionSearch(true);
+            };
+            baseData.onConfigure = () => {
+              setGlobalErrorConfigOpen(true);
+            };
+          } else if (node.type === 'break' || node.type === 'continue') {
+            baseData.onEdit = () => handleEditNode(node.id);
+          }
+          
           return {
             ...node,
             position: fixedPosition,
-            data: {
-              ...node.data,
-              layoutDirection: layoutDirection, // Always set to current layout direction
-              onEdit: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'loopContainer') ? () => handleEditNode(node.id) : undefined,
-              onAddNext: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'loopContainer' || node.type === 'start' || node.type === 'globalError') ? () => {
-                setTargetNodeForPlus(node.id);
-                setShowActionSearch(true);
-              } : undefined,
-              onConfigure: node.type === 'start' ? () => {
-                setTriggerConfigOpen(true);
-              } : node.type === 'globalError' ? () => {
-                setGlobalErrorConfigOpen(true);
-              } : undefined,
-            },
+            data: baseData,
           };
         });
         
