@@ -452,7 +452,7 @@ const ProcessDesignerInner: React.FC = () => {
       : LAYOUT_CONFIG.START_POSITION.x;       // Same X as Start
     const startOffsetY = useDirection === 'horizontal'
       ? LAYOUT_CONFIG.START_POSITION.y - (NODE_HEIGHT / 2)  // Align vertically with Start center
-      : LAYOUT_CONFIG.START_POSITION.y + 200; // Position action nodes below Start
+      : LAYOUT_CONFIG.START_POSITION.y + 300; // Position action nodes below Start with proper spacing
     
     // Update node positions with dagre calculated positions + layoutDirection
     const newNodes = nodes.map((node) => {
