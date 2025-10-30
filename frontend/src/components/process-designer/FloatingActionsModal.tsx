@@ -167,16 +167,8 @@ export const FloatingActionsModal: React.FC<FloatingActionsModalProps> = ({
   };
 
   return (
-    <>
-      {/* Backdrop - click to close */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-20 z-40"
-        onClick={onClose}
-      />
-      
-      {/* Modal */}
-      <div className="fixed left-0 top-0 h-full z-50">
-        <div className="bg-white shadow-2xl w-80 h-full flex flex-col">
+    <div className="fixed left-0 top-0 h-full z-50">
+      <div className="bg-white shadow-2xl w-80 h-full flex flex-col border-r-2 border-gray-300">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
           <h2 className="text-lg font-bold text-gray-900">Nodes Library</h2>
@@ -285,9 +277,8 @@ export const FloatingActionsModal: React.FC<FloatingActionsModalProps> = ({
             Drag actions to the canvas
           </div>
         </div>
-        </div>
       </div>
-    </>
+    </div>
   );
 };
 

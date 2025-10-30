@@ -382,8 +382,10 @@ const ProcessDesignerInner: React.FC = () => {
   }, [nodes, edges, wouldCreateCycle]);
 
   // Auto-arrange layout
-  const autoArrange = useCallback(() => {
-    const nodeSpacing = layoutDirection === 'horizontal' ? { x: 250, y: 150 } : { x: 200, y: 150 };
+  // Helper function to arrange nodes without fitView
+  const arrangeNodesLayout = useCallback((shouldFitView: boolean = false, direction?: 'horizontal' | 'vertical') => {
+    const useDirection = direction || layoutDirection;
+    const nodeSpacing = useDirection === 'horizontal' ? { x: 250, y: 150 } : { x: 200, y: 150 };
     const startX = 50;
     const startY = 50;
     
@@ -448,7 +450,7 @@ const ProcessDesignerInner: React.FC = () => {
       const indexInLevel = nodesInLevel.indexOf(node.id);
       
       let x, y;
-      if (layoutDirection === 'horizontal') {
+      if (useDirection === 'horizontal') {
         x = startX + (level * nodeSpacing.x);
         y = startY + (indexInLevel * nodeSpacing.y);
       } else {
@@ -464,24 +466,34 @@ const ProcessDesignerInner: React.FC = () => {
     
     setNodes(newNodes);
     
-    // Fit view after layout
-    setTimeout(() => {
-      reactFlowInstance?.fitView({ padding: 0.2, duration: 400 });
-      // Update zoom state after fitView
+    // Only fit view if explicitly requested
+    if (shouldFitView) {
       setTimeout(() => {
-        if (reactFlowInstance) {
-          setCurrentZoom(reactFlowInstance.getZoom());
-        }
-      }, 450);
-    }, 50);
+        reactFlowInstance?.fitView({ padding: 0.2, duration: 400 });
+        // Update zoom state after fitView
+        setTimeout(() => {
+          if (reactFlowInstance) {
+            setCurrentZoom(reactFlowInstance.getZoom());
+          }
+        }, 450);
+      }, 50);
+    }
   }, [nodes, edges, layoutDirection, setNodes, reactFlowInstance]);
+
+  // Auto-arrange with fitView
+  const autoArrange = useCallback(() => {
+    arrangeNodesLayout(true);
+  }, [arrangeNodesLayout]);
 
   // Toggle layout direction
   const toggleLayout = useCallback(() => {
-    setLayoutDirection(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
-    // Auto-arrange after toggling
-    setTimeout(() => autoArrange(), 100);
-  }, [autoArrange]);
+    setLayoutDirection(prev => {
+      const newDirection = prev === 'horizontal' ? 'vertical' : 'horizontal';
+      // Rearrange nodes with new direction without changing zoom
+      setTimeout(() => arrangeNodesLayout(false, newDirection), 100);
+      return newDirection;
+    });
+  }, [arrangeNodesLayout]);
 
   // Helper to check if a node supports multiple connections (control flow actions)
   const isMultiBranchAction = useCallback((node: Node): boolean => {
