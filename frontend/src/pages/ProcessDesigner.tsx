@@ -54,6 +54,13 @@ const ProcessDesignerInner: React.FC = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
   
+  // Layout Configuration - Node Positions
+  const LAYOUT_CONFIG = {
+    START_POSITION: { x: 250, y: 150 },
+    GLOBAL_ERROR_VERTICAL: { x: 800, y: 150 },   // To the right of Start in vertical layout
+    GLOBAL_ERROR_HORIZONTAL: { x: 250, y: 800 }, // Below Start in horizontal layout
+  };
+  
   const [nodes, setNodes, onNodesChangeRaw] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   
@@ -456,11 +463,10 @@ const ProcessDesignerInner: React.FC = () => {
     const newNodes = nodes.map(node => {
       // Special positioning for Start node - fixed position with layout direction
       if (node.type === 'start') {
-        const startPos = { x: 250, y: 150 };
-        console.log(`  - ${node.id}: START node at position=(${startPos.x}, ${startPos.y})`);
+        console.log(`  - ${node.id}: START node at position=(${LAYOUT_CONFIG.START_POSITION.x}, ${LAYOUT_CONFIG.START_POSITION.y})`);
         return {
           ...node,
-          position: startPos,
+          position: LAYOUT_CONFIG.START_POSITION,
           data: {
             ...node.data,
             layoutDirection: useDirection,
@@ -471,8 +477,8 @@ const ProcessDesignerInner: React.FC = () => {
       // Special positioning for Global Error node - depends on layout direction
       if (node.type === 'globalError') {
         const globalErrorPos = useDirection === 'vertical'
-          ? { x: 550, y: 150 }  // To the right in vertical
-          : { x: 250, y: 500 }; // Below Start in horizontal
+          ? LAYOUT_CONFIG.GLOBAL_ERROR_VERTICAL
+          : LAYOUT_CONFIG.GLOBAL_ERROR_HORIZONTAL;
         console.log(`  - ${node.id}: GLOBAL ERROR at position=(${globalErrorPos.x}, ${globalErrorPos.y}) for ${useDirection} layout`);
         return {
           ...node,
@@ -644,7 +650,7 @@ const ProcessDesignerInner: React.FC = () => {
         const startNode: Node = {
           id: 'start-1',
           type: 'start',
-          position: { x: 250, y: 150 },
+          position: LAYOUT_CONFIG.START_POSITION,
           data: {
             label: 'START',
             trigger: currentTriggerConfig,
@@ -661,8 +667,8 @@ const ProcessDesignerInner: React.FC = () => {
         };
         
         const globalErrorPosition = layoutDirection === 'vertical' 
-          ? { x: 550, y: 150 }  // To the right in vertical layout
-          : { x: 250, y: 500 }; // Below in horizontal layout
+          ? LAYOUT_CONFIG.GLOBAL_ERROR_VERTICAL
+          : LAYOUT_CONFIG.GLOBAL_ERROR_HORIZONTAL;
         
         console.log('🔷 Global Error position:', globalErrorPosition);
         
@@ -733,12 +739,12 @@ const ProcessDesignerInner: React.FC = () => {
           let fixedPosition = node.position;
           
           if (node.type === 'start') {
-            fixedPosition = { x: 250, y: 150 };
+            fixedPosition = LAYOUT_CONFIG.START_POSITION;
             console.log('🔷 Fixed Start node position to', fixedPosition);
           } else if (node.type === 'globalError') {
             fixedPosition = layoutDirection === 'vertical' 
-              ? { x: 550, y: 150 }  // To the right in vertical layout
-              : { x: 250, y: 500 }; // Below in horizontal layout
+              ? LAYOUT_CONFIG.GLOBAL_ERROR_VERTICAL
+              : LAYOUT_CONFIG.GLOBAL_ERROR_HORIZONTAL;
             console.log('🔷 Fixed Global Error position to', fixedPosition, 'for', layoutDirection);
           }
           
@@ -769,8 +775,8 @@ const ProcessDesignerInner: React.FC = () => {
             id: 'global-error-1',
             type: 'globalError',
             position: layoutDirection === 'vertical' 
-              ? { x: 550, y: 150 }  // To the right in vertical layout
-              : { x: 250, y: 500 }, // Below in horizontal layout
+              ? LAYOUT_CONFIG.GLOBAL_ERROR_VERTICAL
+              : LAYOUT_CONFIG.GLOBAL_ERROR_HORIZONTAL,
             data: {
               label: 'GLOBAL ERROR',
               config: currentGlobalErrorConfig,
@@ -1465,7 +1471,7 @@ const ProcessDesignerInner: React.FC = () => {
                     const startNode: Node = {
                       id: 'start-1',
                       type: 'start',
-                      position: { x: 250, y: 150 },
+                      position: LAYOUT_CONFIG.START_POSITION,
                       data: {
                         label: 'START',
                         trigger: currentTriggerConfig,
