@@ -130,7 +130,9 @@ export const CollapsibleActionPalette = ({
       a.name.toLowerCase().includes('retry')) &&
       // Hide On Error for now
       !a.name.toLowerCase().includes('on_error') &&
-      !a.name.toLowerCase().includes('onerror')
+      !a.name.toLowerCase().includes('onerror') &&
+      // Hide old Try-Catch-Finally (replaced with separate blocks)
+      a.name !== 'try_catch_finally'
     ),
     'Data': actions.filter(a =>
       a.category === 'data' ||

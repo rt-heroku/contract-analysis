@@ -221,20 +221,19 @@ export async function seedSystemActions() {
         },
       },
       {
-        name: 'try_catch_finally',
-        displayName: 'Try Catch Finally',
-        description: 'Error handling with try, catch, and optional finally blocks',
+        name: 'try_block',
+        displayName: 'Try Block',
+        description: 'Start of error handling region - executes protected code',
         actionType: 'system',
         category: 'error_handling',
-        icon: 'AlertCircle',
-        color: '#ef4444',
+        icon: 'ShieldAlert',
+        color: '#3b82f6',
         configSchema: {
           type: 'object',
           properties: {
-            catchEnabled: { type: 'boolean', default: true, description: 'Enable catch block' },
-            finallyEnabled: { type: 'boolean', default: false, description: 'Enable finally block (always executes)' },
-            propagateError: { type: 'boolean', default: false, description: 'Re-throw error after catch' },
             errorVariable: { type: 'string', default: 'error', description: 'Variable name for error object' },
+            captureStackTrace: { type: 'boolean', default: true, description: 'Capture full stack trace on error' },
+            timeoutMs: { type: 'number', description: 'Optional timeout for try block execution' },
           },
         },
         inputSchema: {
@@ -244,16 +243,88 @@ export async function seedSystemActions() {
         outputSchema: {
           type: 'object',
           properties: {
-            success: { type: 'boolean', description: 'Whether try block succeeded' },
-            error: { description: 'Error object if catch was triggered' },
-            result: { description: 'Result from try block or catch block' },
-            branchTaken: { type: 'string', enum: ['try', 'catch', 'finally'] },
+            success: { type: 'boolean', description: 'Whether execution succeeded' },
+            result: { description: 'Result from try block' },
           },
         },
         executorType: 'builtin',
         executorConfig: {
-          maxBranches: 3, // try, catch, finally
-          branchLabels: ['try', 'catch', 'finally'],
+          isContainer: true,
+          hasErrorHandle: true,
+        },
+      },
+      {
+        name: 'catch_block',
+        displayName: 'Catch Block',
+        description: 'Error handler - executes only when Try block throws an error',
+        actionType: 'system',
+        category: 'error_handling',
+        icon: 'AlertOctagon',
+        color: '#ef4444',
+        configSchema: {
+          type: 'object',
+          properties: {
+            errorTypes: { 
+              type: 'array', 
+              items: { type: 'string' },
+              default: ['all'],
+              description: 'Error types to catch (all, ValidationError, SystemError, NetworkError)' 
+            },
+            logError: { type: 'boolean', default: true, description: 'Log error to activity log' },
+            errorVariable: { type: 'string', default: 'error', description: 'Variable name for error object' },
+            extractErrorDetails: { type: 'boolean', default: true, description: 'Extract error message, code, stack' },
+          },
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Error object from try block',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            errorHandled: { type: 'boolean' },
+            errorMessage: { type: 'string' },
+            errorCode: { type: 'string' },
+            errorStack: { type: 'string' },
+            result: { description: 'Result from catch block' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          requiresTryBlock: true,
+        },
+      },
+      {
+        name: 'finally_block',
+        displayName: 'Finally Block',
+        description: 'Cleanup/convergence - ALWAYS executes after try/catch',
+        actionType: 'system',
+        category: 'error_handling',
+        icon: 'RefreshCw',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            alwaysExecute: { type: 'boolean', default: true, description: 'Always execute regardless of success/error' },
+            logExecution: { type: 'boolean', default: false, description: 'Log finally block execution' },
+          },
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Merged data from try success or catch output',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            executed: { type: 'boolean' },
+            sourceBlock: { type: 'string', enum: ['try', 'catch'], description: 'Which block led to finally' },
+            result: { description: 'Result from finally block' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          isConvergencePoint: true,
+          acceptsMultipleInputs: true,
         },
       },
       {

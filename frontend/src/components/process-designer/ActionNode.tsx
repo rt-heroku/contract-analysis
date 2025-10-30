@@ -235,7 +235,10 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
           'while',
           'set_variable',
           'set_payload',
-          'try_catch_finally',
+          'try_catch_finally', // Old deprecated action
+          'try_block', // Has special error handle, not regular error connection
+          'catch_block', // Already IS the error handler
+          'finally_block', // Convergence point, no error output
         ];
         
         const shouldShowError = !noErrorActions.some(name => actionName.includes(name));
