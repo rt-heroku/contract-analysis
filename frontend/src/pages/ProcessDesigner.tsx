@@ -172,19 +172,6 @@ const ProcessDesignerInner: React.FC = () => {
   // Layout direction state
   const [layoutDirection, setLayoutDirection] = useState<'horizontal' | 'vertical'>('vertical');
   
-  // Update all nodes with layout direction when it changes
-  useEffect(() => {
-    setNodes((nds) =>
-      nds.map((node) => ({
-        ...node,
-        data: {
-          ...node.data,
-          layoutDirection,
-        },
-      }))
-    );
-  }, [layoutDirection, setNodes]);
-  
   // Variables panel state
   const [variablesPanelOpen, setVariablesPanelOpen] = useState(false);
   const [processVariables, setProcessVariables] = useState<ProcessVariable[]>([
@@ -474,6 +461,10 @@ const ProcessDesignerInner: React.FC = () => {
       return {
         ...node,
         position: { x, y },
+        data: {
+          ...node.data,
+          layoutDirection: useDirection, // Ensure layout direction is set correctly
+        },
       };
     });
     
@@ -502,11 +493,22 @@ const ProcessDesignerInner: React.FC = () => {
   const toggleLayout = useCallback(() => {
     setLayoutDirection(prev => {
       const newDirection = prev === 'horizontal' ? 'vertical' : 'horizontal';
-      // Rearrange nodes with new direction without changing zoom
-      setTimeout(() => arrangeNodesLayout(false, newDirection), 100);
+      // Wait for layout direction to update in all nodes, then rearrange
+      setTimeout(() => {
+        arrangeNodesLayout(false, newDirection);
+        // Force edges to recalculate paths by updating them
+        setTimeout(() => {
+          setEdges((eds) => eds.map(edge => ({ ...edge, updated: Date.now() })));
+          // Force ReactFlow to refresh
+          if (reactFlowInstance) {
+            const viewport = reactFlowInstance.getViewport();
+            reactFlowInstance.setViewport(viewport);
+          }
+        }, 100);
+      }, 200);
       return newDirection;
     });
-  }, [arrangeNodesLayout]);
+  }, [arrangeNodesLayout, reactFlowInstance, setEdges]);
 
   // Helper to check if a node supports multiple connections (control flow actions)
   const isMultiBranchAction = useCallback((node: Node): boolean => {
