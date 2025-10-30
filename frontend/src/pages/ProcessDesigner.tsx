@@ -471,8 +471,8 @@ const ProcessDesignerInner: React.FC = () => {
       // Special positioning for Global Error node - depends on layout direction
       if (node.type === 'globalError') {
         const globalErrorPos = useDirection === 'vertical'
-          ? { x: 250, y: 500 }  // Below Start in vertical
-          : { x: 550, y: 150 }; // To the right in horizontal
+          ? { x: 550, y: 150 }  // To the right in vertical
+          : { x: 250, y: 500 }; // Below Start in horizontal
         console.log(`  - ${node.id}: GLOBAL ERROR at position=(${globalErrorPos.x}, ${globalErrorPos.y}) for ${useDirection} layout`);
         return {
           ...node,
@@ -661,8 +661,8 @@ const ProcessDesignerInner: React.FC = () => {
         };
         
         const globalErrorPosition = layoutDirection === 'vertical' 
-          ? { x: 250, y: 500 }  // Much more space below in vertical layout
-          : { x: 550, y: 150 }; // Side by side in horizontal layout
+          ? { x: 550, y: 150 }  // To the right in vertical layout
+          : { x: 250, y: 500 }; // Below in horizontal layout
         
         console.log('🔷 Global Error position:', globalErrorPosition);
         
@@ -737,8 +737,8 @@ const ProcessDesignerInner: React.FC = () => {
             console.log('🔷 Fixed Start node position to', fixedPosition);
           } else if (node.type === 'globalError') {
             fixedPosition = layoutDirection === 'vertical' 
-              ? { x: 250, y: 500 }
-              : { x: 550, y: 150 };
+              ? { x: 550, y: 150 }  // To the right in vertical layout
+              : { x: 250, y: 500 }; // Below in horizontal layout
             console.log('🔷 Fixed Global Error position to', fixedPosition, 'for', layoutDirection);
           }
           
@@ -769,8 +769,8 @@ const ProcessDesignerInner: React.FC = () => {
             id: 'global-error-1',
             type: 'globalError',
             position: layoutDirection === 'vertical' 
-              ? { x: 250, y: 500 }  // Much more space below in vertical layout
-              : { x: 550, y: 150 }, // Side by side in horizontal layout
+              ? { x: 550, y: 150 }  // To the right in vertical layout
+              : { x: 250, y: 500 }, // Below in horizontal layout
             data: {
               label: 'GLOBAL ERROR',
               config: currentGlobalErrorConfig,
