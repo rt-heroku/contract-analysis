@@ -14,9 +14,12 @@ interface ActionNodeData {
   description?: string;
   category?: string;
   icon?: string;
+  iconUrl?: string; // Base64 image for custom icons
   color?: string;
   actionType?: 'system' | 'user_defined' | 'connector';
   actionName?: string;
+  connectorName?: string; // For connector actions
+  metadata?: string; // Additional metadata (e.g., "gpt-4o CHAT")
   onEdit?: () => void;
   onAddNext?: () => void;
   showPlusButton?: boolean;
@@ -131,10 +134,10 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
       onDoubleClick={handleDoubleClick}
       className={`
         bg-white rounded-lg shadow-lg border-2 transition-all duration-200
-        ${selected ? 'border-blue-500 shadow-xl scale-105' : 'border-gray-200 hover:border-blue-300'}
+        ${selected ? 'border-blue-500 shadow-xl' : 'border-gray-200 hover:border-blue-300'}
         cursor-pointer relative
       `}
-      style={{ minWidth: '240px', maxWidth: '280px' }}
+      style={{ minWidth: '240px', maxWidth: '300px' }}
     >
       {/* Top Handle */}
       <Handle
@@ -144,41 +147,67 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
         style={{ top: -6 }}
       />
 
-      {/* Edit Button (top-right corner) */}
-      {data.onEdit && (
-        <button
-          onClick={handleEditClick}
-          className="absolute top-2 right-2 p-1.5 bg-white rounded-md shadow-md hover:bg-gray-50 transition-colors z-10 border border-gray-200"
-          title="Edit action"
-        >
-          <Edit3 className="w-3.5 h-3.5 text-gray-600" />
-        </button>
-      )}
+      {/* Card Content */}
+      <div className="p-3">
+        {/* Header Row: Icon + Title + Edit */}
+        <div className="flex items-center space-x-3 mb-2">
+          {/* Icon/Avatar */}
+          <div className="flex-shrink-0">
+            {data.iconUrl ? (
+              <img 
+                src={data.iconUrl} 
+                alt={data.label}
+                className="w-10 h-10 rounded-lg object-cover"
+              />
+            ) : (
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: `${bgColor}` }}
+              >
+                <IconComponent className="w-6 h-6 text-white" />
+              </div>
+            )}
+          </div>
 
-      {/* Header with Icon */}
-      <div
-        className="flex items-center space-x-2 p-3 rounded-t-lg"
-        style={{ backgroundColor: `${bgColor}20` }}
-      >
-        <div
-          className="p-2 rounded-lg flex-shrink-0"
-          style={{ backgroundColor: bgColor }}
-        >
-          <IconComponent className="w-5 h-5 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 truncate text-sm">
-            {data.label}
-          </h3>
-        </div>
-      </div>
+          {/* Title */}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-900 text-sm leading-tight truncate">
+              {data.label}
+            </h3>
+          </div>
 
-      {/* Footer with Badge */}
-      <div className="px-3 py-2 bg-gray-50 rounded-b-lg border-t border-gray-100">
-        {data.actionType && (
-          <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getBadgeClass()}`}>
-            {getTypeLabel()}
-          </span>
+          {/* Edit Button */}
+          {data.onEdit && (
+            <button
+              onClick={handleEditClick}
+              className="flex-shrink-0 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center justify-center transition-colors"
+              title="Edit action"
+            >
+              <Edit3 className="w-3 h-3 text-gray-600" />
+            </button>
+          )}
+        </div>
+
+        {/* Metadata Row (if exists) */}
+        {(data.metadata || data.connectorName) && (
+          <div className="flex items-center space-x-2 text-xs text-gray-600 bg-gray-50 px-2 py-1.5 rounded-md">
+            <LucideIcons.Zap className="w-3 h-3 text-gray-400" />
+            <span className="truncate">
+              {data.metadata || data.connectorName}
+            </span>
+            {data.actionType === 'connector' && (
+              <LucideIcons.Eye className="w-3 h-3 text-gray-400 ml-auto" />
+            )}
+          </div>
+        )}
+
+        {/* Type Badge (if no metadata) */}
+        {!data.metadata && !data.connectorName && data.actionType && (
+          <div className="mt-2">
+            <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${getBadgeClass()}`}>
+              {getTypeLabel()}
+            </span>
+          </div>
         )}
       </div>
 

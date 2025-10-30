@@ -6,6 +6,7 @@ interface IfThenElseNodeData {
   label: string;
   description?: string;
   actionName?: string;
+  config?: any;
   onEdit?: () => void;
   onAddNext?: () => void;
   showPlusButton?: boolean;
@@ -25,65 +26,71 @@ export const IfThenElseNode = memo(({ data, selected }: NodeProps<IfThenElseNode
     }
   };
 
+  // Extract condition info from config
+  const condition = data.config?.condition || 'condition not set';
+  const displayCondition = condition.length > 30 ? condition.substring(0, 27) + '...' : condition;
+
   return (
     <div 
       className="relative group" 
       onDoubleClick={handleDoubleClick}
-      style={{ minWidth: '180px' }}
+      style={{ minWidth: '280px' }}
     >
-      {/* Diamond Shape Container */}
-      <div className="relative flex items-center justify-center" style={{ height: '140px', width: '180px' }}>
-        {/* Diamond SVG Background */}
-        <svg 
-          width="180" 
-          height="140" 
-          className="absolute top-0 left-0"
-          style={{ filter: selected ? 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6))' : 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))' }}
-        >
-          <defs>
-            <linearGradient id="ifGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style={{ stopColor: '#60a5fa', stopOpacity: 1 }} />
-              <stop offset="100%" style={{ stopColor: '#3b82f6', stopOpacity: 1 }} />
-            </linearGradient>
-          </defs>
-          {/* Diamond path */}
-          <path
-            d="M 90 10 L 170 70 L 90 130 L 10 70 Z"
-            fill="url(#ifGradient)"
-            stroke={selected ? '#3b82f6' : '#2563eb'}
-            strokeWidth={selected ? '3' : '2'}
-            className="transition-all duration-200"
-          />
-        </svg>
+      {/* Card Container */}
+      <div 
+        className={`
+          bg-white rounded-lg shadow-lg border-2 transition-all duration-200
+          ${selected ? 'border-blue-500 shadow-xl' : 'border-gray-200'}
+        `}
+        style={{ 
+          minHeight: '90px',
+          position: 'relative',
+        }}
+      >
+        {/* Header Section */}
+        <div className="flex items-center justify-between p-3 border-b border-gray-100">
+          {/* Left: Icon + Title */}
+          <div className="flex items-center space-x-2 flex-1">
+            <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center flex-shrink-0">
+              <GitBranch className="w-5 h-5 text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-gray-900 truncate">
+                {data.label || 'IF THEN ELSE'}
+              </div>
+            </div>
+          </div>
 
-        {/* Content */}
-        <div className="relative z-10 flex flex-col items-center justify-center text-center px-6 py-4">
-          {/* Icon */}
-          <div className="mb-2">
-            <GitBranch className="w-8 h-8 text-white" />
-          </div>
-          
-          {/* Label */}
-          <div className="text-sm font-semibold text-white mb-1 leading-tight">
-            {data.label || 'IF THEN ELSE'}
-          </div>
-          
-          {/* Type Badge */}
-          <div className="text-xs bg-blue-900 bg-opacity-50 text-white px-2 py-0.5 rounded-full">
-            Condition
+          {/* Edit Button */}
+          {data.onEdit && (
+            <button
+              onClick={handleEditClick}
+              className="w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center justify-center flex-shrink-0 ml-2"
+              title="Edit condition"
+            >
+              <Edit3 className="w-3 h-3 text-gray-600" />
+            </button>
+          )}
+        </div>
+
+        {/* Condition Display */}
+        <div className="px-3 py-2 bg-gray-50">
+          <div className="text-xs text-gray-500 font-mono truncate">
+            {displayCondition}
           </div>
         </div>
 
-        {/* Edit Button - appears on hover */}
-        {data.onEdit && (
-          <button
-            onClick={handleEditClick}
-            className="absolute top-2 right-2 w-6 h-6 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md z-20"
-            title="Edit condition"
-          >
-            <Edit3 className="w-3 h-3 text-blue-600" />
-          </button>
-        )}
+        {/* IF/ELSE Labels Row */}
+        <div className="flex items-center justify-between px-3 py-2">
+          <div className="flex items-center space-x-1">
+            <div className="text-xs font-bold text-green-600">IF</div>
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+          </div>
+          <div className="flex items-center space-x-1">
+            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+            <div className="text-xs font-bold text-red-600">ELSE</div>
+          </div>
+        </div>
       </div>
 
       {/* Input Handle (Top) */}
@@ -92,7 +99,7 @@ export const IfThenElseNode = memo(({ data, selected }: NodeProps<IfThenElseNode
         position={Position.Top}
         id="input"
         className="w-3 h-3 !bg-blue-500 !border-2 !border-white"
-        style={{ top: 10 }}
+        style={{ top: -6 }}
       />
 
       {/* IF Output Handle (Left) - Green */}
@@ -101,14 +108,8 @@ export const IfThenElseNode = memo(({ data, selected }: NodeProps<IfThenElseNode
         position={Position.Left}
         id="if"
         className="w-3 h-3 !bg-green-500 !border-2 !border-white"
-        style={{ left: 30, top: '50%' }}
+        style={{ left: -6, top: '75%' }}
       />
-      <div
-        className="absolute text-xs font-semibold px-2 py-0.5 bg-white rounded shadow-sm border border-green-300 whitespace-nowrap pointer-events-none"
-        style={{ left: -20, top: 'calc(50% - 10px)', color: '#22c55e' }}
-      >
-        if
-      </div>
 
       {/* ELSE Output Handle (Right) - Red */}
       <Handle
@@ -116,16 +117,10 @@ export const IfThenElseNode = memo(({ data, selected }: NodeProps<IfThenElseNode
         position={Position.Right}
         id="else"
         className="w-3 h-3 !bg-red-500 !border-2 !border-white"
-        style={{ right: 30, top: '50%' }}
+        style={{ right: -6, top: '75%' }}
       />
-      <div
-        className="absolute text-xs font-semibold px-2 py-0.5 bg-white rounded shadow-sm border border-red-300 whitespace-nowrap pointer-events-none"
-        style={{ right: -25, top: 'calc(50% - 10px)', color: '#ef4444' }}
-      >
-        else
-      </div>
 
-      {/* Plus Button - only show if both handles have no connections OR if action supports multiple connections */}
+      {/* Plus Button */}
       {data.showPlusButton && data.onAddNext && (
         <div className="absolute -bottom-5 left-1/2 transform -translate-x-1/2">
           <button
