@@ -21,13 +21,14 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RefreshCw, MousePointer2, Upload, ArrowLeftRight, ArrowUpDown, Database } from 'lucide-react';
+import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ZoomIn, ZoomOut, RefreshCw, MousePointer2, Upload, ArrowLeftRight, ArrowUpDown, Database, Layers } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
 import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
 import { IfThenElseNode } from '@/components/process-designer/IfThenElseNode';
 import { LoopContainerNode } from '@/components/process-designer/LoopContainerNode';
-import { CollapsibleActionPalette } from '@/components/process-designer/CollapsibleActionPalette';
+import { FloatingActionsModal } from '@/components/process-designer/FloatingActionsModal';
+import { FloatingPropertiesPanel } from '@/components/process-designer/FloatingPropertiesPanel';
 import { NodeContextMenu } from '@/components/process-designer/NodeContextMenu';
 import { NodeEditModal } from '@/components/process-designer/NodeEditModal';
 import { TriggerConfigPanel } from '@/components/process-designer/TriggerConfigPanel';
@@ -156,9 +157,11 @@ const ProcessDesignerInner: React.FC = () => {
   const [saveModalAction, setSaveModalAction] = useState<'save' | 'publish'>('save');
   
   // UI state for panels
-  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
-  const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [selectedNodeForProps, setSelectedNodeForProps] = useState<Node | null>(null);
+  
+  // Floating modals state
+  const [actionsModalOpen, setActionsModalOpen] = useState(false);
+  const [propertiesModalOpen, setPropertiesModalOpen] = useState(false);
   
   // Zoom state
   const [currentZoom, setCurrentZoom] = useState(0.4);
@@ -1208,16 +1211,14 @@ const ProcessDesignerInner: React.FC = () => {
   // Handle node selection for right properties panel
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     setSelectedNodeForProps(node);
+    setPropertiesModalOpen(true); // Open floating properties modal
   }, []);
   
   // Handle canvas click to show process properties
   const onPaneClick = useCallback(() => {
     setSelectedNodeForProps(null); // Clear node selection
-    if (rightPanelOpen) {
-      // If right panel is open, show process properties there
-      // For now, just clear the selected node
-    }
-  }, [rightPanelOpen]);
+    setPropertiesModalOpen(false); // Close properties modal
+  }, []);
   
   // Canvas context menu handlers
   const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
@@ -1336,30 +1337,7 @@ const ProcessDesignerInner: React.FC = () => {
 
       <div className="flex-1 flex overflow-hidden" onClick={closeCanvasContextMenu}>
         {/* Left Panel - Collapsible Action Palette */}
-        {!leftPanelCollapsed && (
-          <div className="w-64 flex-shrink-0 flex flex-col bg-white border-r shadow-sm">
-            <CollapsibleActionPalette
-              actions={actions}
-              onDragStart={(event, action) => {
-                event.dataTransfer.setData('application/json', JSON.stringify(action));
-                event.dataTransfer.effectAllowed = 'move';
-              }}
-            />
-          </div>
-        )}
-        
-        {/* Left Panel Collapse Toggle */}
-        <button
-          onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-          className="w-3 flex-shrink-0 bg-gray-100 hover:bg-gray-200 border-r border-gray-300 flex items-center justify-center transition-colors"
-          title={leftPanelCollapsed ? 'Show actions panel' : 'Hide actions panel'}
-        >
-          {leftPanelCollapsed ? (
-            <ChevronRight className="w-3 h-3 text-gray-600" />
-          ) : (
-            <ChevronLeft className="w-3 h-3 text-gray-600" />
-          )}
-        </button>
+        {/* Left Panel Hidden - Now using Floating Actions Modal */}
 
         {/* Canvas - Fill remaining space */}
         <div className="flex-1 flex flex-col min-w-0" ref={reactFlowWrapper}>
@@ -1455,8 +1433,19 @@ const ProcessDesignerInner: React.FC = () => {
                     className="bg-white shadow-lg rounded-lg border border-gray-200"
                   />
                   
-                  {/* Process Properties Button - Next to Controls */}
+                  {/* Actions Button - Next to Controls */}
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '52px' }}>
+                    <button
+                      onClick={() => setActionsModalOpen(true)}
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
+                      title="Actions Library"
+                    >
+                      <Layers className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                  
+                  {/* Process Properties Button - After Actions */}
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '104px' }}>
                     <button
                       onClick={() => setProcessPropertiesOpen(true)}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1466,8 +1455,8 @@ const ProcessDesignerInner: React.FC = () => {
                     </button>
                   </div>
                   
-                  {/* Variables Button - Next to Gear */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '104px' }}>
+                  {/* Variables Button - After Gear */}
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '156px' }}>
                     <button
                       onClick={() => setVariablesPanelOpen(true)}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1478,7 +1467,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Multi-Select Mode Button - After Variables */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '156px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '208px' }}>
                     <button
                       onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
                       className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors ${
@@ -1491,7 +1480,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Layout Toggle Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '208px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '260px' }}>
                     <button
                       onClick={toggleLayout}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1506,7 +1495,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Auto-Arrange Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '260px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '312px' }}>
                     <button
                       onClick={autoArrange}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1517,7 +1506,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Zoom Percentage Display */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '312px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '364px' }}>
                     <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 flex items-center space-x-2">
                       <span className="text-xs font-semibold text-gray-700">
                         {Math.round(currentZoom * 100)}%
@@ -1525,9 +1514,9 @@ const ProcessDesignerInner: React.FC = () => {
                     </div>
                   </div>
                   
-                  {/* MiniMap positioned at top-right */}
+                  {/* MiniMap positioned at bottom-right */}
                   <MiniMap
-                    position="top-right"
+                    position="bottom-right"
                     nodeColor={(node) => {
                       if (node.type === 'start') return '#22c55e';
                       if (node.type === 'end') return '#ef4444';
@@ -1545,143 +1534,7 @@ const ProcessDesignerInner: React.FC = () => {
           )}
         </div>
         
-        {/* Right Panel Collapse Toggle */}
-        <button
-          onClick={() => setRightPanelOpen(!rightPanelOpen)}
-          className="w-3 flex-shrink-0 bg-gray-100 hover:bg-gray-200 border-l border-gray-300 flex items-center justify-center transition-colors"
-          title={rightPanelOpen ? 'Hide properties panel' : 'Show properties panel'}
-        >
-          {rightPanelOpen ? (
-            <ChevronRight className="w-3 h-3 text-gray-600" />
-          ) : (
-            <ChevronLeft className="w-3 h-3 text-gray-600" />
-          )}
-        </button>
-        
-        {/* Right Properties Panel */}
-        {rightPanelOpen && (
-          <div className="w-80 flex-shrink-0 bg-white border-l shadow-lg flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-900">Properties</h3>
-              <p className="text-xs text-gray-500 mt-1">Quick edit panel</p>
-            </div>
-            
-            {selectedNodeForProps ? (
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Node ID
-                    </label>
-                    <input
-                      type="text"
-                      value={selectedNodeForProps.id}
-                      disabled
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded bg-gray-50"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Display Name
-                    </label>
-                    <input
-                      type="text"
-                      value={selectedNodeForProps.data?.displayName || ''}
-                      onChange={(e) => {
-                        const updatedNode = {
-                          ...selectedNodeForProps,
-                          data: { ...selectedNodeForProps.data, displayName: e.target.value }
-                        };
-                        setSelectedNodeForProps(updatedNode);
-                        setNodes(nodes.map(n => n.id === updatedNode.id ? updatedNode : n));
-                      }}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Type
-                    </label>
-                    <input
-                      type="text"
-                      value={selectedNodeForProps.type || ''}
-                      disabled
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded bg-gray-50"
-                    />
-                  </div>
-                  
-                  <Button
-                    onClick={() => {
-                      setEditModalOpen(true);
-                      setSelectedNode(selectedNodeForProps);
-                    }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Open Full Editor
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  <div className="text-sm text-gray-600 mb-4">
-                    <p className="font-medium text-gray-900 mb-2">Process Properties</p>
-                    <p className="text-xs">Configure the process settings</p>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Process Name
-                    </label>
-                    <input
-                      type="text"
-                      value={processName}
-                      onChange={(e) => setProcessName(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                      placeholder="Enter process name"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      value={processDescription}
-                      onChange={(e) => setProcessDescription(e.target.value)}
-                      rows={3}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                      placeholder="Add description..."
-                    />
-                  </div>
-                  
-                  <div className="pt-4 border-t border-gray-200">
-                    <p className="text-xs font-medium text-gray-700 mb-2">Statistics</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-gray-50 p-2 rounded">
-                        <p className="text-xs text-gray-500">Nodes</p>
-                        <p className="text-lg font-semibold text-gray-900">{nodes.length}</p>
-                      </div>
-                      <div className="bg-gray-50 p-2 rounded">
-                        <p className="text-xs text-gray-500">Connections</p>
-                        <p className="text-lg font-semibold text-gray-900">{edges.length}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Button
-                    onClick={() => setProcessPropertiesOpen(true)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-2"
-                  >
-                    Full Settings
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Right Panel Hidden - Now using Floating Properties Panel */}
       </div>
 
       {/* Context Menu */}
@@ -1844,12 +1697,7 @@ const ProcessDesignerInner: React.FC = () => {
           
           <button
             onClick={() => handleCanvasMenuAction('properties')}
-            disabled={rightPanelOpen}
-            className={`w-full text-left px-4 py-2 text-sm flex items-center space-x-2 ${
-              rightPanelOpen
-                ? 'text-gray-400 cursor-not-allowed'
-                : 'hover:bg-blue-50 text-gray-700 hover:text-blue-600'
-            }`}
+            className="w-full text-left px-4 py-2 text-sm flex items-center space-x-2 hover:bg-blue-50 text-gray-700 hover:text-blue-600"
           >
             <Settings className="w-4 h-4" />
             <span>Properties</span>
@@ -2049,6 +1897,30 @@ const ProcessDesignerInner: React.FC = () => {
         onClose={() => setVariablesPanelOpen(false)}
         variables={processVariables}
         onSave={(variables) => setProcessVariables(variables)}
+      />
+
+      {/* Floating Actions Modal */}
+      <FloatingActionsModal
+        isOpen={actionsModalOpen}
+        onClose={() => setActionsModalOpen(false)}
+        actions={actions}
+        connectors={[]} // TODO: Fetch actual connectors with their actions
+        onDragStart={(event, action) => {
+          event.dataTransfer.setData('application/json', JSON.stringify(action));
+          event.dataTransfer.effectAllowed = 'move';
+        }}
+      />
+
+      {/* Floating Properties Panel */}
+      <FloatingPropertiesPanel
+        isOpen={propertiesModalOpen}
+        onClose={() => setPropertiesModalOpen(false)}
+        selectedNode={selectedNodeForProps}
+        processName={processName}
+        onEditNode={(node) => {
+          setSelectedNode(node);
+          setEditModalOpen(true);
+        }}
       />
 
       {/* Action Search Modal */}

@@ -344,8 +344,6 @@ END $$;
 DO $$
 BEGIN
 
-ALTER TABLE public.system_settings ALTER COLUMN updated_at DROP NOT NULL;
-
 INSERT INTO system_settings (setting_key,setting_value,description,is_secret,created_at,updated_at) VALUES
 	 ('app_logo_url','/images/logos/MuleSoft-RGB-icon.png','Application logo URL (can be uploaded by admin)',false, NOW(), NOW()),
 	 ('app_name','Document Analyzer','Application name displayed in header',false, NOW(), NOW()),
