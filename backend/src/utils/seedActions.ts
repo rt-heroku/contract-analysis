@@ -141,6 +141,62 @@ export async function seedSystemActions() {
         executorConfig: {},
       },
       {
+        name: 'conditional',
+        displayName: 'Conditional',
+        description: 'Advanced conditional logic with multiple conditions using AND/OR operators',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'Filter',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            conditions: {
+              type: 'array',
+              description: 'Array of condition groups with logic operators',
+              items: {
+                type: 'object',
+                properties: {
+                  conditions: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        field: { type: 'string', description: 'Field or variable to check' },
+                        operator: { 
+                          type: 'string', 
+                          enum: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with', 
+                                 'greater_than', 'less_than', 'greater_or_equal', 'less_or_equal', 
+                                 'is_empty', 'is_not_empty', 'is_true', 'is_false'],
+                          description: 'Comparison operator'
+                        },
+                        value: { description: 'Value to compare against' },
+                      },
+                      required: ['field', 'operator'],
+                    },
+                  },
+                  logicOperator: { type: 'string', enum: ['and', 'or'], description: 'Logic operator (AND/OR)' },
+                },
+              },
+            },
+          },
+          required: ['conditions'],
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Data used for condition evaluation',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            result: { type: 'boolean', description: 'Overall condition evaluation result' },
+            matchedConditions: { type: 'array', description: 'List of conditions that matched' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
         name: 'if_then_else',
         displayName: 'IF THEN ELSE',
         description: 'Conditional branching - evaluates condition and routes to IF or ELSE branch',
@@ -151,11 +207,14 @@ export async function seedSystemActions() {
         configSchema: {
           type: 'object',
           properties: {
-            condition: { description: 'Condition to evaluate (boolean or expression)' },
+            conditions: {
+              type: 'array',
+              description: 'Array of condition groups (uses ConditionalEditor)',
+            },
+            condition: { description: 'Legacy: Simple condition string (backward compatibility)' },
             trueValue: { description: 'Value returned when condition is true' },
             falseValue: { description: 'Value returned when condition is false' },
           },
-          required: ['condition'],
         },
         inputSchema: {
           type: 'object',
@@ -619,6 +678,91 @@ export async function seedSystemActions() {
         },
         executorType: 'builtin',
         executorConfig: {},
+      },
+      {
+        name: 'delay',
+        displayName: 'Delay',
+        description: 'Pause workflow execution for a specified duration or until a condition is met',
+        actionType: 'system',
+        category: 'control_flow',
+        icon: 'Clock',
+        color: '#f59e0b',
+        configSchema: {
+          type: 'object',
+          properties: {
+            delayType: { 
+              type: 'string', 
+              enum: ['fixed', 'dynamic', 'conditional', 'until'],
+              default: 'fixed',
+              description: 'Type of delay to apply'
+            },
+            // Fixed Delay
+            delayAmount: { 
+              type: 'number', 
+              description: 'Amount of time to delay (for fixed delay)' 
+            },
+            timeUnits: { 
+              type: 'string', 
+              enum: ['seconds', 'minutes', 'hours', 'days'],
+              default: 'seconds',
+              description: 'Time units for delay amount' 
+            },
+            // Dynamic Delay
+            durationExpression: { 
+              type: 'string', 
+              description: 'Expression to calculate delay duration (for dynamic delay)' 
+            },
+            maxWaitTime: { 
+              type: 'string', 
+              description: 'Maximum time to wait (e.g., "24 hours")' 
+            },
+            // Conditional Delay
+            conditions: {
+              type: 'array',
+              description: 'Array of condition groups for conditional delay (uses ConditionalEditor)',
+            },
+            checkInterval: { 
+              type: 'number', 
+              default: 60,
+              description: 'How often to check conditions (in seconds)' 
+            },
+            // Until Specific Date/Time
+            targetDateTime: { 
+              type: 'string', 
+              description: 'ISO 8601 date/time string or expression' 
+            },
+            timeZone: { 
+              type: 'string', 
+              default: 'UTC',
+              description: 'Time zone for date/time' 
+            },
+            // General
+            title: { type: 'string', description: 'Display title' },
+            description: { type: 'string', description: 'Description of delay purpose' },
+            status: { 
+              type: 'string', 
+              enum: ['active', 'inactive'],
+              default: 'active'
+            },
+          },
+          required: ['delayType'],
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Input data that may be used in expressions',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            delayedFor: { type: 'number', description: 'Actual delay duration in milliseconds' },
+            completedAt: { type: 'string', description: 'ISO timestamp when delay completed' },
+            delayType: { type: 'string', description: 'Type of delay that was applied' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          async: true,
+        },
       },
       {
         name: 'validate',

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/common/Button';
-import { X, Plus, Trash2, ArrowRight } from 'lucide-react';
+import { X, Plus, Trash2, ArrowRight, Edit } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common/Tabs';
+import { ConditionalEditor, ConditionalGroup } from './ConditionalEditor';
 
 interface NodeEditModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface NodeEditModalProps {
 export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, edges, onClose, onSave, onDeleteEdge }: NodeEditModalProps) => {
   const [formData, setFormData] = useState<any>({});
   const [activeTab, setActiveTab] = useState('configuration');
+  const [showConditionalEditor, setShowConditionalEditor] = useState(false);
 
   useEffect(() => {
     if (node) {
@@ -78,6 +80,11 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
     // While Loop
     if (actionName.includes('while')) {
       return renderWhileFields();
+    }
+
+    // Delay
+    if (actionName.includes('delay')) {
+      return renderDelayFields();
     }
 
     // Transform
@@ -242,17 +249,32 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
   const renderIfThenElseFields = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Conditions</label>
+        <button
+          type="button"
+          onClick={() => setShowConditionalEditor(true)}
+          className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center space-x-2"
+        >
+          <Edit className="w-4 h-4" />
+          <span className="text-sm font-medium">
+            {formData.conditions?.length > 0 ? 'Edit Conditions' : 'Configure Conditions'}
+          </span>
+        </button>
+        {formData.conditions?.length > 0 && (
+          <p className="text-xs text-green-600 mt-1">
+            ✓ {formData.conditions.reduce((acc: number, g: any) => acc + g.conditions.length, 0)} condition(s) configured
+          </p>
+        )}
+        <p className="text-xs text-gray-500 mt-2">
+          Legacy simple condition string (backward compatibility):
+        </p>
         <input
           type="text"
           value={formData.condition || ''}
           onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md mt-1"
           placeholder="{{input.value}} > 100"
         />
-        <p className="text-xs text-gray-500 mt-1">
-          Use {`{{variable}}`} for dynamic values. Supports: ==, !=, &gt;, &lt;, &gt;=, &lt;=, &&, ||
-        </p>
       </div>
     </div>
   );
@@ -307,6 +329,226 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
       </div>
     </div>
   );
+
+  const renderDelayFields = () => {
+    const delayType = formData.delayType || 'fixed';
+    
+    return (
+      <div className="space-y-6">
+        {/* Delay Type Selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <span className="text-red-500">*</span> Delay Type
+          </label>
+          <select
+            value={delayType}
+            onChange={(e) => setFormData({ ...formData, delayType: e.target.value })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Select Delay Type...</option>
+            <option value="fixed">⏱️ Fixed Delay</option>
+            <option value="dynamic">⚡ Dynamic Delay</option>
+            <option value="conditional">🔄 Conditional Delay</option>
+            <option value="until">📅 Until Specific Date/Time</option>
+          </select>
+        </div>
+
+        {/* General Information (collapsible) */}
+        <div className="border-t pt-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">General Information</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                <span className="text-red-500">*</span> Title
+              </label>
+              <input
+                type="text"
+                value={formData.title || 'Delay'}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Delay"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                <span className="text-red-500">*</span> Status
+              </label>
+              <select
+                value={formData.status || 'active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="active">🟢 Active</option>
+                <option value="inactive">⚫ Inactive</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                <span className="text-red-500">*</span> Description
+              </label>
+              <textarea
+                value={formData.description || 'Pause the workflow'}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={2}
+                placeholder="Pause the workflow"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Duration Section - type-specific */}
+        {delayType && (
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Duration</h3>
+            
+            {/* Fixed Delay */}
+            {delayType === 'fixed' && (
+              <div className="space-y-3">
+                <div className="flex space-x-3">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Time Units:</label>
+                    <select
+                      value={formData.timeUnits || 'seconds'}
+                      onChange={(e) => setFormData({ ...formData, timeUnits: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="seconds">Seconds</option>
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours</option>
+                      <option value="days">Days</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <span className="text-red-500">*</span> Delay Amount:
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.delayAmount || 3}
+                    onChange={(e) => setFormData({ ...formData, delayAmount: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    min="1"
+                    placeholder="3"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Delay */}
+            {delayType === 'dynamic' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration Expression</label>
+                  <input
+                    type="text"
+                    value={formData.durationExpression || ''}
+                    onChange={(e) => setFormData({ ...formData, durationExpression: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="order.processing_time * 2"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Expression that evaluates to delay duration in milliseconds
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Wait Time:</label>
+                  <select
+                    value={formData.maxWaitTime || '24 hours'}
+                    onChange={(e) => setFormData({ ...formData, maxWaitTime: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="1 hour">1 hour</option>
+                    <option value="6 hours">6 hours</option>
+                    <option value="12 hours">12 hours</option>
+                    <option value="24 hours">24 hours</option>
+                    <option value="3 days">3 days</option>
+                    <option value="7 days">7 days</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Conditional Delay */}
+            {delayType === 'conditional' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Conditions</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowConditionalEditor(true)}
+                    className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Edit className="w-4 h-4" />
+                    <span className="text-sm font-medium">
+                      {formData.conditions?.length > 0 ? 'Edit Conditions' : 'Configure Conditions'}
+                    </span>
+                  </button>
+                  {formData.conditions?.length > 0 && (
+                    <p className="text-xs text-green-600 mt-1">
+                      ✓ {formData.conditions.reduce((acc: number, g: any) => acc + g.conditions.length, 0)} condition(s) configured
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Check Interval (seconds)</label>
+                  <input
+                    type="number"
+                    value={formData.checkInterval || 60}
+                    onChange={(e) => setFormData({ ...formData, checkInterval: parseInt(e.target.value) || 60 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    min="1"
+                    placeholder="60"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    How often to check if conditions are met
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Until Specific Date/Time */}
+            {delayType === 'until' && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <span className="text-red-500">*</span> Target Date/Time
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={formData.targetDateTime || ''}
+                    onChange={(e) => setFormData({ ...formData, targetDateTime: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Or use an expression: {`{{order.delivery_date}}`}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Time Zone</label>
+                  <select
+                    value={formData.timeZone || 'UTC'}
+                    onChange={(e) => setFormData({ ...formData, timeZone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="UTC">UTC</option>
+                    <option value="America/New_York">America/New_York</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles</option>
+                    <option value="America/Chicago">America/Chicago</option>
+                    <option value="Europe/London">Europe/London</option>
+                    <option value="Europe/Paris">Europe/Paris</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo</option>
+                    <option value="Asia/Shanghai">Asia/Shanghai</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderTransformFields = () => (
     <div className="space-y-4">
@@ -492,6 +734,19 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
           </Button>
         </div>
       </div>
+
+      {/* Conditional Editor Modal */}
+      {showConditionalEditor && (
+        <ConditionalEditor
+          title="Configure Conditions"
+          initialConditions={formData.conditions || []}
+          onConfirm={(conditions: ConditionalGroup[]) => {
+            setFormData({ ...formData, conditions });
+            setShowConditionalEditor(false);
+          }}
+          onCancel={() => setShowConditionalEditor(false)}
+        />
+      )}
     </div>
   );
 };
