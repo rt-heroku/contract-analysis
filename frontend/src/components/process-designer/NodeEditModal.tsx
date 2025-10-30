@@ -92,6 +92,11 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
       return renderNotifyFields();
     }
 
+    // Smart Router (AI)
+    if (actionName.includes('smart_router') || actionName.includes('router')) {
+      return renderSmartRouterFields();
+    }
+
     // Transform
     if (actionName.includes('transform')) {
       return renderTransformFields();
@@ -892,6 +897,201 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
             )}
           </div>
         )}
+      </div>
+    );
+  };
+
+  const renderSmartRouterFields = () => {
+    return (
+      <div className="space-y-6">
+        {/* LLM Connector Selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <span className="text-red-500">*</span> LLM Connector
+          </label>
+          <select
+            value={formData.connectorId || ''}
+            onChange={(e) => setFormData({ ...formData, connectorId: parseInt(e.target.value) || undefined })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Select LLM Connector...</option>
+            <option value="1">OpenAI (GPT)</option>
+            <option value="2">Anthropic (Claude)</option>
+            <option value="3">Google (Gemini)</option>
+            <option value="4">AWS Bedrock</option>
+            <option value="5">Azure OpenAI</option>
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            LLM connectors need to be configured in the Connections page
+          </p>
+        </div>
+
+        {/* Model Selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <span className="text-red-500">*</span> Model
+          </label>
+          <select
+            value={formData.model || ''}
+            onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Select Model...</option>
+            <optgroup label="OpenAI">
+              <option value="gpt-4o">gpt-4o (Recommended)</option>
+              <option value="gpt-4o-mini">gpt-4o-mini (Fast & Affordable)</option>
+              <option value="gpt-4-turbo">gpt-4-turbo</option>
+              <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+            </optgroup>
+            <optgroup label="Anthropic">
+              <option value="claude-3-opus-20240229">Claude 3 Opus (Most Capable)</option>
+              <option value="claude-3-sonnet-20240229">Claude 3 Sonnet (Balanced)</option>
+              <option value="claude-3-haiku-20240307">Claude 3 Haiku (Fast)</option>
+            </optgroup>
+            <optgroup label="Google">
+              <option value="gemini-pro">Gemini Pro</option>
+              <option value="gemini-pro-vision">Gemini Pro Vision</option>
+            </optgroup>
+          </select>
+        </div>
+
+        {/* Prompt */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <span className="text-red-500">*</span> Prompt
+          </label>
+          <textarea
+            value={formData.prompt || ''}
+            onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+            rows={6}
+            placeholder="Route to the correct block based on the input...
+
+Analyze the following data and determine the most appropriate route:
+- If the order is urgent, route to 'urgent_processing'
+- If the order is standard, route to 'standard_processing'  
+- If the order needs approval, route to 'approval_workflow'
+
+Consider: priority, amount, customer tier, and special requirements."
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Describe the routing logic. The AI will analyze input data and select the appropriate route.
+          </p>
+        </div>
+
+        {/* Routes Configuration */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Available Routes</label>
+          <div className="space-y-2">
+            {(formData.routes || []).map((route: any, index: number) => (
+              <div key={index} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                <input
+                  type="text"
+                  value={route.name || ''}
+                  onChange={(e) => {
+                    const newRoutes = [...(formData.routes || [])];
+                    newRoutes[index] = { ...route, name: e.target.value };
+                    setFormData({ ...formData, routes: newRoutes });
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  placeholder="Route name"
+                />
+                <input
+                  type="text"
+                  value={route.description || ''}
+                  onChange={(e) => {
+                    const newRoutes = [...(formData.routes || [])];
+                    newRoutes[index] = { ...route, description: e.target.value };
+                    setFormData({ ...formData, routes: newRoutes });
+                  }}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  placeholder="Route description"
+                />
+                <button
+                  onClick={() => {
+                    const newRoutes = [...(formData.routes || [])];
+                    newRoutes.splice(index, 1);
+                    setFormData({ ...formData, routes: newRoutes });
+                  }}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => {
+                setFormData({
+                  ...formData,
+                  routes: [...(formData.routes || []), { name: '', description: '' }],
+                });
+              }}
+              className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-400 hover:text-blue-600 transition-colors flex items-center justify-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="text-sm font-medium">Add Route</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Advanced Settings */}
+        <div className="border-t pt-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Advanced Settings</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Temperature: {formData.temperature ?? 0.0}
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={formData.temperature ?? 0.0}
+                onChange={(e) => setFormData({ ...formData, temperature: parseFloat(e.target.value) })}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>Deterministic (0)</span>
+                <span>Creative (2)</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Max Tokens</label>
+              <input
+                type="number"
+                value={formData.maxTokens || 150}
+                onChange={(e) => setFormData({ ...formData, maxTokens: parseInt(e.target.value) || 150 })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                min="50"
+                max="4000"
+                placeholder="150"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fallback Route</label>
+              <input
+                type="text"
+                value={formData.fallbackRoute || ''}
+                onChange={(e) => setFormData({ ...formData, fallbackRoute: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="default"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Used when AI cannot confidently determine a route
+              </p>
+            </div>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">Include AI Reasoning:</label>
+              <input
+                type="checkbox"
+                checked={formData.includeReasoning ?? true}
+                onChange={(e) => setFormData({ ...formData, includeReasoning: e.target.checked })}
+                className="w-10 h-5 rounded-full"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     );
   };

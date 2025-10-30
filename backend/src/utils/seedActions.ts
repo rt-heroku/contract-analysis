@@ -955,6 +955,96 @@ export async function seedSystemActions() {
         },
       },
       {
+        name: 'smart_router',
+        displayName: 'Smart Router',
+        description: 'AI-powered intelligent routing based on LLM analysis of input data',
+        actionType: 'system',
+        category: 'ai',
+        icon: 'Zap',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            connectorId: { 
+              type: 'number', 
+              description: 'LLM Connector ID (OpenAI, Anthropic, etc.)' 
+            },
+            model: { 
+              type: 'string', 
+              description: 'LLM model identifier (e.g., gpt-4o, claude-3-opus)' 
+            },
+            prompt: { 
+              type: 'string', 
+              description: 'Routing prompt - instruct the AI how to analyze and route' 
+            },
+            routes: {
+              type: 'array',
+              description: 'Available routes with descriptions',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: 'Route name/identifier' },
+                  description: { type: 'string', description: 'Route description for AI context' },
+                  condition: { type: 'string', description: 'Optional explicit condition' },
+                },
+              },
+            },
+            temperature: { 
+              type: 'number', 
+              default: 0.0,
+              minimum: 0,
+              maximum: 2,
+              description: 'Model temperature (0 = deterministic, 2 = creative)' 
+            },
+            maxTokens: { 
+              type: 'number', 
+              default: 150,
+              description: 'Maximum tokens for response' 
+            },
+            fallbackRoute: { 
+              type: 'string', 
+              description: 'Default route if AI cannot determine' 
+            },
+            includeReasoning: { 
+              type: 'boolean', 
+              default: true,
+              description: 'Include AI reasoning in output' 
+            },
+          },
+          required: ['connectorId', 'model', 'prompt'],
+        },
+        inputSchema: {
+          type: 'object',
+          description: 'Input data to be analyzed by the AI for routing decisions',
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            selectedRoute: { type: 'string', description: 'Route chosen by AI' },
+            confidence: { type: 'number', description: 'Confidence score (0-1)' },
+            reasoning: { type: 'string', description: 'AI explanation for the decision' },
+            alternativeRoutes: { 
+              type: 'array', 
+              description: 'Other possible routes considered',
+              items: {
+                type: 'object',
+                properties: {
+                  route: { type: 'string' },
+                  score: { type: 'number' },
+                },
+              },
+            },
+            rawResponse: { type: 'object', description: 'Full LLM response' },
+            tokensUsed: { type: 'number', description: 'Total tokens consumed' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {
+          async: true,
+          requiresLLM: true,
+        },
+      },
+      {
         name: 'notify',
         displayName: 'Notify',
         description: 'Send notifications via Email, SMS, Push, Webhook, or Slack',
