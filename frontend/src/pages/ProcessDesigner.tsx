@@ -21,7 +21,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ZoomIn, ZoomOut, RefreshCw, MousePointer2, Upload, ArrowLeftRight, ArrowUpDown, Database, Layers } from 'lucide-react';
+import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ZoomIn, ZoomOut, RefreshCw, Upload, ArrowLeftRight, ArrowUpDown, DatabaseZap, MousePointerSquareDashed, Variable } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
 import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
@@ -1477,58 +1477,58 @@ const ProcessDesignerInner: React.FC = () => {
                     className="bg-white shadow-lg rounded-lg border border-gray-200"
                   />
                   
-                  {/* Actions Button - Centered between Controls and Properties */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '90px' }}>
+                  {/* Actions Button */}
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '40px' }}>
                     <button
                       onClick={() => setActionsModalOpen(true)}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 px-2 py-2 h-10 hover:bg-gray-50 transition-colors flex items-center space-x-2"
                       title="Actions Library"
                     >
-                      <Layers className="w-4 h-4 text-gray-600" />
+                      <DatabaseZap className="w-4 h-4 text-gray-600" />
                       <span className="text-sm font-medium text-gray-700">Actions</span>
                     </button>
                   </div>
                   
-                  {/* Process Properties Button - After Actions */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '185px' }}>
+                  {/* Process Properties Button */}
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '135px' }}>
                     <button
                       onClick={() => setProcessPropertiesOpen(true)}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
                       title="Process Properties"
                     >
                       <Settings className="w-4 h-4 text-gray-600" />
                     </button>
                   </div>
                   
-                  {/* Variables Button - After Properties */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '237px' }}>
+                  {/* Variables Button */}
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '187px' }}>
                     <button
                       onClick={() => setVariablesPanelOpen(true)}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
                       title="Process Variables"
                     >
-                      <Database className="w-4 h-4 text-gray-600" />
+                      <Variable className="w-4 h-4 text-gray-600" />
                     </button>
                   </div>
                   
-                  {/* Multi-Select Mode Button - After Variables */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '289px' }}>
+                  {/* Multi-Select Mode Button */}
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '239px' }}>
                     <button
                       onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
-                      className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors ${
+                      className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center ${
                         isMultiSelectMode ? 'bg-blue-50 border-blue-400' : ''
                       }`}
                       title={isMultiSelectMode ? 'Disable Multi-Select' : 'Enable Multi-Select'}
                     >
-                      <MousePointer2 className={`w-4 h-4 ${isMultiSelectMode ? 'text-blue-600' : 'text-gray-600'}`} />
+                      <MousePointerSquareDashed className={`w-4 h-4 ${isMultiSelectMode ? 'text-blue-600' : 'text-gray-600'}`} />
                     </button>
                   </div>
                   
                   {/* Layout Toggle Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '341px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '291px' }}>
                     <button
                       onClick={toggleLayout}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
                       title={`Switch to ${layoutDirection === 'horizontal' ? 'Vertical' : 'Horizontal'} Layout`}
                     >
                       {layoutDirection === 'horizontal' ? (
@@ -1540,10 +1540,10 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Auto-Arrange Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '393px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '343px' }}>
                     <button
                       onClick={autoArrange}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
                       title="Auto-Arrange Nodes"
                     >
                       <RefreshCw className="w-4 h-4 text-gray-600" />
@@ -1551,7 +1551,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Zoom Percentage Display */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '445px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '395px' }}>
                     <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 flex items-center space-x-2">
                       <span className="text-xs font-semibold text-gray-700">
                         {Math.round(currentZoom * 100)}%
