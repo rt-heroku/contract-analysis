@@ -83,21 +83,23 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
 
   return (
     <div className="relative w-full h-full" style={{ pointerEvents: 'all' }}>
-      {/* Node Resizer - Rendered conditionally when selected */}
+      {/* Node Resizer - Rendered conditionally when selected with LOW z-index */}
       {selected && (
-        <NodeResizer
-          minWidth={400}
-          minHeight={300}
-          isVisible={true}
-          lineClassName="border-blue-500 border-2"
-          handleClassName="w-6 h-6 bg-blue-500 border-2 border-white rounded-full"
-        />
+        <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
+          <NodeResizer
+            minWidth={400}
+            minHeight={300}
+            isVisible={true}
+            lineClassName="border-blue-500 border-2"
+            handleClassName="w-6 h-6 bg-blue-500 border-2 border-white rounded-full"
+          />
+        </div>
       )}
       
-      {/* TITLE BAR - OUTSIDE CONTAINER */}
+      {/* TITLE BAR - OUTSIDE CONTAINER with HIGH z-index */}
       <div 
         className="absolute -top-12 left-0 flex items-center space-x-2"
-        style={{ pointerEvents: 'auto', zIndex: 20 }}
+        style={{ pointerEvents: 'auto', zIndex: 1000, position: 'relative' }}
       >
         {/* Loop Label with Icon */}
         <div className="flex items-center space-x-2 bg-white rounded-lg shadow-md px-3 py-2 border border-blue-200">
@@ -110,8 +112,13 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
           <button
             type="button"
             onClick={handleEditClick}
-            className="w-8 h-8 bg-white hover:bg-gray-50 rounded-lg shadow-md border border-gray-200 flex items-center justify-center transition-colors"
+            onMouseDown={(e) => {
+              console.log('👆 LoopContainerNode - Mouse down on edit button');
+              e.stopPropagation();
+            }}
+            className="w-8 h-8 bg-white hover:bg-gray-50 rounded-lg shadow-md border border-gray-200 flex items-center justify-center transition-colors cursor-pointer"
             title="Edit loop conditions"
+            style={{ zIndex: 1001 }}
           >
             <Edit3 className="w-4 h-4 text-blue-600" />
           </button>
