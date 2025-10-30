@@ -10,7 +10,7 @@ interface Action {
   category: string;
   icon: string;
   color: string;
-  actionType: string;
+  actionType?: string;
   connectorId?: number;
   connector?: {
     id: number;

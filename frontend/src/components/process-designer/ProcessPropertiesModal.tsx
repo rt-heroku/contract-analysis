@@ -813,8 +813,8 @@ export const ProcessPropertiesModal: React.FC<ProcessPropertiesModalProps> = ({
           <Button
             variant="primary"
             onClick={handleSave}
-            icon={<Save className="w-4 h-4" />}
           >
+            <Save className="w-4 h-4 mr-2" />
             Save Changes
           </Button>
         </div>

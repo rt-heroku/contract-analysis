@@ -11,7 +11,7 @@ interface Action {
   category: string;
   icon: string;
   color: string;
-  actionType: string;
+  actionType?: string;
 }
 
 interface ActionSelectionModalProps {
