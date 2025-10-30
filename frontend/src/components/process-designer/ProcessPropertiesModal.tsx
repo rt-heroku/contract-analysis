@@ -193,13 +193,27 @@ export const ProcessPropertiesModal: React.FC<ProcessPropertiesModalProps> = ({
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select category</option>
-            <option value="sales">Sales & Orders</option>
-            <option value="finance">Finance</option>
-            <option value="hr">Human Resources</option>
-            <option value="operations">Operations</option>
-            <option value="customer_service">Customer Service</option>
-            <option value="marketing">Marketing</option>
-            <option value="it">IT & Infrastructure</option>
+            <option value="general">General</option>
+            <optgroup label="Business Functions">
+              <option value="sales">Sales & Orders</option>
+              <option value="finance">Finance</option>
+              <option value="hr">Human Resources</option>
+              <option value="operations">Operations</option>
+              <option value="customer_service">Customer Service</option>
+              <option value="marketing">Marketing</option>
+              <option value="it">IT & Infrastructure</option>
+            </optgroup>
+            <optgroup label="Trigger Types">
+              <option value="manual">Manual</option>
+              <option value="ui_form">UI Form</option>
+              <option value="api">API</option>
+              <option value="schedule">Schedule</option>
+              <option value="event">Event</option>
+              <option value="webhook">Webhook</option>
+              <option value="pubsub">Pub/Sub</option>
+              <option value="stream">Stream</option>
+              <option value="listener">Listener</option>
+            </optgroup>
             <option value="other">Other</option>
           </select>
         </div>

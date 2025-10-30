@@ -21,7 +21,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RefreshCw, MousePointer2 } from 'lucide-react';
+import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RefreshCw, MousePointer2, Upload } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
 import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
@@ -31,6 +31,7 @@ import { NodeEditModal } from '@/components/process-designer/NodeEditModal';
 import { TriggerConfigPanel } from '@/components/process-designer/TriggerConfigPanel';
 import { LabeledEdge } from '@/components/process-designer/LabeledEdge';
 import { ProcessPropertiesModal, ProcessProperties } from '@/components/process-designer/ProcessPropertiesModal';
+import { SaveProcessModal } from '@/components/process-designer/SaveProcessModal';
 
 interface Action {
   id: number;
@@ -142,6 +143,10 @@ const ProcessDesignerInner: React.FC = () => {
   
   // Process properties modal state
   const [processPropertiesOpen, setProcessPropertiesOpen] = useState(false);
+  
+  // Save process modal state
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveModalAction, setSaveModalAction] = useState<'save' | 'publish'>('save');
   
   // UI state for panels
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
@@ -618,6 +623,38 @@ const ProcessDesignerInner: React.FC = () => {
   );
 
   const handleSave = async () => {
+    // Check if process name is set
+    if (!processName || processName.trim() === '' || processName === 'Untitled Process') {
+      setSaveModalAction('save');
+      setSaveModalOpen(true);
+      return;
+    }
+
+    // If process is published (status is active or published), require version update
+    if (processProperties.status === 'published' || processProperties.status === 'active') {
+      setSaveModalAction('save');
+      setSaveModalOpen(true);
+      return;
+    }
+
+    // Proceed with save
+    await performSave(processName, processProperties.version);
+  };
+
+  const handlePublish = () => {
+    // Check if process name is set
+    if (!processName || processName.trim() === '' || processName === 'Untitled Process') {
+      setSaveModalAction('publish');
+      setSaveModalOpen(true);
+      return;
+    }
+
+    // Always require version update when publishing
+    setSaveModalAction('publish');
+    setSaveModalOpen(true);
+  };
+
+  const performSave = async (name: string, version: string) => {
     try {
       setSaving(true);
       
@@ -633,8 +670,13 @@ const ProcessDesignerInner: React.FC = () => {
       }));
 
       const processData = {
-        name: processName,
+        // Include all process properties first
+        ...processProperties,
+        // Override with specific values
+        name: name,
         description: processDescription,
+        version: version,
+        status: saveModalAction === 'publish' ? 'published' : processProperties.status,
         flowDefinition: {
           nodes: nodesToSave,
           edges,
@@ -648,19 +690,34 @@ const ProcessDesignerInner: React.FC = () => {
         setAlertDialog({
           isOpen: true,
           title: 'Success',
-          message: 'Process updated successfully',
+          message: saveModalAction === 'publish' 
+            ? `Process published successfully (${version})` 
+            : 'Process updated successfully',
           type: 'success',
         });
+        
+        // Update local state
+        setProcessName(name);
+        setProcessProperties(prev => ({
+          ...prev,
+          name: name,
+          version: version,
+          status: saveModalAction === 'publish' ? 'published' : prev.status,
+        }));
       } else {
         const response = await api.post('/processes', processData);
         setAlertDialog({
           isOpen: true,
           title: 'Success',
-          message: 'Process created successfully',
+          message: saveModalAction === 'publish'
+            ? `Process published successfully (${version})`
+            : 'Process created successfully',
           type: 'success',
         });
         navigate(`/process-designer/${response.data.process.id}`);
       }
+      
+      setSaveModalOpen(false);
     } catch (error: any) {
       setAlertDialog({
         isOpen: true,
@@ -874,6 +931,10 @@ const ProcessDesignerInner: React.FC = () => {
           <Button onClick={handleSave} disabled={saving} className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white">
             <Save className="w-4 h-4" />
             <span>{saving ? 'Saving...' : 'Save'}</span>
+          </Button>
+          <Button onClick={handlePublish} disabled={saving} className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white">
+            <Upload className="w-4 h-4" />
+            <span>Publish</span>
           </Button>
           <Button onClick={handleExecute} className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white">
             <Play className="w-4 h-4" />
@@ -1535,6 +1596,19 @@ const ProcessDesignerInner: React.FC = () => {
           setProcessName(updatedProperties.name);
           setProcessDescription(updatedProperties.description || '');
         }}
+      />
+
+      {/* Save Process Modal */}
+      <SaveProcessModal
+        isOpen={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        onSave={(name, version) => {
+          performSave(name, version);
+        }}
+        currentName={processName}
+        currentVersion={processProperties.version}
+        isPublished={processProperties.status === 'published' || processProperties.status === 'active'}
+        requireVersionUpdate={saveModalAction === 'publish' || processProperties.status === 'published' || processProperties.status === 'active'}
       />
 
       {/* Action Search Modal */}
