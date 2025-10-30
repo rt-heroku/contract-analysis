@@ -32,6 +32,7 @@ export const CollapsibleActionPalette = ({
   onDragStart,
 }: CollapsibleActionPaletteProps) => {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
+    'Containers': false,
     'Flow Control': false,
     'Error Handling': false,
     'Data': false,
@@ -113,8 +114,31 @@ export const CollapsibleActionPalette = ({
     localStorage.setItem('selectedConnectorActions', JSON.stringify(selectedConnectorActionIds));
   }, [selectedConnectorActionIds]);
 
+  // Special container items (not from database)
+  const containerItems: Action[] = [
+    {
+      id: -1, // Special ID
+      name: 'loop_container',
+      displayName: 'Loop Container',
+      description: 'Visual container for loop logic with entry/exit points',
+      actionType: 'system',
+      category: 'container',
+      icon: 'RefreshCw',
+      color: '#3b82f6',
+      configSchema: {},
+      inputSchema: {},
+      outputSchema: {},
+      executorType: 'container',
+      executorConfig: {},
+      isActive: true,
+      createdAt: '',
+      updatedAt: '',
+    } as Action,
+  ];
+
   // Categorize actions
   const categories: Record<string, Action[]> = {
+    'Containers': containerItems,
     'Flow Control': actions.filter(a =>
       a.category === 'control_flow' &&
       !a.name.toLowerCase().includes('error') &&

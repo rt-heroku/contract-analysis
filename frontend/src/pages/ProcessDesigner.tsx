@@ -26,6 +26,7 @@ import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
 import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
 import { IfThenElseNode } from '@/components/process-designer/IfThenElseNode';
+import { LoopContainerNode } from '@/components/process-designer/LoopContainerNode';
 import { CollapsibleActionPalette } from '@/components/process-designer/CollapsibleActionPalette';
 import { NodeContextMenu } from '@/components/process-designer/NodeContextMenu';
 import { NodeEditModal } from '@/components/process-designer/NodeEditModal';
@@ -184,12 +185,13 @@ const ProcessDesignerInner: React.FC = () => {
     type: 'info' as 'success' | 'error' | 'warning' | 'info',
   });
 
-  // Define custom node types (including Start/GlobalError/IfThenElse)
+  // Define custom node types (including Start/GlobalError/IfThenElse/LoopContainer)
   const nodeTypes: NodeTypes = useMemo(() => ({
     actionNode: ActionNode,
     start: StartNode,
     globalError: GlobalErrorNode,
     ifThenElse: IfThenElseNode,
+    loopContainer: LoopContainerNode,
   }), []);
 
   const edgeTypes: EdgeTypes = useMemo(() => ({
@@ -577,8 +579,8 @@ const ProcessDesignerInner: React.FC = () => {
           ...node,
           data: {
             ...node.data,
-            onEdit: (node.type === 'actionNode' || node.type === 'ifThenElse') ? () => handleEditNode(node.id) : undefined,
-            onAddNext: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'start' || node.type === 'globalError') ? () => {
+            onEdit: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'loopContainer') ? () => handleEditNode(node.id) : undefined,
+            onAddNext: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'loopContainer' || node.type === 'start' || node.type === 'globalError') ? () => {
               setTargetNodeForPlus(node.id);
               setShowActionSearch(true);
             } : undefined,
@@ -852,31 +854,58 @@ const ProcessDesignerInner: React.FC = () => {
         return;
       }
 
-      // Handle regular action nodes
-      // Special handling for IF THEN ELSE - use diamond node
-      const nodeType = action.name.toLowerCase().includes('if_then_else') ? 'ifThenElse' : 'actionNode';
+      // Handle special node types
+      let nodeType = 'actionNode';
+      let nodeData: any = {
+        label: action.displayName,
+        description: action.description,
+        category: action.category,
+        icon: action.icon,
+        color: action.color,
+        actionType: action.actionType,
+        actionId: action.id,
+        actionName: action.name,
+        config: {},
+        showPlusButton: true, // Will be updated by effect
+        onEdit: () => handleEditNode(nodeId),
+        onAddNext: () => {
+          setTargetNodeForPlus(nodeId);
+          setShowActionSearch(true);
+        },
+      };
+
+      // Special handling for IF THEN ELSE
+      if (action.name.toLowerCase().includes('if_then_else')) {
+        nodeType = 'ifThenElse';
+      }
       
-      const newNode: Node = {
-        id: nodeId,
-        type: nodeType,
-        position,
-        data: {
-          label: action.displayName,
-          description: action.description,
-          category: action.category,
-          icon: action.icon,
-          color: action.color,
-          actionType: action.actionType,
-          actionId: action.id,
-          actionName: action.name,
-          config: {},
-          showPlusButton: true, // Will be updated by effect
+      // Special handling for Loop Container
+      if (action.name === 'loop_container') {
+        nodeType = 'loopContainer';
+        nodeData = {
+          label: 'Loop',
+          loopType: 'for_each',
+          condition: '',
           onEdit: () => handleEditNode(nodeId),
           onAddNext: () => {
             setTargetNodeForPlus(nodeId);
             setShowActionSearch(true);
           },
-        },
+          showPlusButton: true,
+        };
+      }
+      
+      const newNode: Node = {
+        id: nodeId,
+        type: nodeType,
+        position,
+        data: nodeData,
+        // Loop containers are expandable parent nodes
+        style: nodeType === 'loopContainer' ? {
+          width: 600,
+          height: 400,
+          zIndex: -1, // Behind child nodes
+        } : undefined,
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -1938,30 +1967,58 @@ const ProcessDesignerInner: React.FC = () => {
                           ? { x: targetNode.position.x, y: targetNode.position.y + 120 }
                           : { x: 250, y: 200 };
 
-                        // Special handling for IF THEN ELSE - use diamond node
-                        const nodeType = action.name.toLowerCase().includes('if_then_else') ? 'ifThenElse' : 'actionNode';
+                        // Determine node type and data
+                        let nodeType = 'actionNode';
+                        let nodeData: any = {
+                          label: action.displayName,
+                          description: action.description,
+                          category: action.category,
+                          icon: action.icon,
+                          color: action.color,
+                          actionType: action.actionType,
+                          actionId: action.id,
+                          actionName: action.name,
+                          config: {},
+                          showPlusButton: true,
+                          onEdit: () => handleEditNode(nodeId),
+                          onAddNext: () => {
+                            setTargetNodeForPlus(nodeId);
+                            setShowActionSearch(true);
+                          },
+                        };
 
-                        const newNode: Node = {
-                          id: nodeId,
-                          type: nodeType,
-                          position,
-                          data: {
-                            label: action.displayName,
-                            description: action.description,
-                            category: action.category,
-                            icon: action.icon,
-                            color: action.color,
-                            actionType: action.actionType,
-                            actionId: action.id,
-                            actionName: action.name,
-                            config: {},
-                            showPlusButton: true, // Will be updated by effect
+                        // Special handling for IF THEN ELSE
+                        if (action.name.toLowerCase().includes('if_then_else')) {
+                          nodeType = 'ifThenElse';
+                        }
+                        
+                        // Special handling for Loop Container
+                        if (action.name === 'loop_container') {
+                          nodeType = 'loopContainer';
+                          nodeData = {
+                            label: 'Loop',
+                            loopType: 'for_each',
+                            condition: '',
                             onEdit: () => handleEditNode(nodeId),
                             onAddNext: () => {
                               setTargetNodeForPlus(nodeId);
                               setShowActionSearch(true);
                             },
-                          },
+                            showPlusButton: true,
+                          };
+                        }
+
+                        const newNode: Node = {
+                          id: nodeId,
+                          type: nodeType,
+                          position,
+                          data: nodeData,
+                          // Loop containers are expandable parent nodes
+                          style: nodeType === 'loopContainer' ? {
+                            width: 600,
+                            height: 400,
+                            zIndex: -1,
+                          } : undefined,
                         };
 
                         setNodes((nds) => nds.concat(newNode));
