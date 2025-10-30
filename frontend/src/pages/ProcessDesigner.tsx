@@ -467,6 +467,12 @@ const ProcessDesignerInner: React.FC = () => {
     // Fit view after layout
     setTimeout(() => {
       reactFlowInstance?.fitView({ padding: 0.2, duration: 400 });
+      // Update zoom state after fitView
+      setTimeout(() => {
+        if (reactFlowInstance) {
+          setCurrentZoom(reactFlowInstance.getZoom());
+        }
+      }, 450);
     }, 50);
   }, [nodes, edges, layoutDirection, setNodes, reactFlowInstance]);
 
