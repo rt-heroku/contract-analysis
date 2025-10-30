@@ -999,16 +999,27 @@ const ProcessDesignerInner: React.FC = () => {
 
   // Handle loop condition editing
   const handleEditLoopCondition = useCallback((nodeId: string) => {
+    console.log('🔵 ProcessDesigner - handleEditLoopCondition called for node:', nodeId);
     const node = nodes.find(n => n.id === nodeId);
+    console.log('🔍 ProcessDesigner - Found node:', node);
     if (node && node.type === 'loopContainer') {
+      console.log('✅ ProcessDesigner - Node is loopContainer, opening modal');
+      console.log('📋 ProcessDesigner - Current conditions:', node.data.conditions);
       setCurrentLoopNodeId(nodeId);
       setCurrentLoopConditions(node.data.conditions || []);
       setLoopConditionModalOpen(true);
+      console.log('🚀 ProcessDesigner - Modal state set to true');
+    } else {
+      console.log('❌ ProcessDesigner - Node is not loopContainer or not found');
     }
   }, [nodes]);
 
   // Handle saving loop conditions
   const handleSaveLoopConditions = useCallback((conditions: ConditionalGroup[]) => {
+    console.log('💾 ProcessDesigner - handleSaveLoopConditions called');
+    console.log('📝 ProcessDesigner - Conditions to save:', conditions);
+    console.log('🎯 ProcessDesigner - Target node ID:', currentLoopNodeId);
+    
     if (currentLoopNodeId) {
       setNodes((nds) =>
         nds.map((node) =>
@@ -1023,6 +1034,9 @@ const ProcessDesignerInner: React.FC = () => {
             : node
         )
       );
+      console.log('✅ ProcessDesigner - Nodes updated with new conditions');
+    } else {
+      console.log('⚠️ ProcessDesigner - No currentLoopNodeId, skipping update');
     }
   }, [currentLoopNodeId, setNodes]);
 
@@ -2332,7 +2346,10 @@ const ProcessDesignerInner: React.FC = () => {
       <LoopConditionModal
         isOpen={loopConditionModalOpen}
         currentConditions={currentLoopConditions}
-        onClose={() => setLoopConditionModalOpen(false)}
+        onClose={() => {
+          console.log('🚪 ProcessDesigner - Modal onClose called, setting state to false');
+          setLoopConditionModalOpen(false);
+        }}
         onSave={handleSaveLoopConditions}
       />
 

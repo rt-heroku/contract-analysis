@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { Handle, Position, NodeProps, NodeResizer } from 'reactflow';
 import { RefreshCw, Edit3, Plus, CornerUpLeft, CornerDownRight } from 'lucide-react';
 
@@ -24,16 +24,35 @@ interface LoopContainerNodeData {
 }
 
 export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContainerNodeData>) => {
+  console.log('🔄 LoopContainerNode - Rendering, selected:', selected);
+  console.log('📋 LoopContainerNode - Data:', data);
+  
+  // Track selection changes (when resize handles should appear)
+  useEffect(() => {
+    if (selected) {
+      console.log('🎯 LoopContainerNode - Selected! Resize handles should be visible');
+    } else {
+      console.log('⚪ LoopContainerNode - Deselected, resize handles hidden');
+    }
+  }, [selected]);
+  
   const handleDoubleClick = () => {
+    console.log('🖱️ LoopContainerNode - Double click detected');
     if (data.onEdit) {
+      console.log('✅ LoopContainerNode - Calling onEdit from double click');
       data.onEdit();
     }
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
+    console.log('✏️ LoopContainerNode - Edit button clicked');
     e.stopPropagation();
+    e.preventDefault();
     if (data.onEdit) {
+      console.log('✅ LoopContainerNode - Calling onEdit from edit button');
       data.onEdit();
+    } else {
+      console.log('❌ LoopContainerNode - No onEdit callback available');
     }
   };
 
