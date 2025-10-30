@@ -87,6 +87,11 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
       return renderDelayFields();
     }
 
+    // Notify
+    if (actionName.includes('notify')) {
+      return renderNotifyFields();
+    }
+
     // Transform
     if (actionName.includes('transform')) {
       return renderTransformFields();
@@ -543,6 +548,347 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                   </select>
                 </div>
               </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderNotifyFields = () => {
+    const notificationType = formData.notificationType || 'email';
+    
+    return (
+      <div className="space-y-6">
+        {/* Notification Type Selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Notification Type
+          </label>
+          <select
+            value={notificationType}
+            onChange={(e) => setFormData({ ...formData, notificationType: e.target.value })}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Select Notification Type</option>
+            <option value="email">✉️ Email</option>
+            <option value="sms">💬 SMS</option>
+            <option value="push">🔔 Push Notification</option>
+            <option value="webhook">🔗 Webhook</option>
+            <option value="slack">💼 Slack Message</option>
+          </select>
+        </div>
+
+        {/* General Information */}
+        <div className="border-t pt-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">General Information</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <input
+                type="text"
+                value={formData.title || 'Notification'}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Notification"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={formData.status || 'active'}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="active">🟢 Active</option>
+                <option value="inactive">⚫ Inactive</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                value={formData.description || 'Send alerts or notifications'}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={2}
+                placeholder="Send alerts or notifications"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Type-specific Settings */}
+        {notificationType && (
+          <div className="border-t pt-4">
+            {/* Email Settings */}
+            {notificationType === 'email' && (
+              <>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Email Settings</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Send To</label>
+                    <input
+                      type="email"
+                      value={formData.emailTo || ''}
+                      onChange={(e) => setFormData({ ...formData, emailTo: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="user@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CC / BCC</label>
+                    <input
+                      type="text"
+                      value={formData.emailCc || ''}
+                      onChange={(e) => setFormData({ ...formData, emailCc: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="manager@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                    <input
+                      type="text"
+                      value={formData.emailSubject || ''}
+                      onChange={(e) => setFormData({ ...formData, emailSubject: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Type your subject here..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Body</label>
+                    <textarea
+                      value={formData.emailBody || ''}
+                      onChange={(e) => setFormData({ ...formData, emailBody: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows={5}
+                      placeholder="Type your message here..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                    <select
+                      value={formData.emailPriority || 'normal'}
+                      onChange={(e) => setFormData({ ...formData, emailPriority: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700">Retry on Failure:</label>
+                    <input
+                      type="checkbox"
+                      checked={formData.retryOnFailure || false}
+                      onChange={(e) => setFormData({ ...formData, retryOnFailure: e.target.checked })}
+                      className="w-10 h-5 rounded-full"
+                    />
+                  </div>
+                  {formData.retryOnFailure && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Number of retries</label>
+                      <input
+                        type="number"
+                        value={formData.numberOfRetries || 3}
+                        onChange={(e) => setFormData({ ...formData, numberOfRetries: parseInt(e.target.value) || 3 })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        min="1"
+                        max="10"
+                        placeholder="3"
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* SMS Settings */}
+            {notificationType === 'sms' && (
+              <>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">SMS Settings</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <input
+                      type="tel"
+                      value={formData.smsTo || ''}
+                      onChange={(e) => setFormData({ ...formData, smsTo: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="+1234567890"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                    <textarea
+                      value={formData.smsMessage || ''}
+                      onChange={(e) => setFormData({ ...formData, smsMessage: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows={3}
+                      placeholder="Your SMS message here..."
+                      maxLength={160}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {(formData.smsMessage || '').length}/160 characters
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Push Notification Settings */}
+            {notificationType === 'push' && (
+              <>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Push Notification Settings</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                    <input
+                      type="text"
+                      value={formData.pushTitle || ''}
+                      onChange={(e) => setFormData({ ...formData, pushTitle: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Notification title"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Body</label>
+                    <textarea
+                      value={formData.pushBody || ''}
+                      onChange={(e) => setFormData({ ...formData, pushBody: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows={3}
+                      placeholder="Notification message"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Additional Data (JSON)</label>
+                    <textarea
+                      value={typeof formData.pushData === 'string' ? formData.pushData : JSON.stringify(formData.pushData || {}, null, 2)}
+                      onChange={(e) => {
+                        try {
+                          setFormData({ ...formData, pushData: JSON.parse(e.target.value) });
+                        } catch {
+                          setFormData({ ...formData, pushData: e.target.value });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows={4}
+                      placeholder='{"action": "view", "itemId": 123}'
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Webhook Settings */}
+            {notificationType === 'webhook' && (
+              <>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Webhook Settings</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Webhook URL</label>
+                    <input
+                      type="url"
+                      value={formData.webhookUrl || ''}
+                      onChange={(e) => setFormData({ ...formData, webhookUrl: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="https://api.example.com/webhook"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
+                    <select
+                      value={formData.webhookMethod || 'POST'}
+                      onChange={(e) => setFormData({ ...formData, webhookMethod: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="POST">POST</option>
+                      <option value="PUT">PUT</option>
+                      <option value="PATCH">PATCH</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Payload (JSON)</label>
+                    <textarea
+                      value={typeof formData.webhookPayload === 'string' ? formData.webhookPayload : JSON.stringify(formData.webhookPayload || {}, null, 2)}
+                      onChange={(e) => {
+                        try {
+                          setFormData({ ...formData, webhookPayload: JSON.parse(e.target.value) });
+                        } catch {
+                          setFormData({ ...formData, webhookPayload: e.target.value });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows={5}
+                      placeholder='{"event": "notification", "data": {}}'
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Custom Headers (JSON)</label>
+                    <textarea
+                      value={typeof formData.webhookHeaders === 'string' ? formData.webhookHeaders : JSON.stringify(formData.webhookHeaders || {}, null, 2)}
+                      onChange={(e) => {
+                        try {
+                          setFormData({ ...formData, webhookHeaders: JSON.parse(e.target.value) });
+                        } catch {
+                          setFormData({ ...formData, webhookHeaders: e.target.value });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows={3}
+                      placeholder='{"Authorization": "Bearer token"}'
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Slack Settings */}
+            {notificationType === 'slack' && (
+              <>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Slack Settings</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Channel / User</label>
+                    <input
+                      type="text"
+                      value={formData.slackChannel || ''}
+                      onChange={(e) => setFormData({ ...formData, slackChannel: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="#general or @username"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                    <textarea
+                      value={formData.slackMessage || ''}
+                      onChange={(e) => setFormData({ ...formData, slackMessage: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows={4}
+                      placeholder="Your Slack message here..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Attachments (JSON Array)</label>
+                    <textarea
+                      value={typeof formData.slackAttachments === 'string' ? formData.slackAttachments : JSON.stringify(formData.slackAttachments || [], null, 2)}
+                      onChange={(e) => {
+                        try {
+                          setFormData({ ...formData, slackAttachments: JSON.parse(e.target.value) });
+                        } catch {
+                          setFormData({ ...formData, slackAttachments: e.target.value });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows={5}
+                      placeholder='[{"color": "good", "text": "Success!"}]'
+                    />
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}

@@ -957,7 +957,7 @@ export async function seedSystemActions() {
       {
         name: 'notify',
         displayName: 'Notify',
-        description: 'Send notification to users (internal or via API)',
+        description: 'Send notifications via Email, SMS, Push, Webhook, or Slack',
         actionType: 'system',
         category: 'control_flow',
         icon: 'Bell',
@@ -967,10 +967,58 @@ export async function seedSystemActions() {
           properties: {
             notificationType: { 
               type: 'string', 
-              enum: ['internal', 'api'], 
-              default: 'internal',
-              description: 'Notification type: internal (in-app) or external (via API connector)' 
+              enum: ['email', 'sms', 'push', 'webhook', 'slack'], 
+              description: 'Notification channel type' 
             },
+            // General Information
+            title: { type: 'string', default: 'Notification', description: 'Display title' },
+            status: { 
+              type: 'string', 
+              enum: ['active', 'inactive'],
+              default: 'active'
+            },
+            description: { type: 'string', default: 'Send alerts or notifications', description: 'Description' },
+            
+            // Email Settings
+            emailTo: { type: 'string', description: 'Email recipient (for email type)' },
+            emailCc: { type: 'string', description: 'CC/BCC recipients' },
+            emailSubject: { type: 'string', description: 'Email subject' },
+            emailBody: { type: 'string', description: 'Email body/message' },
+            emailPriority: { 
+              type: 'string', 
+              enum: ['low', 'normal', 'high', 'urgent'],
+              default: 'normal',
+              description: 'Email priority' 
+            },
+            retryOnFailure: { type: 'boolean', default: false, description: 'Retry on failure' },
+            numberOfRetries: { type: 'number', default: 3, description: 'Number of retries' },
+            
+            // SMS Settings
+            smsTo: { type: 'string', description: 'Phone number (for SMS type)' },
+            smsMessage: { type: 'string', description: 'SMS message text' },
+            
+            // Push Notification Settings
+            pushTitle: { type: 'string', description: 'Push notification title' },
+            pushBody: { type: 'string', description: 'Push notification body' },
+            pushData: { type: 'object', description: 'Additional data payload' },
+            
+            // Webhook Settings
+            webhookUrl: { type: 'string', description: 'Webhook URL' },
+            webhookMethod: { 
+              type: 'string', 
+              enum: ['POST', 'PUT', 'PATCH'],
+              default: 'POST',
+              description: 'HTTP method' 
+            },
+            webhookPayload: { type: 'object', description: 'Webhook payload' },
+            webhookHeaders: { type: 'object', description: 'Custom headers' },
+            
+            // Slack Settings
+            slackChannel: { type: 'string', description: 'Slack channel or user' },
+            slackMessage: { type: 'string', description: 'Slack message text' },
+            slackAttachments: { type: 'array', description: 'Message attachments' },
+            
+            // Internal Recipients (for push/internal notifications)
             recipients: {
               type: 'object',
               properties: {
@@ -979,21 +1027,14 @@ export async function seedSystemActions() {
                 admins: { type: 'boolean', default: false, description: 'Notify all admins' },
               },
             },
-            message: { type: 'string', description: 'Notification message' },
-            title: { type: 'string', description: 'Notification title' },
-            link: { type: 'string', description: 'Optional link/URL for the notification' },
+            
+            // Connector reference
             connectorId: { 
               type: 'number', 
-              description: 'Connector ID for API-based notifications (required if notificationType=api)' 
-            },
-            priority: { 
-              type: 'string', 
-              enum: ['low', 'normal', 'high'], 
-              default: 'normal',
-              description: 'Notification priority' 
+              description: 'Connector ID for the notification service' 
             },
           },
-          required: ['recipients', 'message'],
+          required: ['notificationType'],
         },
         inputSchema: {
           type: 'object',
@@ -1006,6 +1047,7 @@ export async function seedSystemActions() {
             notificationIds: { type: 'array', items: { type: 'number' } },
             recipientCount: { type: 'number' },
             timestamp: { type: 'string' },
+            response: { type: 'object', description: 'Provider-specific response' },
           },
         },
         executorType: 'builtin',
