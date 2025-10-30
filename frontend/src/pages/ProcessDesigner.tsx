@@ -452,8 +452,21 @@ const ProcessDesignerInner: React.FC = () => {
     console.log('  - levels:', Array.from(levels.entries()));
     console.log('  - levelGroups:', Array.from(levelGroups.entries()));
     
-    // Position nodes
+    // Position nodes - EXCLUDE Start and Global Error nodes from auto-arrangement
     const newNodes = nodes.map(node => {
+      // Preserve Start and Global Error positions - only update layoutDirection
+      if (node.type === 'start' || node.type === 'globalError') {
+        console.log(`  - ${node.id}: PRESERVED position=(${node.position.x}, ${node.position.y})`);
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            layoutDirection: useDirection,
+          },
+        };
+      }
+      
+      // Auto-arrange regular action nodes
       const level = levels.get(node.id) || 0;
       const nodesInLevel = levelGroups.get(level) || [];
       const indexInLevel = nodesInLevel.indexOf(node.id);
@@ -613,7 +626,7 @@ const ProcessDesignerInner: React.FC = () => {
         const startNode: Node = {
           id: 'start-1',
           type: 'start',
-          position: { x: 250, y: 100 },
+          position: { x: 250, y: 150 },
           data: {
             label: 'START',
             trigger: currentTriggerConfig,
@@ -1416,7 +1429,7 @@ const ProcessDesignerInner: React.FC = () => {
                     const startNode: Node = {
                       id: 'start-1',
                       type: 'start',
-                      position: { x: 250, y: 100 },
+                      position: { x: 250, y: 150 },
                       data: {
                         label: 'START',
                         trigger: currentTriggerConfig,
@@ -1500,7 +1513,7 @@ const ProcessDesignerInner: React.FC = () => {
                   />
                   
                   {/* Actions Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '40px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '35px' }}>
                     <button
                       onClick={() => setActionsModalOpen(true)}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 px-2 py-2 h-10 hover:bg-gray-50 transition-colors flex items-center space-x-2"
@@ -1523,7 +1536,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Variables Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '187px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '177px' }}>
                     <button
                       onClick={() => setVariablesPanelOpen(true)}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
@@ -1534,7 +1547,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Multi-Select Mode Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '239px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '220px' }}>
                     <button
                       onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
                       className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center ${
@@ -1547,7 +1560,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Layout Toggle Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '291px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '262px' }}>
                     <button
                       onClick={toggleLayout}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
@@ -1562,7 +1575,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Auto-Arrange Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '343px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '305px' }}>
                     <button
                       onClick={autoArrange}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
@@ -1573,7 +1586,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Zoom Percentage Display */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '395px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '350px' }}>
                     <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 h-10 flex items-center justify-center">
                       <span className="text-xs font-semibold text-gray-700">
                         {Math.round(currentZoom * 100)}%
