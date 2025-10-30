@@ -614,7 +614,9 @@ const ProcessDesignerInner: React.FC = () => {
         const globalErrorNode: Node = {
           id: 'global-error-1',
           type: 'globalError',
-          position: { x: 550, y: 100 },
+          position: layoutDirection === 'vertical' 
+            ? { x: 250, y: 500 }  // Much more space below in vertical layout
+            : { x: 550, y: 100 }, // Side by side in horizontal layout
           data: {
             label: 'GLOBAL ERROR',
             config: currentGlobalErrorConfig,
@@ -696,7 +698,9 @@ const ProcessDesignerInner: React.FC = () => {
           const globalErrorNode: Node = {
             id: 'global-error-1',
             type: 'globalError',
-            position: { x: 550, y: 100 },
+            position: layoutDirection === 'vertical' 
+              ? { x: 250, y: 500 }  // Much more space below in vertical layout
+              : { x: 550, y: 100 }, // Side by side in horizontal layout
             data: {
               label: 'GLOBAL ERROR',
               config: currentGlobalErrorConfig,
@@ -1473,11 +1477,11 @@ const ProcessDesignerInner: React.FC = () => {
                     className="bg-white shadow-lg rounded-lg border border-gray-200"
                   />
                   
-                  {/* Actions Button - Next to Controls */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '52px' }}>
+                  {/* Actions Button - Centered between Controls and Properties */}
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '90px' }}>
                     <button
                       onClick={() => setActionsModalOpen(true)}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors flex items-center space-x-2"
                       title="Actions Library"
                     >
                       <Layers className="w-4 h-4 text-gray-600" />
@@ -1486,7 +1490,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Process Properties Button - After Actions */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '140px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '185px' }}>
                     <button
                       onClick={() => setProcessPropertiesOpen(true)}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1496,8 +1500,8 @@ const ProcessDesignerInner: React.FC = () => {
                     </button>
                   </div>
                   
-                  {/* Variables Button - After Gear */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '192px' }}>
+                  {/* Variables Button - After Properties */}
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '237px' }}>
                     <button
                       onClick={() => setVariablesPanelOpen(true)}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1508,7 +1512,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Multi-Select Mode Button - After Variables */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '244px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '289px' }}>
                     <button
                       onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
                       className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors ${
@@ -1521,7 +1525,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Layout Toggle Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '296px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '341px' }}>
                     <button
                       onClick={toggleLayout}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1536,7 +1540,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Auto-Arrange Button */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '348px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '393px' }}>
                     <button
                       onClick={autoArrange}
                       className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
@@ -1547,7 +1551,7 @@ const ProcessDesignerInner: React.FC = () => {
                   </div>
                   
                   {/* Zoom Percentage Display */}
-                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '400px' }}>
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '445px' }}>
                     <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 flex items-center space-x-2">
                       <span className="text-xs font-semibold text-gray-700">
                         {Math.round(currentZoom * 100)}%
