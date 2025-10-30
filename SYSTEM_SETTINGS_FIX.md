@@ -4,49 +4,48 @@
 The System Settings page appears empty even though the backend API and frontend components are correctly implemented.
 
 ## Root Cause
-The `system_settings` table in the database is empty. The settings data needs to be initialized from the `init-database.sql` script.
+The `system_settings` table has `NULL` values in the `updated_at` column. Prisma expects this field to be non-nullable (DateTime), causing the error:
+
+```
+Error converting field "updatedAt" of expected non-nullable type "DateTime", found incompatible value of "null".
+```
+
+This happens when settings are inserted without specifying the `updated_at` column.
 
 ## Solution
 
-### Option 1: Run the Database Initialization Script (Fresh Install)
+### Option 1: Run the Migration Script (Recommended - If Database Already Exists)
+This will fix the `updated_at` column for existing records:
+```bash
+cd backend
+psql -d your_database_name -U your_username -f migrations/fix-system-settings-updated-at.sql
+```
+
+Or for Heroku:
+```bash
+heroku pg:psql -a your-app-name < backend/migrations/fix-system-settings-updated-at.sql
+```
+
+### Option 2: Run the Database Initialization Script (Fresh Install)
 ```bash
 cd backend
 psql -d your_database_name -U your_username -f init-database.sql
 ```
 
-### Option 2: Insert Settings Manually (If Database Already Exists)
+### Option 3: Insert Settings Manually (If Database Already Exists)
 ```sql
-INSERT INTO system_settings (setting_key, setting_value, description, is_secret, created_at) VALUES
-  ('app_logo_url', '/images/logos/MuleSoft-RGB-icon.png', 'Application logo URL (can be uploaded by admin)', false, NOW()),
-  ('app_name', 'Document Analyzer', 'Application name displayed in header', false, NOW()),
-  ('cors_origin', 'http://localhost:3000', 'CORS allowed origin', false, NOW()),
-  ('jwt_expires_in', '7d', 'JWT token expiration time', false, NOW()),
-  ('jwt_secret', 'wAK6rM4Qg9dBhsr89X0GANUOSsZQpEIz0OPEQptS/rI=', 'JWT secret key for token signing', true, NOW()),
-  ('log_level', 'info', 'Logging level (debug, info, warn, error)', false, NOW()),
-  ('mulesoft_api_base_url', 'https://idp-process-contracts-w4i20p.y8riuw.usa-e2.cloudhub.io', 'MuleSoft API base URL', false, NOW()),
-  ('mulesoft_api_password', '', 'MuleSoft API password for basic authentication', true, NOW()),
-  ('mulesoft_api_timeout', '180000', 'MuleSoft API timeout in milliseconds', false, NOW()),
-  ('mulesoft_api_username', '', 'MuleSoft API username for basic authentication', true, NOW())
+INSERT INTO system_settings (setting_key, setting_value, description, is_secret, created_at, updated_at) VALUES
+  ('app_logo_url', '/images/logos/MuleSoft-RGB-icon.png', 'Application logo URL (can be uploaded by admin)', false, NOW(), NOW()),
+  ('app_name', 'Document Analyzer', 'Application name displayed in header', false, NOW(), NOW()),
+  ('cors_origin', 'http://localhost:3000', 'CORS allowed origin', false, NOW(), NOW()),
+  ('jwt_expires_in', '7d', 'JWT token expiration time', false, NOW(), NOW()),
+  ('jwt_secret', 'wAK6rM4Qg9dBhsr89X0GANUOSsZQpEIz0OPEQptS/rI=', 'JWT secret key for token signing', true, NOW(), NOW()),
+  ('log_level', 'info', 'Logging level (debug, info, warn, error)', false, NOW(), NOW()),
+  ('mulesoft_api_base_url', 'https://idp-process-contracts-w4i20p.y8riuw.usa-e2.cloudhub.io', 'MuleSoft API base URL', false, NOW(), NOW()),
+  ('mulesoft_api_password', '', 'MuleSoft API password for basic authentication', true, NOW(), NOW()),
+  ('mulesoft_api_timeout', '180000', 'MuleSoft API timeout in milliseconds', false, NOW(), NOW()),
+  ('mulesoft_api_username', '', 'MuleSoft API username for basic authentication', true, NOW(), NOW())
 ON CONFLICT (setting_key) DO NOTHING;
-```
-
-### Option 3: Use Heroku/Production (If Deployed)
-If the app is deployed to Heroku, run:
-```bash
-heroku run psql $DATABASE_URL -a your-app-name <<EOF
-INSERT INTO system_settings (setting_key, setting_value, description, is_secret, created_at) VALUES
-  ('app_logo_url', '/images/logos/MuleSoft-RGB-icon.png', 'Application logo URL (can be uploaded by admin)', false, NOW()),
-  ('app_name', 'Document Analyzer', 'Application name displayed in header', false, NOW()),
-  ('cors_origin', 'http://localhost:3000', 'CORS allowed origin', false, NOW()),
-  ('jwt_expires_in', '7d', 'JWT token expiration time', false, NOW()),
-  ('jwt_secret', 'wAK6rM4Qg9dBhsr89X0GANUOSsZQpEIz0OPEQptS/rI=', 'JWT secret key for token signing', true, NOW()),
-  ('log_level', 'info', 'Logging level (debug, info, warn, error)', false, NOW()),
-  ('mulesoft_api_base_url', 'https://idp-process-contracts-w4i20p.y8riuw.usa-e2.cloudhub.io', 'MuleSoft API base URL', false, NOW()),
-  ('mulesoft_api_password', '', 'MuleSoft API password for basic authentication', true, NOW()),
-  ('mulesoft_api_timeout', '180000', 'MuleSoft API timeout in milliseconds', false, NOW()),
-  ('mulesoft_api_username', '', 'MuleSoft API username for basic authentication', true, NOW())
-ON CONFLICT (setting_key) DO NOTHING;
-EOF
 ```
 
 ## Verification

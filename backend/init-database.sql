@@ -344,22 +344,22 @@ END $$;
 DO $$
 BEGIN
 
+ALTER TABLE public.system_settings ALTER COLUMN updated_at DROP NOT NULL;
 
-
-INSERT INTO system_settings (setting_key,setting_value,description,is_secret,created_at) VALUES
-	 ('app_logo_url','/images/logos/MuleSoft-RGB-icon.png','Application logo URL (can be uploaded by admin)',false, NOW()),
-	 ('app_name','Document Analyzer','Application name displayed in header',false, NOW()),
-	 ('cors_origin','http://localhost:3000','CORS allowed origin',false, NOW()),
-	 ('jwt_expires_in','7d','JWT token expiration time',false, NOW()),
-	 ('jwt_secret','wAK6rM4Qg9dBhsr89X0GANUOSsZQpEIz0OPEQptS/rI=','JWT secret key for token signing',true, NOW()),
-	 ('log_level','info','Logging level (debug, info, warn, error)',false, NOW()),
-	 ('mulesoft_api_base_url','https://idp-process-contracts-w4i20p.y8riuw.usa-e2.cloudhub.io','MuleSoft API base URL',false, NOW()),
-	 ('mulesoft_api_password','','MuleSoft API password for basic authentication',true, NOW()),
-	 ('mulesoft_api_timeout','180000','MuleSoft API timeout in milliseconds',false, NOW()),
-	 ('mulesoft_api_username','','MuleSoft API username for basic authentication',true, NOW()),
-	 ('powered_by_text','Powered by MuleSoft','Footer text',false, NOW()),
-	 ('show_demo_credentials','false','Display demo credentials on login page (true/false)',false, NOW())
-   ON CONFLICT (setting_key) DO NOTHING;
+INSERT INTO system_settings (setting_key,setting_value,description,is_secret,created_at,updated_at) VALUES
+	 ('app_logo_url','/images/logos/MuleSoft-RGB-icon.png','Application logo URL (can be uploaded by admin)',false, NOW(), NOW()),
+	 ('app_name','Document Analyzer','Application name displayed in header',false, NOW(), NOW()),
+	 ('cors_origin','http://localhost:3000','CORS allowed origin',false, NOW(), NOW()),
+	 ('jwt_expires_in','7d','JWT token expiration time',false, NOW(), NOW()),
+	 ('jwt_secret','wAK6rM4Qg9dBhsr89X0GANUOSsZQpEIz0OPEQptS/rI=','JWT secret key for token signing',true, NOW(), NOW()),
+	 ('log_level','info','Logging level (debug, info, warn, error)',false, NOW(), NOW()),
+	 ('mulesoft_api_base_url','https://idp-process-contracts-w4i20p.y8riuw.usa-e2.cloudhub.io','MuleSoft API base URL',false, NOW(), NOW()),
+	 ('mulesoft_api_password','','MuleSoft API password for basic authentication',true, NOW(), NOW()),
+	 ('mulesoft_api_timeout','180000','MuleSoft API timeout in milliseconds',false, NOW(), NOW()),
+	 ('mulesoft_api_username','','MuleSoft API username for basic authentication',true, NOW(), NOW()),
+	 ('powered_by_text','Powered by MuleSoft','Footer text',false, NOW(), NOW()),
+	 ('show_demo_credentials','false','Display demo credentials on login page (true/false)',false, NOW(), NOW())
+  ON CONFLICT (setting_key) DO NOTHING;
 
   RAISE NOTICE '✓ System settings created';
 END;
