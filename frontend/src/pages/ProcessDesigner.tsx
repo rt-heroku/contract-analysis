@@ -243,7 +243,7 @@ const ProcessDesignerInner: React.FC = () => {
 
   // Validation function for connections
   const isValidConnection = useCallback((connection: Connection): boolean => {
-    const { source, target, sourceHandle } = connection;
+    const { source, target, sourceHandle, targetHandle } = connection;
     
     if (!source || !target) return false;
     
@@ -253,8 +253,16 @@ const ProcessDesignerInner: React.FC = () => {
       return false;
     }
     
-    // Prevent cycles
-    if (wouldCreateCycle(source, target, edges)) {
+    // Allow loop-internal connections (loop-start -> actions -> loop-end)
+    // These are not cycles, they're the intended loop structure
+    const isLoopInternalConnection = 
+      sourceHandle === 'loop-start' || 
+      targetHandle === 'loop-end' || 
+      sourceHandle === 'loop-end' ||
+      targetHandle === 'loop-start';
+    
+    // Prevent cycles (except for loop-internal connections)
+    if (!isLoopInternalConnection && wouldCreateCycle(source, target, edges)) {
       console.log('❌ Invalid: Would create a cycle');
       setAlertDialog({
         isOpen: true,
@@ -790,6 +798,33 @@ const ProcessDesignerInner: React.FC = () => {
       });
 
       const nodeId = `node-${Date.now()}`;
+      
+      // Check if dropping inside a loop container
+      let parentNodeId: string | undefined = undefined;
+      let relativePosition = position;
+      
+      for (const node of nodes) {
+        if (node.type === 'loopContainer') {
+          const nodeWidth = typeof node.style?.width === 'number' ? node.style.width : 600;
+          const nodeHeight = typeof node.style?.height === 'number' ? node.style.height : 400;
+          
+          // Check if drop position is within container bounds
+          if (
+            position.x >= node.position.x &&
+            position.x <= node.position.x + nodeWidth &&
+            position.y >= node.position.y &&
+            position.y <= node.position.y + nodeHeight
+          ) {
+            parentNodeId = node.id;
+            // Calculate position relative to parent
+            relativePosition = {
+              x: position.x - node.position.x,
+              y: position.y - node.position.y,
+            };
+            break;
+          }
+        }
+      }
 
       // Handle Start node - only allow one
       if (action.actionType === 'start' || action.name === 'start_node') {
@@ -807,7 +842,7 @@ const ProcessDesignerInner: React.FC = () => {
         const newNode: Node = {
           id: nodeId,
           type: 'start',
-          position,
+          position: parentNodeId ? relativePosition : position,
           data: {
             label: 'START',
             trigger: currentTriggerConfig,
@@ -820,6 +855,10 @@ const ProcessDesignerInner: React.FC = () => {
               setTriggerConfigOpen(true);
             },
           },
+          ...(parentNodeId && { 
+            parentNode: parentNodeId,
+            extent: 'parent' as const,
+          }),
         };
         setNodes((nds) => nds.concat(newNode));
         return;
@@ -841,7 +880,7 @@ const ProcessDesignerInner: React.FC = () => {
         const newNode: Node = {
           id: nodeId,
           type: 'globalError',
-          position,
+          position: parentNodeId ? relativePosition : position,
           data: {
             label: 'GLOBAL ERROR',
             config: currentGlobalErrorConfig,
@@ -849,6 +888,10 @@ const ProcessDesignerInner: React.FC = () => {
               setGlobalErrorConfigOpen(true);
             },
           },
+          ...(parentNodeId && { 
+            parentNode: parentNodeId,
+            extent: 'parent' as const,
+          }),
         };
         setNodes((nds) => nds.concat(newNode));
         return;
@@ -898,7 +941,7 @@ const ProcessDesignerInner: React.FC = () => {
       const newNode: Node = {
         id: nodeId,
         type: nodeType,
-        position,
+        position: parentNodeId ? relativePosition : position,
         data: nodeData,
         // Loop containers are expandable parent nodes
         style: nodeType === 'loopContainer' ? {
@@ -906,6 +949,11 @@ const ProcessDesignerInner: React.FC = () => {
           height: 400,
           zIndex: -1, // Behind child nodes
         } : undefined,
+        // Set parent-child relationship if dropped inside a container
+        ...(parentNodeId && { 
+          parentNode: parentNodeId,
+          extent: 'parent' as const,
+        }),
       };
 
       setNodes((nds) => nds.concat(newNode));

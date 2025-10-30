@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, Position, NodeProps, NodeResizer } from 'reactflow';
 import { RefreshCw, Edit3, Plus } from 'lucide-react';
 
 interface LoopContainerNodeData {
@@ -29,24 +29,33 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
   const displayCondition = data.condition || 'Configure loop condition';
 
   return (
-    <div 
-      className="relative group" 
-      onDoubleClick={handleDoubleClick}
-      style={{ minWidth: '600px', minHeight: '400px' }}
-    >
-      {/* Container Box with Dashed Border */}
+    <>
+      {/* Node Resizer */}
+      <NodeResizer
+        minWidth={400}
+        minHeight={300}
+        isVisible={selected}
+        lineClassName="border-blue-500"
+        handleClassName="w-3 h-3 bg-blue-500 border-2 border-white rounded-full"
+      />
+      
       <div 
-        className={`
-          rounded-lg border-2 border-dashed transition-all duration-200 relative
-          ${selected ? 'border-blue-500 bg-blue-50' : 'border-blue-300 bg-blue-50'}
-        `}
-        style={{ 
-          width: '100%',
-          height: '100%',
-          minHeight: '400px',
-          padding: '60px 20px 20px 20px',
-        }}
+        className="relative group w-full h-full" 
+        onDoubleClick={handleDoubleClick}
       >
+        {/* Container Box with Dashed Border */}
+        <div 
+          className={`
+            rounded-lg border-2 border-dashed transition-all duration-200 relative
+            ${selected ? 'border-blue-500 bg-blue-50' : 'border-blue-300 bg-blue-50'}
+          `}
+          style={{ 
+            width: '100%',
+            height: '100%',
+            minHeight: '300px',
+            padding: '60px 20px 20px 20px',
+          }}
+        >
         {/* Header Label */}
         <div className="absolute top-4 left-4 flex items-center space-x-3">
           <div className="flex items-center space-x-2 bg-white rounded-lg shadow-md px-3 py-2 border border-blue-200">
@@ -185,7 +194,8 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
           </button>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 });
 
