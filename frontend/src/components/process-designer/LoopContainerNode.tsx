@@ -62,11 +62,6 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
 
   const displayCondition = data.condition || getConditionSummary();
 
-  const handleDragStart = (e: React.DragEvent, actionType: 'break' | 'continue') => {
-    e.dataTransfer.setData('application/reactflow', actionType);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
   return (
     <>
       {/* Node Resizer */}
@@ -103,30 +98,6 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
         {/* Condition Display */}
         <div className="bg-white rounded-lg shadow-md px-3 py-2 border border-gray-200 max-w-xs">
           <span className="text-xs text-gray-600 font-mono truncate">{displayCondition}</span>
-        </div>
-
-        {/* Draggable Break Button */}
-        <div
-          draggable
-          onDragStart={(e) => handleDragStart(e, 'break')}
-          className="flex items-center space-x-1 bg-orange-50 hover:bg-orange-100 rounded-lg shadow-md px-2 py-2 border border-orange-200 cursor-move transition-colors"
-          title="Drag to add Break"
-        >
-          <CornerUpLeft className="w-4 h-4 text-orange-600" />
-          <span className="text-xs font-semibold text-orange-700">break</span>
-          <div className="w-2 h-2 bg-orange-500 rounded-full" />
-        </div>
-
-        {/* Draggable Continue Button */}
-        <div
-          draggable
-          onDragStart={(e) => handleDragStart(e, 'continue')}
-          className="flex items-center space-x-1 bg-green-50 hover:bg-green-100 rounded-lg shadow-md px-2 py-2 border border-green-200 cursor-move transition-colors"
-          title="Drag to add Continue"
-        >
-          <CornerDownRight className="w-4 h-4 text-green-600" />
-          <span className="text-xs font-semibold text-green-700">continue</span>
-          <div className="w-2 h-2 bg-green-500 rounded-full" />
         </div>
       </div>
       
@@ -166,6 +137,48 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
           <div className="text-xs font-medium text-green-600 mt-1">Start</div>
         </div>
 
+        {/* Break and Continue Buttons - Inside Blue Box */}
+        <div 
+          className="absolute flex items-center space-x-3"
+          style={{ top: '20px', right: '20px', pointerEvents: 'all' }}
+        >
+          {/* Add Break Button */}
+          {data.onAddBreak && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // Calculate position relative to container center
+                const position = { x: 200, y: 150 };
+                data.onAddBreak?.(position);
+              }}
+              className="flex items-center space-x-1 bg-orange-50 hover:bg-orange-100 rounded-lg shadow-md px-3 py-2 border border-orange-200 transition-colors"
+              title="Add Break"
+            >
+              <CornerUpLeft className="w-4 h-4 text-orange-600" />
+              <span className="text-xs font-semibold text-orange-700">break</span>
+              <div className="w-2 h-2 bg-orange-500 rounded-full" />
+            </button>
+          )}
+
+          {/* Add Continue Button */}
+          {data.onAddContinue && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // Calculate position relative to container center
+                const position = { x: 200, y: 200 };
+                data.onAddContinue?.(position);
+              }}
+              className="flex items-center space-x-1 bg-green-50 hover:bg-green-100 rounded-lg shadow-md px-3 py-2 border border-green-200 transition-colors"
+              title="Add Continue"
+            >
+              <CornerDownRight className="w-4 h-4 text-green-600" />
+              <span className="text-xs font-semibold text-green-700">continue</span>
+              <div className="w-2 h-2 bg-green-500 rounded-full" />
+            </button>
+          )}
+        </div>
+
         {/* Instructions when empty */}
         <div 
           className="absolute inset-0 flex items-center justify-center pointer-events-none"
@@ -173,7 +186,7 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
         >
           <div className="text-center text-gray-400">
             <RefreshCw className="w-12 h-12 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Drop actions here or drag break/continue from header</p>
+            <p className="text-sm">Drop actions here or use break/continue buttons</p>
           </div>
         </div>
 
@@ -226,21 +239,6 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
         style={{ right: -35, top: 'calc(50% - 10px)', color: '#16a34a' }}
       >
         exit
-      </div>
-
-      {/* Break Point - Bottom (optional early exit) */}
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="break"
-        className="w-3 h-3 !bg-orange-500 !border-2 !border-white"
-        style={{ bottom: -6, left: '80%' }}
-      />
-      <div
-        className="absolute text-xs font-semibold px-2 py-0.5 bg-white rounded shadow-sm border border-orange-300 whitespace-nowrap pointer-events-none"
-        style={{ bottom: -28, left: '80%', transform: 'translateX(-50%)', color: '#ea580c' }}
-      >
-        break
       </div>
 
       {/* Plus Button for adding next action after loop */}

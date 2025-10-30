@@ -31,6 +31,8 @@ import { IfThenElseNode } from '@/components/process-designer/IfThenElseNode';
 import { LoopContainerNode } from '@/components/process-designer/LoopContainerNode';
 import { BreakNode } from '@/components/process-designer/BreakNode';
 import { ContinueNode } from '@/components/process-designer/ContinueNode';
+import { LoopConditionModal } from '@/components/process-designer/LoopConditionModal';
+import { ConditionalGroup } from '@/components/process-designer/ConditionalEditor';
 import { FloatingActionsModal } from '@/components/process-designer/FloatingActionsModal';
 import { FloatingPropertiesPanel } from '@/components/process-designer/FloatingPropertiesPanel';
 import { NodeContextMenu } from '@/components/process-designer/NodeContextMenu';
@@ -161,6 +163,11 @@ const ProcessDesignerInner: React.FC = () => {
     notifyOnError: false,
     continueOnError: false,
   });
+  
+  // Loop condition config state
+  const [loopConditionModalOpen, setLoopConditionModalOpen] = useState(false);
+  const [currentLoopNodeId, setCurrentLoopNodeId] = useState<string | null>(null);
+  const [currentLoopConditions, setCurrentLoopConditions] = useState<ConditionalGroup[]>([]);
   
   // Process properties modal state
   const [processPropertiesOpen, setProcessPropertiesOpen] = useState(false);
@@ -962,6 +969,72 @@ const ProcessDesignerInner: React.FC = () => {
     [nodes, generateEdgeLabel]
   );
 
+  // Handle loop condition editing
+  const handleEditLoopCondition = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node && node.type === 'loopContainer') {
+      setCurrentLoopNodeId(nodeId);
+      setCurrentLoopConditions(node.data.conditions || []);
+      setLoopConditionModalOpen(true);
+    }
+  }, [nodes]);
+
+  // Handle saving loop conditions
+  const handleSaveLoopConditions = useCallback((conditions: ConditionalGroup[]) => {
+    if (currentLoopNodeId) {
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === currentLoopNodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  conditions: conditions,
+                },
+              }
+            : node
+        )
+      );
+    }
+  }, [currentLoopNodeId, setNodes]);
+
+  // Handle adding break node to loop
+  const handleAddBreakToLoop = useCallback((loopNodeId: string, relativePosition: { x: number; y: number }) => {
+    const nodeId = `break-${Date.now()}`;
+    const newNode: Node = {
+      id: nodeId,
+      type: 'break',
+      position: relativePosition,
+      data: {
+        label: 'Break',
+        layoutDirection: layoutDirection,
+        onEdit: () => handleEditNode(nodeId),
+      },
+      parentNode: loopNodeId,
+      extent: 'parent' as const,
+    };
+    setNodes((nds) => nds.concat(newNode));
+  }, [layoutDirection, setNodes, handleEditNode]);
+
+  // Handle adding continue node to loop
+  const handleAddContinueToLoop = useCallback((loopNodeId: string, relativePosition: { x: number; y: number }) => {
+    const nodeId = `continue-${Date.now()}`;
+    const newNode: Node = {
+      id: nodeId,
+      type: 'continue',
+      position: relativePosition,
+      data: {
+        label: 'Continue',
+        layoutDirection: layoutDirection,
+        onEdit: () => handleEditNode(nodeId),
+        skipCount: 1,
+      },
+      parentNode: loopNodeId,
+      extent: 'parent' as const,
+    };
+    setNodes((nds) => nds.concat(newNode));
+  }, [layoutDirection, setNodes, handleEditNode]);
+
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -972,62 +1045,6 @@ const ProcessDesignerInner: React.FC = () => {
       event.preventDefault();
 
       if (!reactFlowWrapper.current) return;
-
-      // Check if it's a break/continue drag from loop container
-      const loopActionType = event.dataTransfer.getData('application/reactflow');
-      if (loopActionType === 'break' || loopActionType === 'continue') {
-        const position = screenToFlowPosition({
-          x: event.clientX,
-          y: event.clientY,
-        });
-
-        const nodeId = `${loopActionType}-${Date.now()}`;
-        
-        // Check if dropping inside a loop container
-        let parentNodeId: string | undefined = undefined;
-        let relativePosition = position;
-        
-        for (const node of nodes) {
-          if (node.type === 'loopContainer') {
-            const nodeWidth = typeof node.style?.width === 'number' ? node.style.width : 600;
-            const nodeHeight = typeof node.style?.height === 'number' ? node.style.height : 400;
-            
-            if (
-              position.x >= node.position.x &&
-              position.x <= node.position.x + nodeWidth &&
-              position.y >= node.position.y &&
-              position.y <= node.position.y + nodeHeight
-            ) {
-              parentNodeId = node.id;
-              relativePosition = {
-                x: position.x - node.position.x,
-                y: position.y - node.position.y,
-              };
-              break;
-            }
-          }
-        }
-
-        // Create break or continue node
-        const newNode: Node = {
-          id: nodeId,
-          type: loopActionType,
-          position: parentNodeId ? relativePosition : position,
-          data: {
-            label: loopActionType === 'break' ? 'Break' : 'Continue',
-            layoutDirection: layoutDirection,
-            onEdit: () => handleEditNode(nodeId),
-            ...(loopActionType === 'continue' && { skipCount: 1 }),
-          },
-          ...(parentNodeId && { 
-            parentNode: parentNodeId,
-            extent: 'parent' as const,
-          }),
-        };
-
-        setNodes((nds) => nds.concat(newNode));
-        return;
-      }
 
       // Handle regular action drops
       const actionData = event.dataTransfer.getData('application/json');
@@ -1173,15 +1190,17 @@ const ProcessDesignerInner: React.FC = () => {
       if (action.name === 'loop_container') {
         nodeType = 'loopContainer';
         nodeData = {
-          label: 'Loop',
-          loopType: 'for_each',
-          condition: '',
+          label: 'While',
+          loopType: 'while',
+          conditions: [],
           layoutDirection: layoutDirection,
-          onEdit: () => handleEditNode(nodeId),
+          onEdit: () => handleEditLoopCondition(nodeId),
           onAddNext: () => {
             setTargetNodeForPlus(nodeId);
             setShowActionSearch(true);
           },
+          onAddBreak: (position: { x: number; y: number }) => handleAddBreakToLoop(nodeId, position),
+          onAddContinue: (position: { x: number; y: number }) => handleAddContinueToLoop(nodeId, position),
           showPlusButton: true,
         };
       }
@@ -2281,6 +2300,14 @@ const ProcessDesignerInner: React.FC = () => {
         requireVersionUpdate={saveModalAction === 'publish' || processProperties.status === 'published' || processProperties.status === 'active'}
       />
 
+      {/* Loop Condition Modal */}
+      <LoopConditionModal
+        isOpen={loopConditionModalOpen}
+        currentConditions={currentLoopConditions}
+        onClose={() => setLoopConditionModalOpen(false)}
+        onSave={handleSaveLoopConditions}
+      />
+
       {/* Variables Panel */}
       <VariablesPanel
         isOpen={variablesPanelOpen}
@@ -2379,15 +2406,17 @@ const ProcessDesignerInner: React.FC = () => {
                         if (action.name === 'loop_container') {
                           nodeType = 'loopContainer';
                           nodeData = {
-                            label: 'Loop',
-                            loopType: 'for_each',
-                            condition: '',
+                            label: 'While',
+                            loopType: 'while',
+                            conditions: [],
                             layoutDirection: layoutDirection,
-                            onEdit: () => handleEditNode(nodeId),
+                            onEdit: () => handleEditLoopCondition(nodeId),
                             onAddNext: () => {
                               setTargetNodeForPlus(nodeId);
                               setShowActionSearch(true);
                             },
+                            onAddBreak: (position: { x: number; y: number }) => handleAddBreakToLoop(nodeId, position),
+                            onAddContinue: (position: { x: number; y: number }) => handleAddContinueToLoop(nodeId, position),
                             showPlusButton: true,
                           };
                         }
