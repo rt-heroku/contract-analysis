@@ -1676,7 +1676,17 @@ const ProcessDesignerInner: React.FC = () => {
           x={contextMenu.x}
           y={contextMenu.y}
           onEdit={() => {
-            handleEditNode(contextMenu.nodeId);
+            const node = nodes.find((n) => n.id === contextMenu.nodeId);
+            
+            // Handle Start and Global Error nodes with their specific config panels
+            if (node?.type === 'start') {
+              setTriggerConfigOpen(true);
+            } else if (node?.type === 'globalError') {
+              setGlobalErrorConfigOpen(true);
+            } else {
+              handleEditNode(contextMenu.nodeId);
+            }
+            
             setContextMenu(null);
           }}
           onDelete={() => {
