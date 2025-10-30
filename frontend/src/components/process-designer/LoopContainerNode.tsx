@@ -82,15 +82,17 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
   const displayCondition = data.condition || getConditionSummary();
 
   return (
-    <>
-      {/* Node Resizer - Must be first for proper z-index */}
-      <NodeResizer
-        minWidth={400}
-        minHeight={300}
-        isVisible={selected}
-        lineClassName="!border-blue-500 !border-2"
-        handleClassName="!w-4 !h-4 !bg-blue-500 !border-2 !border-white !rounded-full"
-      />
+    <div className="relative w-full h-full" style={{ pointerEvents: 'all' }}>
+      {/* Node Resizer - Rendered conditionally when selected */}
+      {selected && (
+        <NodeResizer
+          minWidth={400}
+          minHeight={300}
+          isVisible={true}
+          lineClassName="border-blue-500 border-2"
+          handleClassName="w-6 h-6 bg-blue-500 border-2 border-white rounded-full"
+        />
+      )}
       
       {/* TITLE BAR - OUTSIDE CONTAINER */}
       <div 
@@ -106,6 +108,7 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
         {/* Edit Button */}
         {data.onEdit && (
           <button
+            type="button"
             onClick={handleEditClick}
             className="w-8 h-8 bg-white hover:bg-gray-50 rounded-lg shadow-md border border-gray-200 flex items-center justify-center transition-colors"
             title="Edit loop conditions"
@@ -122,7 +125,6 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
       
       <div 
         className="relative group w-full h-full"
-        style={{ pointerEvents: 'none' }} 
         onDoubleClick={handleDoubleClick}
       >
         {/* Container Box with Dashed Border */}
@@ -290,7 +292,7 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
         </div>
       )}
       </div>
-    </>
+    </div>
   );
 });
 
