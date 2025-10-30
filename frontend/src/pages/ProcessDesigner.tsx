@@ -449,7 +449,7 @@ const ProcessDesignerInner: React.FC = () => {
     // Calculate offset to position dagre layout relative to Start node
     const startOffsetX = useDirection === 'horizontal' 
       ? LAYOUT_CONFIG.START_POSITION.x + 300  // Position action nodes to the right of Start
-      : LAYOUT_CONFIG.START_POSITION.x;       // Same X as Start
+      : LAYOUT_CONFIG.START_POSITION.x - 200; // Offset left to align with Start (compensate for dagre centering)
     const startOffsetY = useDirection === 'horizontal'
       ? LAYOUT_CONFIG.START_POSITION.y - (NODE_HEIGHT / 2)  // Align vertically with Start center
       : LAYOUT_CONFIG.START_POSITION.y + 300; // Position action nodes below Start with proper spacing
