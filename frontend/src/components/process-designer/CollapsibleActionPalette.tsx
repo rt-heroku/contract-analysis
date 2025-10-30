@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, PlayCircle, XCircle, Search, X, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, X, Plus } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import api from '@/lib/api';
 import { ActionSelectionModal } from './ActionSelectionModal';
@@ -234,78 +234,8 @@ export const CollapsibleActionPalette = ({
     return Icon || LucideIcons.Box;
   };
 
-  const renderStartEndNodes = () => (
-    <div className="mb-2">
-      <button
-        onClick={() => toggleCategory('Flow Markers')}
-        className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-gray-50 rounded transition-colors"
-      >
-        <div className="flex items-center space-x-2">
-          {collapsed['Flow Markers'] ? (
-            <ChevronRight className="w-4 h-4 text-gray-500" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-gray-500" />
-          )}
-          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
-            Flow Markers
-          </span>
-        </div>
-        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-          2
-        </span>
-      </button>
-
-      {!collapsed['Flow Markers'] && (
-        <div className="mt-1 grid grid-cols-2 gap-2 px-2">
-          {/* Start Node */}
-          <div
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData('application/json', JSON.stringify({
-                id: 0,
-                name: 'start_node',
-                displayName: 'Start',
-                description: 'Flow start point',
-                category: 'flow',
-                icon: 'PlayCircle',
-                color: '#22c55e',
-                actionType: 'start',
-              }));
-            }}
-            className="flex flex-col items-center p-2 rounded cursor-move hover:bg-green-50 border border-green-200"
-          >
-            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mb-1">
-              <PlayCircle className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xs font-medium text-gray-700">Start</span>
-          </div>
-
-          {/* Global Error Node */}
-          <div
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData('application/json', JSON.stringify({
-                id: 0,
-                name: 'global_error',
-                displayName: 'Global Error',
-                description: 'Default error handler for entire flow',
-                category: 'error_handling',
-                icon: 'XCircle',
-                color: '#ef4444',
-                actionType: 'global_error',
-              }));
-            }}
-            className="flex flex-col items-center p-2 rounded cursor-move hover:bg-red-50 border border-red-200"
-          >
-            <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center mb-1">
-              <XCircle className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xs font-medium text-gray-700">Global Error</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  // Flow Markers (Start and Global Error) are always present in the process designer
+  // and cannot be removed, so they are hidden from the actions toolbar
 
   const renderActionItem = (action: Action) => {
     const Icon = getIconComponent(action.icon);
@@ -401,7 +331,7 @@ export const CollapsibleActionPalette = ({
           </div>
         ) : (
           <>
-            {renderStartEndNodes()}
+            {/* Flow Markers hidden - Start and Global Error are always present */}
 
         {nonEmptyCategories.map(([categoryName, categoryActions]) => (
           <div key={categoryName} className="mb-2">
