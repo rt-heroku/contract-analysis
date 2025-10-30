@@ -141,62 +141,6 @@ export async function seedSystemActions() {
         executorConfig: {},
       },
       {
-        name: 'conditional',
-        displayName: 'Conditional',
-        description: 'Advanced conditional logic with multiple conditions using AND/OR operators',
-        actionType: 'system',
-        category: 'control_flow',
-        icon: 'Filter',
-        color: '#8b5cf6',
-        configSchema: {
-          type: 'object',
-          properties: {
-            conditions: {
-              type: 'array',
-              description: 'Array of condition groups with logic operators',
-              items: {
-                type: 'object',
-                properties: {
-                  conditions: {
-                    type: 'array',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        field: { type: 'string', description: 'Field or variable to check' },
-                        operator: { 
-                          type: 'string', 
-                          enum: ['equals', 'not_equals', 'contains', 'not_contains', 'starts_with', 'ends_with', 
-                                 'greater_than', 'less_than', 'greater_or_equal', 'less_or_equal', 
-                                 'is_empty', 'is_not_empty', 'is_true', 'is_false'],
-                          description: 'Comparison operator'
-                        },
-                        value: { description: 'Value to compare against' },
-                      },
-                      required: ['field', 'operator'],
-                    },
-                  },
-                  logicOperator: { type: 'string', enum: ['and', 'or'], description: 'Logic operator (AND/OR)' },
-                },
-              },
-            },
-          },
-          required: ['conditions'],
-        },
-        inputSchema: {
-          type: 'object',
-          description: 'Data used for condition evaluation',
-        },
-        outputSchema: {
-          type: 'object',
-          properties: {
-            result: { type: 'boolean', description: 'Overall condition evaluation result' },
-            matchedConditions: { type: 'array', description: 'List of conditions that matched' },
-          },
-        },
-        executorType: 'builtin',
-        executorConfig: {},
-      },
-      {
         name: 'if_then_else',
         displayName: 'IF THEN ELSE',
         description: 'Conditional branching - evaluates condition and routes to IF or ELSE branch',
