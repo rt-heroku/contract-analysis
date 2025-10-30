@@ -21,7 +21,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RefreshCw, MousePointer2, Upload } from 'lucide-react';
+import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RefreshCw, MousePointer2, Upload, ArrowLeftRight, ArrowUpDown } from 'lucide-react';
 import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
 import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
@@ -159,6 +159,9 @@ const ProcessDesignerInner: React.FC = () => {
   // Multiselect mode state
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   
+  // Layout direction state
+  const [layoutDirection, setLayoutDirection] = useState<'horizontal' | 'vertical'>('vertical');
+  
   // Canvas context menu
   const [canvasContextMenu, setCanvasContextMenu] = useState<{
     x: number;
@@ -186,6 +189,222 @@ const ProcessDesignerInner: React.FC = () => {
   const edgeTypes: EdgeTypes = useMemo(() => ({
     labeled: LabeledEdge,
   }), []);
+
+  // Cycle detection: Check if adding an edge would create a cycle
+  const wouldCreateCycle = useCallback((sourceId: string, targetId: string, currentEdges: typeof edges): boolean => {
+    // Build adjacency list
+    const adjacencyList = new Map<string, string[]>();
+    
+    currentEdges.forEach(edge => {
+      if (!adjacencyList.has(edge.source)) {
+        adjacencyList.set(edge.source, []);
+      }
+      adjacencyList.get(edge.source)!.push(edge.target);
+    });
+    
+    // Add the new potential edge
+    if (!adjacencyList.has(sourceId)) {
+      adjacencyList.set(sourceId, []);
+    }
+    adjacencyList.get(sourceId)!.push(targetId);
+    
+    // DFS to detect cycle
+    const visited = new Set<string>();
+    const recStack = new Set<string>();
+    
+    const hasCycle = (nodeId: string): boolean => {
+      visited.add(nodeId);
+      recStack.add(nodeId);
+      
+      const neighbors = adjacencyList.get(nodeId) || [];
+      for (const neighbor of neighbors) {
+        if (!visited.has(neighbor)) {
+          if (hasCycle(neighbor)) return true;
+        } else if (recStack.has(neighbor)) {
+          return true; // Cycle detected
+        }
+      }
+      
+      recStack.delete(nodeId);
+      return false;
+    };
+    
+    // Check from source node
+    return hasCycle(sourceId);
+  }, []);
+
+  // Validation function for connections
+  const isValidConnection = useCallback((connection: Connection): boolean => {
+    const { source, target, sourceHandle } = connection;
+    
+    if (!source || !target) return false;
+    
+    // Cannot connect to self
+    if (source === target) {
+      console.log('❌ Invalid: Cannot connect node to itself');
+      return false;
+    }
+    
+    // Prevent cycles
+    if (wouldCreateCycle(source, target, edges)) {
+      console.log('❌ Invalid: Would create a cycle');
+      setAlertDialog({
+        isOpen: true,
+        title: 'Invalid Connection',
+        message: 'This connection would create a cycle in your process flow. Cycles are not allowed.',
+        type: 'warning',
+      });
+      return false;
+    }
+    
+    // Get source and target nodes
+    const sourceNode = nodes.find(n => n.id === source);
+    const targetNode = nodes.find(n => n.id === target);
+    
+    if (!sourceNode || !targetNode) return false;
+    
+    // Start node can only connect from its main output (not error)
+    if (sourceNode.type === 'start' && sourceHandle === 'error') {
+      console.log('❌ Invalid: Start node error handle should not be used');
+      return false;
+    }
+    
+    // Global Error can only have one input
+    if (targetNode.type === 'globalError') {
+      const existingConnections = edges.filter(e => e.target === target);
+      if (existingConnections.length > 0) {
+        console.log('❌ Invalid: Global Error already has an input');
+        return false;
+      }
+    }
+    
+    // Try Block error handle must connect to Catch Block
+    if (sourceNode.data?.actionName === 'try_block' && sourceHandle === 'error') {
+      if (targetNode.data?.actionName !== 'catch_block') {
+        console.log('❌ Invalid: Try Block error must connect to Catch Block');
+        setAlertDialog({
+          isOpen: true,
+          title: 'Invalid Connection',
+          message: 'Try Block error output must connect to a Catch Block.',
+          type: 'warning',
+        });
+        return false;
+      }
+    }
+    
+    // Catch Block must connect to Finally Block
+    if (sourceNode.data?.actionName === 'catch_block') {
+      if (targetNode.data?.actionName !== 'finally_block') {
+        console.log('❌ Invalid: Catch Block must connect to Finally Block');
+        setAlertDialog({
+          isOpen: true,
+          title: 'Invalid Connection',
+          message: 'Catch Block must connect to a Finally Block.',
+          type: 'warning',
+        });
+        return false;
+      }
+    }
+    
+    console.log('✅ Valid connection');
+    return true;
+  }, [nodes, edges, wouldCreateCycle]);
+
+  // Auto-arrange layout
+  const autoArrange = useCallback(() => {
+    const nodeSpacing = layoutDirection === 'horizontal' ? { x: 250, y: 150 } : { x: 200, y: 150 };
+    const startX = 50;
+    const startY = 50;
+    
+    // Build dependency graph
+    const incomingEdges = new Map<string, number>();
+    nodes.forEach(node => incomingEdges.set(node.id, 0));
+    
+    edges.forEach(edge => {
+      incomingEdges.set(edge.target, (incomingEdges.get(edge.target) || 0) + 1);
+    });
+    
+    // Topological sort (Kahn's algorithm)
+    const queue: string[] = [];
+    const levels = new Map<string, number>();
+    
+    // Find nodes with no incoming edges
+    incomingEdges.forEach((count, nodeId) => {
+      if (count === 0) {
+        queue.push(nodeId);
+        levels.set(nodeId, 0);
+      }
+    });
+    
+    const adjacencyList = new Map<string, string[]>();
+    edges.forEach(edge => {
+      if (!adjacencyList.has(edge.source)) {
+        adjacencyList.set(edge.source, []);
+      }
+      adjacencyList.get(edge.source)!.push(edge.target);
+    });
+    
+    // Process queue
+    while (queue.length > 0) {
+      const nodeId = queue.shift()!;
+      const currentLevel = levels.get(nodeId) || 0;
+      
+      const neighbors = adjacencyList.get(nodeId) || [];
+      neighbors.forEach(neighborId => {
+        const newCount = (incomingEdges.get(neighborId) || 0) - 1;
+        incomingEdges.set(neighborId, newCount);
+        
+        if (newCount === 0) {
+          queue.push(neighborId);
+          levels.set(neighborId, currentLevel + 1);
+        }
+      });
+    }
+    
+    // Group nodes by level
+    const levelGroups = new Map<number, string[]>();
+    levels.forEach((level, nodeId) => {
+      if (!levelGroups.has(level)) {
+        levelGroups.set(level, []);
+      }
+      levelGroups.get(level)!.push(nodeId);
+    });
+    
+    // Position nodes
+    const newNodes = nodes.map(node => {
+      const level = levels.get(node.id) || 0;
+      const nodesInLevel = levelGroups.get(level) || [];
+      const indexInLevel = nodesInLevel.indexOf(node.id);
+      
+      let x, y;
+      if (layoutDirection === 'horizontal') {
+        x = startX + (level * nodeSpacing.x);
+        y = startY + (indexInLevel * nodeSpacing.y);
+      } else {
+        x = startX + (indexInLevel * nodeSpacing.x);
+        y = startY + (level * nodeSpacing.y);
+      }
+      
+      return {
+        ...node,
+        position: { x, y },
+      };
+    });
+    
+    setNodes(newNodes);
+    
+    // Fit view after layout
+    setTimeout(() => {
+      reactFlowInstance?.fitView({ padding: 0.2, duration: 400 });
+    }, 50);
+  }, [nodes, edges, layoutDirection, setNodes, reactFlowInstance]);
+
+  // Toggle layout direction
+  const toggleLayout = useCallback(() => {
+    setLayoutDirection(prev => prev === 'horizontal' ? 'vertical' : 'horizontal');
+    // Auto-arrange after toggling
+    setTimeout(() => autoArrange(), 100);
+  }, [autoArrange]);
 
   // Helper to check if a node supports multiple connections (control flow actions)
   const isMultiBranchAction = useCallback((node: Node): boolean => {
@@ -1035,6 +1254,7 @@ const ProcessDesignerInner: React.FC = () => {
                   onMoveEnd={onMoveEnd}
                   nodeTypes={nodeTypes}
                   edgeTypes={edgeTypes}
+                  isValidConnection={isValidConnection}
                   defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
                   minZoom={0.1}
                   maxZoom={2}
@@ -1085,8 +1305,34 @@ const ProcessDesignerInner: React.FC = () => {
                     </button>
                   </div>
                   
-                  {/* Zoom Percentage Display */}
+                  {/* Layout Toggle Button */}
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '156px' }}>
+                    <button
+                      onClick={toggleLayout}
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
+                      title={`Switch to ${layoutDirection === 'horizontal' ? 'Vertical' : 'Horizontal'} Layout`}
+                    >
+                      {layoutDirection === 'horizontal' ? (
+                        <ArrowUpDown className="w-4 h-4 text-gray-600" />
+                      ) : (
+                        <ArrowLeftRight className="w-4 h-4 text-gray-600" />
+                      )}
+                    </button>
+                  </div>
+                  
+                  {/* Auto-Arrange Button */}
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '208px' }}>
+                    <button
+                      onClick={autoArrange}
+                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 hover:bg-gray-50 transition-colors"
+                      title="Auto-Arrange Nodes"
+                    >
+                      <RefreshCw className="w-4 h-4 text-gray-600" />
+                    </button>
+                  </div>
+                  
+                  {/* Zoom Percentage Display */}
+                  <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '260px' }}>
                     <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 flex items-center space-x-2">
                       <span className="text-xs font-semibold text-gray-700">
                         {Math.round(currentZoom * 100)}%
