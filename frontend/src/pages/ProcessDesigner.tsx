@@ -452,13 +452,31 @@ const ProcessDesignerInner: React.FC = () => {
     console.log('  - levels:', Array.from(levels.entries()));
     console.log('  - levelGroups:', Array.from(levelGroups.entries()));
     
-    // Position nodes - EXCLUDE Start and Global Error nodes from auto-arrangement
+    // Position nodes - Handle Start and Global Error specially
     const newNodes = nodes.map(node => {
-      // Preserve Start and Global Error positions - only update layoutDirection
-      if (node.type === 'start' || node.type === 'globalError') {
-        console.log(`  - ${node.id}: PRESERVED position=(${node.position.x}, ${node.position.y})`);
+      // Special positioning for Start node - fixed position with layout direction
+      if (node.type === 'start') {
+        const startPos = { x: 250, y: 150 };
+        console.log(`  - ${node.id}: START node at position=(${startPos.x}, ${startPos.y})`);
         return {
           ...node,
+          position: startPos,
+          data: {
+            ...node.data,
+            layoutDirection: useDirection,
+          },
+        };
+      }
+      
+      // Special positioning for Global Error node - depends on layout direction
+      if (node.type === 'globalError') {
+        const globalErrorPos = useDirection === 'vertical'
+          ? { x: 250, y: 500 }  // Below Start in vertical
+          : { x: 550, y: 150 }; // To the right in horizontal
+        console.log(`  - ${node.id}: GLOBAL ERROR at position=(${globalErrorPos.x}, ${globalErrorPos.y}) for ${useDirection} layout`);
+        return {
+          ...node,
+          position: globalErrorPos,
           data: {
             ...node.data,
             layoutDirection: useDirection,
@@ -644,7 +662,7 @@ const ProcessDesignerInner: React.FC = () => {
         
         const globalErrorPosition = layoutDirection === 'vertical' 
           ? { x: 250, y: 500 }  // Much more space below in vertical layout
-          : { x: 550, y: 100 }; // Side by side in horizontal layout
+          : { x: 550, y: 150 }; // Side by side in horizontal layout
         
         console.log('🔷 Global Error position:', globalErrorPosition);
         
@@ -714,6 +732,7 @@ const ProcessDesignerInner: React.FC = () => {
           ...node,
           data: {
             ...node.data,
+            layoutDirection: node.data?.layoutDirection || layoutDirection, // Preserve or set layout direction
             onEdit: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'loopContainer') ? () => handleEditNode(node.id) : undefined,
             onAddNext: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'loopContainer' || node.type === 'start' || node.type === 'globalError') ? () => {
               setTargetNodeForPlus(node.id);
@@ -735,11 +754,12 @@ const ProcessDesignerInner: React.FC = () => {
             type: 'globalError',
             position: layoutDirection === 'vertical' 
               ? { x: 250, y: 500 }  // Much more space below in vertical layout
-              : { x: 550, y: 100 }, // Side by side in horizontal layout
+              : { x: 550, y: 150 }, // Side by side in horizontal layout
             data: {
               label: 'GLOBAL ERROR',
               config: currentGlobalErrorConfig,
               showPlusButton: true,
+              layoutDirection: layoutDirection,
               onAddNext: () => {
                 setTargetNodeForPlus('global-error-1');
                 setShowActionSearch(true);
