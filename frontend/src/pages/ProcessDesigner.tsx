@@ -1350,6 +1350,162 @@ const ProcessDesignerInner: React.FC = () => {
     setSelectedNodeForProps(null); // Clear node selection
     setPropertiesModalOpen(false); // Close properties modal
   }, []);
+
+  // Render configuration form for properties panel
+  const renderConfigurationForm = useCallback((node: Node) => {
+    // Start Node - Render trigger configuration
+    if (node.type === 'start') {
+      return (
+        <TriggerConfigPanel
+          isOpen={true}
+          inline={true}
+          currentConfig={node.data?.trigger}
+          onClose={() => {}} // No close needed in inline view
+          onSave={(config) => {
+            setNodes((nds) =>
+              nds.map((n) =>
+                n.id === node.id
+                  ? {
+                      ...n,
+                      data: {
+                        ...n.data,
+                        trigger: config,
+                      },
+                    }
+                  : n
+              )
+            );
+          }}
+        />
+      );
+    }
+
+    // Global Error Node - Render error handler configuration
+    if (node.type === 'globalError') {
+      const config = node.data?.config || {};
+      
+      return (
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-gray-700">
+            <strong className="text-red-900">Global Error Handler:</strong> Catches all unhandled errors in the process.
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={config.logErrors !== false}
+                onChange={(e) => {
+                  setNodes((nds) =>
+                    nds.map((n) =>
+                      n.id === node.id
+                        ? {
+                            ...n,
+                            data: {
+                              ...n.data,
+                              config: {
+                                ...n.data?.config,
+                                logErrors: e.target.checked,
+                              },
+                            },
+                          }
+                        : n
+                    )
+                  );
+                }}
+                className="rounded text-blue-600"
+              />
+              <span className="text-sm font-medium text-gray-700">Log errors to activity logs</span>
+            </label>
+
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={config.sendNotification === true}
+                onChange={(e) => {
+                  setNodes((nds) =>
+                    nds.map((n) =>
+                      n.id === node.id
+                        ? {
+                            ...n,
+                            data: {
+                              ...n.data,
+                              config: {
+                                ...n.data?.config,
+                                sendNotification: e.target.checked,
+                              },
+                            },
+                          }
+                        : n
+                    )
+                  );
+                }}
+                className="rounded text-blue-600"
+              />
+              <span className="text-sm font-medium text-gray-700">Send notification on error</span>
+            </label>
+
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={config.continueProcess === true}
+                onChange={(e) => {
+                  setNodes((nds) =>
+                    nds.map((n) =>
+                      n.id === node.id
+                        ? {
+                            ...n,
+                            data: {
+                              ...n.data,
+                              config: {
+                                ...n.data?.config,
+                                continueProcess: e.target.checked,
+                              },
+                            },
+                          }
+                        : n
+                    )
+                  );
+                }}
+                className="rounded text-blue-600"
+              />
+              <span className="text-sm font-medium text-gray-700">Continue process after error (don't stop)</span>
+            </label>
+          </div>
+        </div>
+      );
+    }
+
+    // Other nodes - Render edit modal content inline
+    return (
+      <NodeEditModal
+        isOpen={true}
+        node={node}
+        allActions={actions}
+        nodes={nodes}
+        edges={edges}
+        onClose={() => {}} // No close needed in inline view
+        onSave={(nodeId, data) => {
+          setNodes((nds) =>
+            nds.map((n) =>
+              n.id === nodeId
+                ? {
+                    ...n,
+                    data: {
+                      ...n.data,
+                      config: data,
+                    },
+                  }
+                : n
+            )
+          );
+        }}
+        onDeleteEdge={(edgeId) => {
+          setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+        }}
+      />
+    );
+  }, [nodes, edges, actions, setNodes, setEdges]);
   
   // Canvas context menu handlers
   const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
@@ -2064,6 +2220,7 @@ const ProcessDesignerInner: React.FC = () => {
           setSelectedNode(node);
           setEditModalOpen(true);
         }}
+        renderConfigurationForm={renderConfigurationForm}
       />
 
       {/* Action Search Modal */}

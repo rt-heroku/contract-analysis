@@ -8,6 +8,7 @@ interface TriggerConfigPanelProps {
   currentConfig?: TriggerConfig;
   onClose: () => void;
   onSave: (config: TriggerConfig) => void;
+  inline?: boolean; // New prop to render without modal wrapper
 }
 
 export const TriggerConfigPanel = ({
@@ -15,6 +16,7 @@ export const TriggerConfigPanel = ({
   currentConfig,
   onClose,
   onSave,
+  inline = false,
 }: TriggerConfigPanelProps) => {
   const [triggerType, setTriggerType] = useState<TriggerConfig['type']>(
     currentConfig?.type || 'none'
@@ -28,7 +30,7 @@ export const TriggerConfigPanel = ({
     }
   }, [currentConfig]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !inline) return null;
 
   const handleSave = () => {
     onSave({
@@ -454,6 +456,30 @@ export const TriggerConfigPanel = ({
     }
   };
 
+  // Content to render (both modal and inline)
+  const content = (
+    <div className="space-y-6">
+      {renderTriggerTypeSelector()}
+      {triggerType !== 'none' && (
+        <div className="border-t border-gray-200 pt-6">{renderConfigForm()}</div>
+      )}
+      {inline && (
+        <button
+          onClick={handleSave}
+          className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+        >
+          Save Changes
+        </button>
+      )}
+    </div>
+  );
+
+  // If inline, return just the content
+  if (inline) {
+    return content;
+  }
+
+  // Otherwise, return in modal wrapper
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
@@ -474,11 +500,8 @@ export const TriggerConfigPanel = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {renderTriggerTypeSelector()}
-          {triggerType !== 'none' && (
-            <div className="border-t border-gray-200 pt-6">{renderConfigForm()}</div>
-          )}
+        <div className="flex-1 overflow-y-auto p-6">
+          {content}
         </div>
 
         {/* Footer */}
