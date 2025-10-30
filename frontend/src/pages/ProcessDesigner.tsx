@@ -782,6 +782,18 @@ const ProcessDesignerInner: React.FC = () => {
         }));
         setEdges(edgesWithTypes);
       }
+      
+      // Fix positions and layoutDirection after loading nodes and edges
+      // Use setTimeout to ensure state updates are complete
+      setTimeout(() => {
+        console.log('🔷 Fixing loaded process positions for', layoutDirection, 'layout');
+        arrangeNodesLayout(false, layoutDirection);
+        // Force edge recalculation after position fix
+        setTimeout(() => {
+          console.log('🔷 Forcing edge recalculation');
+          setEdges((eds) => eds.map(edge => ({ ...edge, updated: Date.now() })));
+        }, 100);
+      }, 100);
     } catch (error: any) {
       setAlertDialog({
         isOpen: true,
