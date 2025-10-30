@@ -389,6 +389,12 @@ const ProcessDesignerInner: React.FC = () => {
     const startX = 50;
     const startY = 50;
     
+    console.log('🔧 arrangeNodesLayout called');
+    console.log('  - useDirection:', useDirection);
+    console.log('  - nodeSpacing:', nodeSpacing);
+    console.log('  - nodes.length:', nodes.length);
+    console.log('  - edges.length:', edges.length);
+    
     // Build dependency graph
     const incomingEdges = new Map<string, number>();
     nodes.forEach(node => incomingEdges.set(node.id, 0));
@@ -443,6 +449,9 @@ const ProcessDesignerInner: React.FC = () => {
       levelGroups.get(level)!.push(nodeId);
     });
     
+    console.log('  - levels:', Array.from(levels.entries()));
+    console.log('  - levelGroups:', Array.from(levelGroups.entries()));
+    
     // Position nodes
     const newNodes = nodes.map(node => {
       const level = levels.get(node.id) || 0;
@@ -457,6 +466,8 @@ const ProcessDesignerInner: React.FC = () => {
         x = startX + (indexInLevel * nodeSpacing.x);
         y = startY + (level * nodeSpacing.y);
       }
+      
+      console.log(`  - ${node.id}: level=${level}, index=${indexInLevel}, position=(${x}, ${y})`);
       
       return {
         ...node,
@@ -491,13 +502,18 @@ const ProcessDesignerInner: React.FC = () => {
 
   // Toggle layout direction
   const toggleLayout = useCallback(() => {
+    console.log('🔀 toggleLayout called');
     setLayoutDirection(prev => {
       const newDirection = prev === 'horizontal' ? 'vertical' : 'horizontal';
+      console.log('  - Previous direction:', prev);
+      console.log('  - New direction:', newDirection);
       // Wait for layout direction to update in all nodes, then rearrange
       setTimeout(() => {
+        console.log('  - Calling arrangeNodesLayout after 200ms');
         arrangeNodesLayout(false, newDirection);
         // Force edges to recalculate paths by updating them
         setTimeout(() => {
+          console.log('  - Forcing edge recalculation after 100ms');
           setEdges((eds) => eds.map(edge => ({ ...edge, updated: Date.now() })));
           // Force ReactFlow to refresh
           if (reactFlowInstance) {
@@ -592,6 +608,8 @@ const ProcessDesignerInner: React.FC = () => {
     } else {
       // Initialize with a start node and global error node if creating new process
       if (nodes.length === 0) {
+        console.log('🔷 Initializing nodes with layoutDirection:', layoutDirection);
+        
         const startNode: Node = {
           id: 'start-1',
           type: 'start',
@@ -611,12 +629,16 @@ const ProcessDesignerInner: React.FC = () => {
           },
         };
         
+        const globalErrorPosition = layoutDirection === 'vertical' 
+          ? { x: 250, y: 500 }  // Much more space below in vertical layout
+          : { x: 550, y: 100 }; // Side by side in horizontal layout
+        
+        console.log('🔷 Global Error position:', globalErrorPosition);
+        
         const globalErrorNode: Node = {
           id: 'global-error-1',
           type: 'globalError',
-          position: layoutDirection === 'vertical' 
-            ? { x: 250, y: 500 }  // Much more space below in vertical layout
-            : { x: 550, y: 100 }, // Side by side in horizontal layout
+          position: globalErrorPosition,
           data: {
             label: 'GLOBAL ERROR',
             config: currentGlobalErrorConfig,
@@ -1552,7 +1574,7 @@ const ProcessDesignerInner: React.FC = () => {
                   
                   {/* Zoom Percentage Display */}
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '395px' }}>
-                    <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 py-2 flex items-center space-x-2">
+                    <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 h-10 flex items-center justify-center">
                       <span className="text-xs font-semibold text-gray-700">
                         {Math.round(currentZoom * 100)}%
                       </span>
