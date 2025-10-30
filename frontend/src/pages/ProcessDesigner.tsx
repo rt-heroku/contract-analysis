@@ -25,6 +25,7 @@ import { Play, Save, Download, ArrowLeft, Search, Plus, Settings, ChevronLeft, C
 import { ActionNode } from '@/components/process-designer/ActionNode';
 import { StartNode, TriggerConfig } from '@/components/process-designer/StartNode';
 import { GlobalErrorNode } from '@/components/process-designer/GlobalErrorNode';
+import { IfThenElseNode } from '@/components/process-designer/IfThenElseNode';
 import { CollapsibleActionPalette } from '@/components/process-designer/CollapsibleActionPalette';
 import { NodeContextMenu } from '@/components/process-designer/NodeContextMenu';
 import { NodeEditModal } from '@/components/process-designer/NodeEditModal';
@@ -107,7 +108,11 @@ const ProcessDesignerInner: React.FC = () => {
       alertThreshold: 600,
     },
     environment: 'dev',
+    backgroundPattern: 'dots', // New: Canvas background pattern
   });
+  
+  // Background pattern state
+  const [backgroundPattern, setBackgroundPattern] = useState<'dots' | 'lines'>('dots');
   
   const [actions, setActions] = useState<Action[]>([]);
   const [loading, setLoading] = useState(false);
@@ -179,11 +184,12 @@ const ProcessDesignerInner: React.FC = () => {
     type: 'info' as 'success' | 'error' | 'warning' | 'info',
   });
 
-  // Define custom node types (including Start/GlobalError)
+  // Define custom node types (including Start/GlobalError/IfThenElse)
   const nodeTypes: NodeTypes = useMemo(() => ({
     actionNode: ActionNode,
     start: StartNode,
     globalError: GlobalErrorNode,
+    ifThenElse: IfThenElseNode,
   }), []);
 
   const edgeTypes: EdgeTypes = useMemo(() => ({
@@ -571,8 +577,8 @@ const ProcessDesignerInner: React.FC = () => {
           ...node,
           data: {
             ...node.data,
-            onEdit: node.type === 'actionNode' ? () => handleEditNode(node.id) : undefined,
-            onAddNext: (node.type === 'actionNode' || node.type === 'start' || node.type === 'globalError') ? () => {
+            onEdit: (node.type === 'actionNode' || node.type === 'ifThenElse') ? () => handleEditNode(node.id) : undefined,
+            onAddNext: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'start' || node.type === 'globalError') ? () => {
               setTargetNodeForPlus(node.id);
               setShowActionSearch(true);
             } : undefined,
@@ -705,19 +711,53 @@ const ProcessDesignerInner: React.FC = () => {
         
         // Generate label
         const label = generateEdgeLabel(sourceNode, existingConnections);
+        
+        // Determine connection color and style based on type
+        let edgeColor = '#10b981'; // Default: green for success path
+        let markerColor = '#10b981';
+        let isDashed = false;
+        
+        if (isErrorConnection) {
+          // Error connections: red, dashed
+          edgeColor = '#ef4444';
+          markerColor = '#ef4444';
+          isDashed = true;
+        } else if (sourceNode?.data?.actionName) {
+          const actionName = sourceNode.data.actionName.toLowerCase();
+          
+          // Conditional branches: blue
+          if (actionName.includes('if_then_else') || actionName.includes('switch')) {
+            edgeColor = '#3b82f6';
+            markerColor = '#3b82f6';
+          }
+          // Loops: orange
+          else if (actionName.includes('loop') || actionName.includes('while') || actionName.includes('for_each')) {
+            edgeColor = '#f97316';
+            markerColor = '#f97316';
+          }
+          // Try/Catch/Finally: purple
+          else if (actionName.includes('try') || actionName.includes('catch') || actionName.includes('finally')) {
+            edgeColor = '#a855f7';
+            markerColor = '#a855f7';
+          }
+        }
 
         return addEdge({
           ...params,
           type: label ? 'labeled' : 'default',
-          markerEnd: { type: MarkerType.ArrowClosed },
+          markerEnd: { 
+            type: MarkerType.ArrowClosed,
+            color: markerColor,
+          },
           style: { 
-            stroke: isErrorConnection ? '#ef4444' : '#64748b', 
+            stroke: edgeColor, 
             strokeWidth: 2,
-            strokeDasharray: isErrorConnection ? '5,5' : 'none',
+            strokeDasharray: isDashed ? '5,5' : 'none',
           },
           data: { 
             label: isErrorConnection ? 'error' : label,
             isError: isErrorConnection,
+            color: edgeColor,
           },
         }, eds);
       });
@@ -813,9 +853,12 @@ const ProcessDesignerInner: React.FC = () => {
       }
 
       // Handle regular action nodes
+      // Special handling for IF THEN ELSE - use diamond node
+      const nodeType = action.name.toLowerCase().includes('if_then_else') ? 'ifThenElse' : 'actionNode';
+      
       const newNode: Node = {
         id: nodeId,
-        type: 'actionNode',
+        type: nodeType,
         position,
         data: {
           label: action.displayName,
@@ -1255,6 +1298,8 @@ const ProcessDesignerInner: React.FC = () => {
                   nodeTypes={nodeTypes}
                   edgeTypes={edgeTypes}
                   isValidConnection={isValidConnection}
+                  connectOnClick={true}
+                  connectionRadius={50}
                   defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
                   minZoom={0.1}
                   maxZoom={2}
@@ -1269,9 +1314,9 @@ const ProcessDesignerInner: React.FC = () => {
                   deleteKeyCode="Delete"
                 >
                   <Background 
-                    variant={BackgroundVariant.Lines} 
+                    variant={backgroundPattern === 'dots' ? BackgroundVariant.Dots : BackgroundVariant.Lines} 
                     gap={20} 
-                    size={1} 
+                    size={backgroundPattern === 'dots' ? 2 : 1} 
                     color="#e5e7eb"
                     style={{ backgroundColor: '#f9fafb' }}
                   />
@@ -1841,6 +1886,7 @@ const ProcessDesignerInner: React.FC = () => {
           setProcessProperties(updatedProperties);
           setProcessName(updatedProperties.name);
           setProcessDescription(updatedProperties.description || '');
+          setBackgroundPattern(updatedProperties.backgroundPattern || 'dots');
         }}
       />
 
@@ -1892,9 +1938,12 @@ const ProcessDesignerInner: React.FC = () => {
                           ? { x: targetNode.position.x, y: targetNode.position.y + 120 }
                           : { x: 250, y: 200 };
 
+                        // Special handling for IF THEN ELSE - use diamond node
+                        const nodeType = action.name.toLowerCase().includes('if_then_else') ? 'ifThenElse' : 'actionNode';
+
                         const newNode: Node = {
                           id: nodeId,
-                          type: 'actionNode',
+                          type: nodeType,
                           position,
                           data: {
                             label: action.displayName,
