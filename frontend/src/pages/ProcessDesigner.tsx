@@ -728,23 +728,39 @@ const ProcessDesignerInner: React.FC = () => {
       
       if (process.flowDefinition?.nodes) {
         // Re-wire onEdit and onAddNext callbacks when loading nodes
-        let nodesWithCallbacks = process.flowDefinition.nodes.map((node: Node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            layoutDirection: node.data?.layoutDirection || layoutDirection, // Preserve or set layout direction
-            onEdit: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'loopContainer') ? () => handleEditNode(node.id) : undefined,
-            onAddNext: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'loopContainer' || node.type === 'start' || node.type === 'globalError') ? () => {
-              setTargetNodeForPlus(node.id);
-              setShowActionSearch(true);
-            } : undefined,
-            onConfigure: node.type === 'start' ? () => {
-              setTriggerConfigOpen(true);
-            } : node.type === 'globalError' ? () => {
-              setGlobalErrorConfigOpen(true);
-            } : undefined,
-          },
-        }));
+        let nodesWithCallbacks = process.flowDefinition.nodes.map((node: Node) => {
+          // Fix positions for Start and Global Error nodes
+          let fixedPosition = node.position;
+          
+          if (node.type === 'start') {
+            fixedPosition = { x: 250, y: 150 };
+            console.log('🔷 Fixed Start node position to', fixedPosition);
+          } else if (node.type === 'globalError') {
+            fixedPosition = layoutDirection === 'vertical' 
+              ? { x: 250, y: 500 }
+              : { x: 550, y: 150 };
+            console.log('🔷 Fixed Global Error position to', fixedPosition, 'for', layoutDirection);
+          }
+          
+          return {
+            ...node,
+            position: fixedPosition,
+            data: {
+              ...node.data,
+              layoutDirection: layoutDirection, // Always set to current layout direction
+              onEdit: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'loopContainer') ? () => handleEditNode(node.id) : undefined,
+              onAddNext: (node.type === 'actionNode' || node.type === 'ifThenElse' || node.type === 'loopContainer' || node.type === 'start' || node.type === 'globalError') ? () => {
+                setTargetNodeForPlus(node.id);
+                setShowActionSearch(true);
+              } : undefined,
+              onConfigure: node.type === 'start' ? () => {
+                setTriggerConfigOpen(true);
+              } : node.type === 'globalError' ? () => {
+                setGlobalErrorConfigOpen(true);
+              } : undefined,
+            },
+          };
+        });
         
         // Ensure Global Error node exists (for backward compatibility)
         const hasGlobalError = nodesWithCallbacks.some((n: Node) => n.type === 'globalError');
@@ -782,18 +798,6 @@ const ProcessDesignerInner: React.FC = () => {
         }));
         setEdges(edgesWithTypes);
       }
-      
-      // Fix positions and layoutDirection after loading nodes and edges
-      // Use setTimeout to ensure state updates are complete
-      setTimeout(() => {
-        console.log('🔷 Fixing loaded process positions for', layoutDirection, 'layout');
-        arrangeNodesLayout(false, layoutDirection);
-        // Force edge recalculation after position fix
-        setTimeout(() => {
-          console.log('🔷 Forcing edge recalculation');
-          setEdges((eds) => eds.map(edge => ({ ...edge, updated: Date.now() })));
-        }, 100);
-      }, 100);
     } catch (error: any) {
       setAlertDialog({
         isOpen: true,
