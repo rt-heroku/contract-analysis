@@ -56,9 +56,9 @@ const ProcessDesignerInner: React.FC = () => {
   
   // Layout Configuration - Node Positions
   const LAYOUT_CONFIG = {
-    START_POSITION: { x: 250, y: 150 },
-    GLOBAL_ERROR_VERTICAL: { x: 800, y: 150 },   // To the right of Start in vertical layout
-    GLOBAL_ERROR_HORIZONTAL: { x: 250, y: 800 }, // Below Start in horizontal layout
+    START_POSITION: { x: 250, y: 210 },
+    GLOBAL_ERROR_VERTICAL: { x: 800, y: 210 },   // To the right of Start in vertical layout
+    GLOBAL_ERROR_HORIZONTAL: { x: 250, y: 645 }, // Below Start in horizontal layout
   };
   
   const [nodes, setNodes, onNodesChangeRaw] = useNodesState([]);
@@ -393,12 +393,19 @@ const ProcessDesignerInner: React.FC = () => {
   const arrangeNodesLayout = useCallback((shouldFitView: boolean = false, direction?: 'horizontal' | 'vertical') => {
     const useDirection = direction || layoutDirection;
     const nodeSpacing = useDirection === 'horizontal' ? { x: 250, y: 150 } : { x: 200, y: 150 };
-    const startX = 50;
-    const startY = 50;
+    
+    // Start action node arrangement from the Start node position
+    const startX = useDirection === 'horizontal' 
+      ? LAYOUT_CONFIG.START_POSITION.x + 250  // To the right of Start
+      : LAYOUT_CONFIG.START_POSITION.x;       // Same X as Start
+    const startY = useDirection === 'horizontal'
+      ? LAYOUT_CONFIG.START_POSITION.y        // Same Y as Start
+      : LAYOUT_CONFIG.START_POSITION.y + 150; // Below Start
     
     console.log('🔧 arrangeNodesLayout called');
     console.log('  - useDirection:', useDirection);
     console.log('  - nodeSpacing:', nodeSpacing);
+    console.log('  - startX:', startX, 'startY:', startY);
     console.log('  - nodes.length:', nodes.length);
     console.log('  - edges.length:', edges.length);
     
