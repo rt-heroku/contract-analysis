@@ -17,6 +17,7 @@ import ReactFlow, {
   ReactFlowProvider,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import dagre from 'dagre';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
 import { Button } from '@/components/common/Button';
@@ -388,89 +389,74 @@ const ProcessDesignerInner: React.FC = () => {
     return true;
   }, [nodes, edges, wouldCreateCycle]);
 
-  // Auto-arrange layout
+  // Auto-arrange layout using dagre
   // Helper function to arrange nodes without fitView
   const arrangeNodesLayout = useCallback((shouldFitView: boolean = false, direction?: 'horizontal' | 'vertical') => {
     const useDirection = direction || layoutDirection;
-    const nodeSpacing = useDirection === 'horizontal' ? { x: 250, y: 150 } : { x: 200, y: 150 };
     
-    // Start action node arrangement from the Start node position
-    const startX = useDirection === 'horizontal' 
-      ? LAYOUT_CONFIG.START_POSITION.x + 250  // To the right of Start
-      : LAYOUT_CONFIG.START_POSITION.x;       // Same X as Start
-    const startY = useDirection === 'horizontal'
-      ? LAYOUT_CONFIG.START_POSITION.y        // Same Y as Start
-      : LAYOUT_CONFIG.START_POSITION.y + 150; // Below Start
-    
-    console.log('🔧 arrangeNodesLayout called');
+    console.log('🔧 arrangeNodesLayout called with dagre');
     console.log('  - useDirection:', useDirection);
-    console.log('  - nodeSpacing:', nodeSpacing);
-    console.log('  - startX:', startX, 'startY:', startY);
     console.log('  - nodes.length:', nodes.length);
     console.log('  - edges.length:', edges.length);
     
-    // Build dependency graph
-    const incomingEdges = new Map<string, number>();
-    nodes.forEach(node => incomingEdges.set(node.id, 0));
+    // Standard node dimensions for layout calculation
+    const NODE_WIDTH = 280;
+    const NODE_HEIGHT = 120;
     
-    edges.forEach(edge => {
-      incomingEdges.set(edge.target, (incomingEdges.get(edge.target) || 0) + 1);
+    // Create a new dagre graph
+    const dagreGraph = new dagre.graphlib.Graph();
+    dagreGraph.setDefaultEdgeLabel(() => ({}));
+    
+    // Configure graph layout direction and spacing
+    dagreGraph.setGraph({
+      rankdir: useDirection === 'horizontal' ? 'LR' : 'TB', // LR = Left-to-Right, TB = Top-to-Bottom
+      nodesep: useDirection === 'horizontal' ? 100 : 80,     // Space between nodes on same rank
+      ranksep: useDirection === 'horizontal' ? 180 : 120,    // Space between ranks
+      edgesep: 50,                                            // Space between edges
+      marginx: 20,                                            // Graph margin
+      marginy: 20,
     });
     
-    // Topological sort (Kahn's algorithm)
-    const queue: string[] = [];
-    const levels = new Map<string, number>();
-    
-    // Find nodes with no incoming edges
-    incomingEdges.forEach((count, nodeId) => {
-      if (count === 0) {
-        queue.push(nodeId);
-        levels.set(nodeId, 0);
+    // Add nodes to dagre graph (exclude Start and Global Error - they stay fixed)
+    nodes.forEach((node) => {
+      if (node.type !== 'start' && node.type !== 'globalError') {
+        dagreGraph.setNode(node.id, { 
+          width: NODE_WIDTH, 
+          height: NODE_HEIGHT 
+        });
       }
     });
     
-    const adjacencyList = new Map<string, string[]>();
-    edges.forEach(edge => {
-      if (!adjacencyList.has(edge.source)) {
-        adjacencyList.set(edge.source, []);
-      }
-      adjacencyList.get(edge.source)!.push(edge.target);
-    });
-    
-    // Process queue
-    while (queue.length > 0) {
-      const nodeId = queue.shift()!;
-      const currentLevel = levels.get(nodeId) || 0;
+    // Add edges to dagre graph (only between non-fixed nodes)
+    edges.forEach((edge) => {
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      const targetNode = nodes.find(n => n.id === edge.target);
       
-      const neighbors = adjacencyList.get(nodeId) || [];
-      neighbors.forEach(neighborId => {
-        const newCount = (incomingEdges.get(neighborId) || 0) - 1;
-        incomingEdges.set(neighborId, newCount);
-        
-        if (newCount === 0) {
-          queue.push(neighborId);
-          levels.set(neighborId, currentLevel + 1);
-        }
-      });
-    }
-    
-    // Group nodes by level
-    const levelGroups = new Map<number, string[]>();
-    levels.forEach((level, nodeId) => {
-      if (!levelGroups.has(level)) {
-        levelGroups.set(level, []);
+      // Only add edge if neither endpoint is Start or Global Error
+      if (sourceNode?.type !== 'start' && 
+          sourceNode?.type !== 'globalError' &&
+          targetNode?.type !== 'start' && 
+          targetNode?.type !== 'globalError') {
+        dagreGraph.setEdge(edge.source, edge.target);
       }
-      levelGroups.get(level)!.push(nodeId);
     });
     
-    console.log('  - levels:', Array.from(levels.entries()));
-    console.log('  - levelGroups:', Array.from(levelGroups.entries()));
+    // Run dagre layout algorithm
+    dagre.layout(dagreGraph);
     
-    // Position nodes - Handle Start and Global Error specially
-    const newNodes = nodes.map(node => {
-      // Special positioning for Start node - fixed position with layout direction
+    // Calculate offset to position dagre layout relative to Start node
+    const startOffsetX = useDirection === 'horizontal' 
+      ? LAYOUT_CONFIG.START_POSITION.x + 300  // Position action nodes to the right of Start
+      : LAYOUT_CONFIG.START_POSITION.x;       // Same X as Start
+    const startOffsetY = useDirection === 'horizontal'
+      ? LAYOUT_CONFIG.START_POSITION.y - (NODE_HEIGHT / 2)  // Align vertically with Start center
+      : LAYOUT_CONFIG.START_POSITION.y + 200; // Position action nodes below Start
+    
+    // Update node positions with dagre calculated positions + layoutDirection
+    const newNodes = nodes.map((node) => {
+      // Fixed position for Start node
       if (node.type === 'start') {
-        console.log(`  - ${node.id}: START node at position=(${LAYOUT_CONFIG.START_POSITION.x}, ${LAYOUT_CONFIG.START_POSITION.y})`);
+        console.log(`  - ${node.id}: START (fixed) at position=(${LAYOUT_CONFIG.START_POSITION.x}, ${LAYOUT_CONFIG.START_POSITION.y})`);
         return {
           ...node,
           position: LAYOUT_CONFIG.START_POSITION,
@@ -481,12 +467,12 @@ const ProcessDesignerInner: React.FC = () => {
         };
       }
       
-      // Special positioning for Global Error node - depends on layout direction
+      // Fixed position for Global Error node
       if (node.type === 'globalError') {
         const globalErrorPos = useDirection === 'vertical'
           ? LAYOUT_CONFIG.GLOBAL_ERROR_VERTICAL
           : LAYOUT_CONFIG.GLOBAL_ERROR_HORIZONTAL;
-        console.log(`  - ${node.id}: GLOBAL ERROR at position=(${globalErrorPos.x}, ${globalErrorPos.y}) for ${useDirection} layout`);
+        console.log(`  - ${node.id}: GLOBAL ERROR (fixed) at position=(${globalErrorPos.x}, ${globalErrorPos.y})`);
         return {
           ...node,
           position: globalErrorPos,
@@ -497,33 +483,49 @@ const ProcessDesignerInner: React.FC = () => {
         };
       }
       
-      // Auto-arrange regular action nodes
-      const level = levels.get(node.id) || 0;
-      const nodesInLevel = levelGroups.get(level) || [];
-      const indexInLevel = nodesInLevel.indexOf(node.id);
-      
-      let x, y;
-      if (useDirection === 'horizontal') {
-        x = startX + (level * nodeSpacing.x);
-        y = startY + (indexInLevel * nodeSpacing.y);
-      } else {
-        x = startX + (indexInLevel * nodeSpacing.x);
-        y = startY + (level * nodeSpacing.y);
+      // Dagre-calculated position for action nodes
+      const dagreNode = dagreGraph.node(node.id);
+      if (dagreNode) {
+        // Dagre returns center coordinates, adjust to top-left corner
+        const x = startOffsetX + dagreNode.x - (NODE_WIDTH / 2);
+        const y = startOffsetY + dagreNode.y - (NODE_HEIGHT / 2);
+        
+        console.log(`  - ${node.id}: DAGRE position=(${Math.round(x)}, ${Math.round(y)})`);
+        
+        return {
+          ...node,
+          position: { x: Math.round(x), y: Math.round(y) },
+          data: {
+            ...node.data,
+            layoutDirection: useDirection,
+          },
+        };
       }
       
-      console.log(`  - ${node.id}: level=${level}, index=${indexInLevel}, position=(${x}, ${y})`);
-      
+      // Fallback: keep existing position but update layoutDirection
+      console.warn(`  - ${node.id}: NO DAGRE NODE, keeping position`);
       return {
         ...node,
-        position: { x, y },
         data: {
           ...node.data,
-          layoutDirection: useDirection, // Ensure layout direction is set correctly
+          layoutDirection: useDirection,
         },
       };
     });
     
+    // Apply all node updates in a single synchronous operation
     setNodes(newNodes);
+    
+    // Force ReactFlow to recalculate edge paths after nodes are positioned
+    setTimeout(() => {
+      if (reactFlowInstance) {
+        // Trigger viewport update to force edge recalculation
+        const viewport = reactFlowInstance.getViewport();
+        reactFlowInstance.setViewport({ ...viewport });
+        
+        console.log('  - ✅ Layout complete, edges recalculated');
+      }
+    }, 10);
     
     // Only fit view if explicitly requested
     if (shouldFitView) {
@@ -547,28 +549,20 @@ const ProcessDesignerInner: React.FC = () => {
   // Toggle layout direction
   const toggleLayout = useCallback(() => {
     console.log('🔀 toggleLayout called');
-    setLayoutDirection(prev => {
-      const newDirection = prev === 'horizontal' ? 'vertical' : 'horizontal';
-      console.log('  - Previous direction:', prev);
-      console.log('  - New direction:', newDirection);
-      // Wait for layout direction to update in all nodes, then rearrange
-      setTimeout(() => {
-        console.log('  - Calling arrangeNodesLayout after 200ms');
-        arrangeNodesLayout(false, newDirection);
-        // Force edges to recalculate paths by updating them
-        setTimeout(() => {
-          console.log('  - Forcing edge recalculation after 100ms');
-          setEdges((eds) => eds.map(edge => ({ ...edge, updated: Date.now() })));
-          // Force ReactFlow to refresh
-          if (reactFlowInstance) {
-            const viewport = reactFlowInstance.getViewport();
-            reactFlowInstance.setViewport(viewport);
-          }
-        }, 100);
-      }, 200);
-      return newDirection;
-    });
-  }, [arrangeNodesLayout, reactFlowInstance, setEdges]);
+    
+    // Calculate new direction
+    const newDirection = layoutDirection === 'horizontal' ? 'vertical' : 'horizontal';
+    console.log('  - Switching from', layoutDirection, 'to', newDirection);
+    
+    // Update state
+    setLayoutDirection(newDirection);
+    
+    // Immediately rearrange with new direction (no setTimeout needed - dagre is synchronous)
+    // The arrangeNodesLayout will update node data with new layoutDirection
+    arrangeNodesLayout(false, newDirection);
+    
+    console.log('  - ✅ Layout toggled');
+  }, [layoutDirection, arrangeNodesLayout]);
 
   // Helper to check if a node supports multiple connections (control flow actions)
   const isMultiBranchAction = useCallback((node: Node): boolean => {
