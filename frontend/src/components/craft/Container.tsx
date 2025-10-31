@@ -90,7 +90,7 @@ export const Container: React.FC<ContainerProps> & { craft?: any } = ({
         flexDirection,
         alignItems,
         justifyContent,
-        flex: fillSpace ? 1 : 'none',
+        flex: fillSpace ? '1 1 0%' : '0 1 auto',
         minHeight: '100px',
       }}
     >

@@ -163,11 +163,40 @@
   @apply bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800;
 }
 
-/* Craft.js Layers Dark Mode Support */
+/* Craft.js Layers Theme Support */
 .layers-dark-mode {
-  color: #e5e7eb; /* gray-200 for dark mode text */
+  color: #374151; /* gray-700 for light mode text */
 }
 
+/* Light Mode Layers */
+.layers-dark-mode div,
+.layers-dark-mode button,
+.layers-dark-mode span {
+  color: #374151 !important;
+  background-color: transparent;
+}
+
+/* Light mode layer items */
+.layers-dark-mode button,
+.layers-dark-mode [role="button"] {
+  background-color: rgba(243, 244, 246, 0.8) !important; /* gray-100 */
+  border-color: rgba(209, 213, 219, 0.5) !important; /* gray-300 */
+}
+
+.layers-dark-mode button:hover,
+.layers-dark-mode [role="button"]:hover {
+  background-color: rgba(229, 231, 235, 0.9) !important; /* gray-200 on hover */
+}
+
+.layers-dark-mode button[style*="background"] {
+  background-color: rgba(59, 130, 246, 0.15) !important; /* blue for selected - light */
+}
+
+.layers-dark-mode [style*="padding-left"] {
+  background-color: rgba(243, 244, 246, 0.5) !important;
+}
+
+/* Dark Mode Overrides */
 .dark .layers-dark-mode {
   color: #e5e7eb;
   background-color: transparent;
