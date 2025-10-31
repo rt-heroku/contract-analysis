@@ -845,7 +845,12 @@ const ProcessDesignerInner: React.FC = () => {
   const loadActions = async () => {
     try {
       const response = await api.get('/actions');
-      setActions(response.data.actions || []);
+      const allActions = response.data.actions || [];
+      console.log('🔍 ProcessDesigner - Loaded actions from API:', allActions.length);
+      const llmActions = allActions.filter((a: any) => a.category === 'llm');
+      console.log('🧠 ProcessDesigner - LLM actions found:', llmActions.length);
+      console.log('🧠 LLM actions:', llmActions.map((a: any) => a.displayName));
+      setActions(allActions);
     } catch (error: any) {
       console.error('Error loading actions:', error);
     }
