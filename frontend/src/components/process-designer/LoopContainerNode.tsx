@@ -82,24 +82,26 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
   const displayCondition = data.condition || getConditionSummary();
 
   return (
-    <div className="relative w-full h-full" style={{ pointerEvents: 'all' }}>
-      {/* Node Resizer - Rendered conditionally when selected with LOW z-index */}
+    <div className="relative w-full h-full">
+      {/* Node Resizer - Rendered conditionally when selected, below title bar */}
       {selected && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 1 }}>
-          <NodeResizer
-            minWidth={400}
-            minHeight={300}
-            isVisible={true}
-            lineClassName="border-blue-500 border-2"
-            handleClassName="w-6 h-6 bg-blue-500 border-2 border-white rounded-full"
-          />
-        </div>
+        <NodeResizer
+          minWidth={400}
+          minHeight={300}
+          isVisible={true}
+          lineClassName="border-blue-500 border-2"
+          handleClassName="w-6 h-6 bg-blue-500 border-2 border-white rounded-full"
+        />
       )}
       
-      {/* TITLE BAR - OUTSIDE CONTAINER with HIGH z-index */}
+      {/* TITLE BAR - INSIDE CONTAINER at top with HIGHEST z-index */}
       <div 
-        className="absolute -top-12 left-0 flex items-center space-x-2"
-        style={{ pointerEvents: 'auto', zIndex: 1000, position: 'relative' }}
+        className="absolute top-2 left-2 right-2 flex items-center space-x-2"
+        style={{ 
+          pointerEvents: 'auto', 
+          zIndex: 9999,
+          position: 'absolute'
+        }}
       >
         {/* Loop Label with Icon */}
         <div className="flex items-center space-x-2 bg-white rounded-lg shadow-md px-3 py-2 border border-blue-200">
@@ -154,10 +156,10 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
           }}
         >
 
-        {/* Internal Start Point - Top Center */}
+        {/* Internal Start Point - Below Title Bar */}
         <div 
           className="absolute flex flex-col items-center"
-          style={{ top: '40px', left: '50%', transform: 'translateX(-50%)' }}
+          style={{ top: '70px', left: '50%', transform: 'translateX(-50%)' }}
         >
           <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
             <Plus className="w-5 h-5 text-white" />
@@ -172,10 +174,10 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
           <div className="text-xs font-medium text-green-600 mt-1">Start</div>
         </div>
 
-        {/* Break and Continue Buttons - Inside Blue Box */}
+        {/* Break and Continue Buttons - Below Title Bar */}
         <div 
           className="absolute flex items-center space-x-3"
-          style={{ top: '20px', right: '20px', pointerEvents: 'auto', zIndex: 10 }}
+          style={{ top: '70px', right: '20px', pointerEvents: 'auto', zIndex: 10 }}
         >
           {/* Add Break Button */}
           {data.onAddBreak && (
