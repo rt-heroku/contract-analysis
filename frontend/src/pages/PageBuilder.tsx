@@ -8,7 +8,21 @@ import { ComponentToolbar } from '@/components/craft/ComponentToolbar';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { Save, Eye, Settings as SettingsIcon } from 'lucide-react';
+import { 
+  Save, 
+  Eye, 
+  Settings as SettingsIcon,
+  Square,
+  Type,
+  MousePointer,
+  Image,
+  Table,
+  Columns as ColumnsIcon,
+  AppWindow,
+  Box,
+  Menu,
+  AlignLeft
+} from 'lucide-react';
 import api from '@/lib/api';
 
 const TopBar: React.FC<{
@@ -53,12 +67,38 @@ const TopBar: React.FC<{
 
 const Toolbox: React.FC = () => {
   const { connectors } = useEditor();
+  const [showText, setShowText] = useState(false);
+
+  // Map component names to icons
+  const componentIcons: Record<string, any> = {
+    'Container': Box,
+    'CraftText': Type,
+    'CraftButton': MousePointer,
+    'CraftCard': Square,
+    'CraftImage': Image,
+    'DataTable': Table,
+    'Columns': ColumnsIcon,
+    'Column': AlignLeft,
+    'Modal': AppWindow,
+  };
 
   return (
-    <div className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
-      <h3 className="font-bold mb-4 text-gray-900 dark:text-gray-100">Components</h3>
-      <div className="space-y-2">
+    <div className="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-bold text-gray-900 dark:text-gray-100">Components</h3>
+        <button
+          onClick={() => setShowText(!showText)}
+          className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+          title={showText ? 'Show icons only' : 'Show icons with text'}
+        >
+          <Menu className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+        </button>
+      </div>
+      
+      <div className={`space-y-2 ${showText ? '' : 'grid grid-cols-2 gap-2'}`}>
         {Object.entries(ComponentLibrary).map(([key, Component]) => {
+          const Icon = componentIcons[key] || Box;
+          
           // Special handling for Columns component - create with Column children
           if (key === 'Columns') {
             return (
@@ -73,9 +113,16 @@ const Toolbox: React.FC = () => {
                     </Element>
                   )
                 }
-                className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded cursor-move hover:bg-gray-100 dark:hover:bg-gray-600 text-left font-medium text-sm"
+                className={`${
+                  showText 
+                    ? 'w-full p-3 text-left' 
+                    : 'aspect-square p-2 flex flex-col items-center justify-center'
+                } bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded cursor-move hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors`}
+                title={key}
               >
-                {key}
+                <Icon className={`${showText ? 'w-4 h-4 inline-block mr-2' : 'w-6 h-6 mb-1'}`} />
+                {showText && <span className="font-medium text-sm">{key}</span>}
+                {!showText && <span className="text-xs mt-1 text-center leading-tight">{key}</span>}
               </button>
             );
           }
@@ -90,16 +137,73 @@ const Toolbox: React.FC = () => {
                   <Element is={Component} canvas={key === 'Container' || key === 'Column' || key === 'Modal'} />
                 )
               }
-              className="w-full p-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded cursor-move hover:bg-gray-100 dark:hover:bg-gray-600 text-left font-medium text-sm"
+              className={`${
+                showText 
+                  ? 'w-full p-3 text-left' 
+                  : 'aspect-square p-2 flex flex-col items-center justify-center'
+              } bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded cursor-move hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors`}
+              title={key}
             >
-              {key}
+              <Icon className={`${showText ? 'w-4 h-4 inline-block mr-2' : 'w-6 h-6 mb-1'}`} />
+              {showText && <span className="font-medium text-sm">{key}</span>}
+              {!showText && <span className="text-xs mt-1 text-center leading-tight">{key}</span>}
             </button>
           );
         })}
       </div>
-      <div className="mt-6">
-        <h3 className="font-bold mb-2 text-gray-900 dark:text-gray-100 text-sm">Layers</h3>
-        <div className="layers-dark-mode">
+    </div>
+  );
+};
+
+const ResizableLayers: React.FC = () => {
+  const [height, setHeight] = useState(300);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsResizing(true);
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizing) {
+        const newHeight = window.innerHeight - e.clientY;
+        setHeight(Math.max(150, Math.min(600, newHeight)));
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  return (
+    <div
+      className="fixed bottom-0 right-80 bg-white dark:bg-gray-800 border-t border-l border-gray-200 dark:border-gray-700 shadow-lg"
+      style={{ height: `${height}px`, width: '320px' }}
+    >
+      {/* Resize Handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className={`absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-primary-500 transition-colors ${
+          isResizing ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600'
+        }`}
+      />
+      
+      {/* Content */}
+      <div className="h-full flex flex-col pt-3 pb-4 px-4">
+        <h3 className="font-bold mb-3 text-gray-900 dark:text-gray-100 text-sm">Layers</h3>
+        <div className="flex-1 overflow-y-auto layers-dark-mode">
           <Layers expandRootOnLoad={true} />
         </div>
       </div>
@@ -320,6 +424,9 @@ export const PageBuilder: React.FC = () => {
         
         {/* Component Toolbar - appears above selected components */}
         <ComponentToolbar />
+        
+        {/* Resizable Layers Panel - bottom right */}
+        <ResizableLayers />
       </Editor>
 
       <AlertDialog
