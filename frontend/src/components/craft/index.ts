@@ -7,6 +7,7 @@ import { CraftImage as CraftImageComponent } from './CraftImage';
 import { Columns as ColumnsComponent } from './Columns';
 import { Column as ColumnComponent } from './Column';
 import { Modal as ModalComponent } from './Modal';
+import { Collapsible as CollapsibleComponent } from './Collapsible';
 
 // Re-export components
 export { Container } from './Container';
@@ -18,6 +19,7 @@ export { CraftImage } from './CraftImage';
 export { Columns } from './Columns';
 export { Column } from './Column';
 export { Modal } from './Modal';
+export { Collapsible } from './Collapsible';
 
 // Component library for Craft.js Editor
 export const ComponentLibrary = {
@@ -30,5 +32,6 @@ export const ComponentLibrary = {
   Columns: ColumnsComponent,
   Column: ColumnComponent,
   Modal: ModalComponent,
+  Collapsible: CollapsibleComponent,
 };
 

@@ -21,7 +21,8 @@ import {
   AppWindow,
   Box,
   Menu,
-  AlignLeft
+  AlignLeft,
+  ChevronDown
 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -80,6 +81,7 @@ const Toolbox: React.FC = () => {
     'Columns': ColumnsIcon,
     'Column': AlignLeft,
     'Modal': AppWindow,
+    'Collapsible': ChevronDown,
   };
 
   return (
