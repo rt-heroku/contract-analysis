@@ -35,6 +35,9 @@ import { Connectors } from './pages/Connectors';
 import { Stores } from './pages/Stores';
 import { ActionCreator } from './pages/ActionCreator';
 import { FirstTimeSetup } from './pages/FirstTimeSetup';
+import { Pages } from './pages/Pages';
+import { PageBuilder } from './pages/PageBuilder';
+import { PageRenderer } from './pages/PageRenderer';
 
 const App = () => {
   return (
@@ -67,6 +70,10 @@ const App = () => {
             <Route path="/executions" element={<MainLayout><Executions /></MainLayout>} />
             <Route path="/connectors" element={<MainLayout><Connectors /></MainLayout>} />
             <Route path="/stores" element={<MainLayout><Stores /></MainLayout>} />
+            <Route path="/pages" element={<MainLayout><Pages /></MainLayout>} />
+            <Route path="/page-builder" element={<MainLayout><PageBuilder /></MainLayout>} />
+            <Route path="/page-builder/:id" element={<MainLayout><PageBuilder /></MainLayout>} />
+            <Route path="/page/:slug" element={<MainLayout><PageRenderer /></MainLayout>} />
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
             <Route path="/history" element={<MainLayout><History /></MainLayout>} />
             <Route path="/idp-response/:analysisRecordId" element={<MainLayout><IDPResponse /></MainLayout>} />

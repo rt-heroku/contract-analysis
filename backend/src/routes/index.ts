@@ -22,6 +22,7 @@ import processRoutes from './process.routes';
 import executionRoutes from './execution.routes';
 import connectorRoutes from './connector.routes';
 import storeRoutes from './store.routes';
+import pagesRoutes from './pages.routes';
 
 const router = Router();
 
@@ -48,6 +49,7 @@ router.use('/processes', processRoutes);
 router.use('/executions', executionRoutes);
 router.use('/connectors', connectorRoutes);
 router.use('/stores', storeRoutes);
+router.use('/pages', pagesRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {
