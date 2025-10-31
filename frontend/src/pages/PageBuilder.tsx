@@ -408,11 +408,14 @@ export const PageBuilder: React.FC = () => {
                 <Element
                   is={Container}
                   canvas
-                  className="min-h-screen bg-white dark:bg-gray-800 rounded-lg shadow-lg border-2 border-gray-200 dark:border-gray-600"
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border-2 border-gray-200 dark:border-gray-600"
+                  width="100%"
+                  height="100vh"
                   paddingTop={8}
                   paddingRight={8}
                   paddingBottom={8}
                   paddingLeft={8}
+                  flexDirection="column"
                 >
                   {/* Components will be dropped here */}
                 </Element>
