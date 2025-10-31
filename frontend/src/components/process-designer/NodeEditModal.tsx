@@ -41,13 +41,17 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
   console.log('✅ NodeEditModal - Rendering modal for node:', node.data.label);
 
   const handleSave = () => {
-    console.log('💾 NodeEditModal - handleSave called');
+    console.log('💾 NodeEditModal - handleSave function called');
     console.log('  - nodeId:', node.id);
     console.log('  - formData:', formData);
+    console.log('  - onSave exists:', !!onSave);
+    console.log('  - onClose exists:', !!onClose);
+    console.log('  Calling onSave callback...');
     onSave(node.id, formData);
-    console.log('  - ✅ onSave callback executed');
+    console.log('  ✅ onSave callback executed');
+    console.log('  Calling onClose...');
     onClose();
-    console.log('  - ✅ Modal closed');
+    console.log('  ✅ onClose called - modal should close now');
   };
 
   // Get incoming calls (edges that target this node)
@@ -1354,8 +1358,13 @@ Consider: priority, amount, customer tier, and special requirements."
       style={{ zIndex: 1000 }}
       onClick={(e) => {
         // Close modal if backdrop is clicked
+        console.log('🎯 Backdrop clicked');
+        console.log('  e.target === e.currentTarget:', e.target === e.currentTarget);
         if (e.target === e.currentTarget) {
+          console.log('  ✅ Backdrop clicked (not modal content), calling onClose()');
           onClose();
+        } else {
+          console.log('  ⚠️ Modal content clicked, not closing');
         }
       }}
     >
@@ -1372,9 +1381,13 @@ Consider: priority, amount, customer tier, and special requirements."
             type="button"
             onClick={(e) => {
               console.log('❌ X button clicked!');
+              console.log('  onClose exists:', !!onClose);
+              console.log('  onClose type:', typeof onClose);
               e.preventDefault();
               e.stopPropagation();
+              console.log('  Calling onClose()...');
               onClose();
+              console.log('  ✅ onClose() called');
             }}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
@@ -1473,9 +1486,13 @@ Consider: priority, amount, customer tier, and special requirements."
             type="button"
             onClick={(e) => {
               console.log('🔘 Cancel button clicked!');
+              console.log('  onClose exists:', !!onClose);
+              console.log('  onClose type:', typeof onClose);
               e.preventDefault();
               e.stopPropagation();
+              console.log('  Calling onClose()...');
               onClose();
+              console.log('  ✅ onClose() called');
             }}
             className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
           >
@@ -1485,9 +1502,13 @@ Consider: priority, amount, customer tier, and special requirements."
             type="button"
             onClick={(e) => {
               console.log('💾 Save button clicked!');
+              console.log('  handleSave exists:', !!handleSave);
+              console.log('  handleSave type:', typeof handleSave);
               e.preventDefault();
               e.stopPropagation();
+              console.log('  Calling handleSave()...');
               handleSave();
+              console.log('  ✅ handleSave() called');
             }}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
           >
