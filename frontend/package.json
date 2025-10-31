@@ -12,6 +12,8 @@
     "start": "vite --host --port ${PORT:-3000}"
   },
   "dependencies": {
+    "@craftjs/core": "^0.2.12",
+    "@craftjs/layers": "^0.2.7",
     "@types/dagre": "^0.7.53",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
@@ -26,9 +28,11 @@
     "html2pdf.js": "^0.12.1",
     "jspdf": "^2.5.1",
     "lucide-react": "^0.294.0",
+    "lz-string": "^1.5.0",
     "marked": "^16.4.0",
     "postcss": "^8.4.32",
     "react": "^18.2.0",
+    "react-contenteditable": "^3.3.7",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",

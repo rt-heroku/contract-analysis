@@ -53,6 +53,8 @@ model User {
   processExecutions ProcessExecution[] @relation("ProcessExecutionUser")
   connectors       Connector[]        @relation("ConnectorCreator")
   stores           Store[]            @relation("StoreCreator")
+  dynamicPagesCreated DynamicPage[]   @relation("DynamicPageCreator")
+  dynamicPagesModified DynamicPage[]  @relation("DynamicPageModifier")
 
   @@map("users")
 }
@@ -532,6 +534,7 @@ model Process {
   creator           User               @relation("ProcessCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   modifier          User?              @relation("ProcessModifier", fields: [lastModifiedBy], references: [id])
   processExecutions ProcessExecution[]
+  dynamicPages      DynamicPage[]
 
   @@index([createdBy])
   @@index([lastModifiedBy])
@@ -661,10 +664,64 @@ model Store {
 
   connector Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
   creator   User      @relation("StoreCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  dynamicPages DynamicPage[]
 
   @@index([createdBy])
   @@index([storeType])
   @@index([isDefault])
   @@map("stores")
+}
+
+model DynamicPage {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(200)
+  description  String?  @db.Text
+  slug         String   @unique @db.VarChar(200)
+  
+  // Craft.js page configuration (stored as compressed JSON)
+  pageConfig   String   @map("page_config") @db.Text
+  
+  // Data source configuration
+  processId    Int?     @map("process_id")
+  dataSource   String   @default("static") @db.VarChar(50) // 'static', 'process_execution', 'api', 'store'
+  dataConfig   Json?    @map("data_config") // Additional data source configuration
+  
+  // Storage configuration
+  storageType  String   @default("database") @map("storage_type") @db.VarChar(50) // 'database', 's3', 'filesystem'
+  storagePath  String?  @map("storage_path") @db.VarChar(500) // S3 key or filesystem path
+  storeId      Int?     @map("store_id") // FK to Store for custom storage
+  
+  // Access control
+  isPublic     Boolean  @default(false) @map("is_public")
+  allowedRoles String[] @db.VarChar(50)
+  
+  // Publishing
+  status       String   @default("draft") @db.VarChar(50) // 'draft', 'published', 'archived'
+  publishedAt  DateTime? @map("published_at")
+  
+  // Metadata
+  category     String?  @db.VarChar(100)
+  tags         String[] @db.VarChar(50)
+  thumbnail    String?  @db.Text // Base64 or URL
+  
+  // Audit
+  createdBy    Int      @map("created_by")
+  lastModifiedBy Int?   @map("last_modified_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  process      Process? @relation(fields: [processId], references: [id], onDelete: SetNull)
+  store        Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  creator      User     @relation("DynamicPageCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  modifier     User?    @relation("DynamicPageModifier", fields: [lastModifiedBy], references: [id])
+  
+  @@index([slug])
+  @@index([processId])
+  @@index([status])
+  @@index([storageType])
+  @@index([createdBy])
+  @@index([category])
+  @@map("dynamic_pages")
 }
 
