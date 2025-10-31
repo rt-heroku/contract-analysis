@@ -100,7 +100,7 @@ export const Dashboard: React.FC = () => {
     <div className="space-y-6">
       {/* Welcome Message */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
           Welcome back, {user?.firstName || 'User'}!
         </h1>
         <p className="text-gray-600 mt-1">
@@ -118,7 +118,7 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600 font-medium">{stat.title}</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-2">{stat.value}</p>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-2">{stat.value}</p>
                   </div>
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${stat.color}`}>
                     <Icon className="w-6 h-6" />
@@ -171,7 +171,7 @@ export const Dashboard: React.FC = () => {
                     <FileText className="w-5 h-5 text-primary-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-gray-900">
+                    <p className="font-medium text-gray-900 dark:text-gray-100">
                       {analysis.contractFile || 'Document Analysis'}
                     </p>
                     <p className="text-sm text-gray-500">

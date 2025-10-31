@@ -175,7 +175,7 @@ export const Actions: React.FC = () => {
     return (
       <div
         key={action.id}
-        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+        className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
         onClick={() => {
           // System actions are read-only, show info dialog
           if (action.isSystem) {
@@ -205,7 +205,7 @@ export const Actions: React.FC = () => {
             <IconComponent className="w-5 h-5" style={{ color: action.color }} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 mb-1">{action.displayName}</h3>
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{action.displayName}</h3>
             <p className="text-sm text-gray-600 line-clamp-2">{action.description || 'No description'}</p>
             <div className="flex items-center space-x-2 mt-2">
               <div className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">
@@ -240,7 +240,7 @@ export const Actions: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Action Library</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Action Library</h1>
           <p className="text-gray-600 mt-1">
             {actions.length} actions available • {userActions.length} user • {systemActionCount} system • {connectorActionCount} connector
           </p>
@@ -320,7 +320,7 @@ export const Actions: React.FC = () => {
                   return (
                     <Card key={category} className="overflow-hidden">
                       <div
-                        className="flex items-center justify-between p-4 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                        className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
                         onClick={() => toggleCategory(category)}
                       >
                         <div className="flex items-center space-x-3">
@@ -330,7 +330,7 @@ export const Actions: React.FC = () => {
                             <ChevronDown className="w-5 h-5 text-gray-500" />
                           )}
                           <div>
-                            <h3 className="text-lg font-semibold text-gray-900">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                               {categoryNames[category] || category}
                             </h3>
                             <p className="text-sm text-gray-500">{filteredActions.length} actions</p>

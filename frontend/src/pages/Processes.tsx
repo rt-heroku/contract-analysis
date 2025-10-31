@@ -151,7 +151,7 @@ export const Processes: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Processes</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Processes</h1>
           <p className="text-gray-600 mt-1">Create and manage automated workflows</p>
         </div>
         <Button
@@ -166,7 +166,7 @@ export const Processes: React.FC = () => {
       {processes.length === 0 ? (
         <Card>
           <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No processes yet</h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No processes yet</h3>
             <p className="text-gray-600 mb-4">Get started by creating your first process</p>
             <Button onClick={() => navigate('/process-designer')} className="bg-blue-600 hover:bg-blue-700 text-white">
               Create Process
@@ -179,7 +179,7 @@ export const Processes: React.FC = () => {
             <Card key={process.id} className="hover:shadow-lg transition-shadow">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">{process.name}</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{process.name}</h3>
                   {process.description && (
                     <p className="text-sm text-gray-600 mb-2">{process.description}</p>
                   )}
