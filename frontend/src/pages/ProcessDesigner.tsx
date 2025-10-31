@@ -1479,6 +1479,14 @@ const ProcessDesignerInner: React.FC = () => {
   
   // Handle node selection for right properties panel
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    console.log('🖱️ ProcessDesigner - Node clicked, type:', node.type);
+    
+    // Don't open properties for loop containers (they have their own edit button)
+    if (node.type === 'loopContainer') {
+      console.log('⚠️ ProcessDesigner - Loop container clicked, ignoring for properties panel');
+      return;
+    }
+    
     setSelectedNodeForProps(node);
     setPropertiesModalOpen(true); // Open floating properties modal
   }, []);

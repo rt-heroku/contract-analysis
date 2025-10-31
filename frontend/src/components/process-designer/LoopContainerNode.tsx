@@ -111,14 +111,19 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
         {data.onEdit && (
           <button
             type="button"
-            onClick={handleEditClick}
-            onMouseDown={(e) => {
-              console.log('👆 LoopContainerNode - Mouse down on edit button');
+            onClickCapture={(e) => {
+              console.log('👆 LoopContainerNode - CAPTURE Click on edit button');
+              e.stopPropagation();
+              e.preventDefault();
+              handleEditClick(e);
+            }}
+            onMouseDownCapture={(e) => {
+              console.log('👆 LoopContainerNode - CAPTURE Mouse down on edit button');
               e.stopPropagation();
             }}
             className="w-8 h-8 bg-white hover:bg-gray-50 rounded-lg shadow-md border border-gray-200 flex items-center justify-center transition-colors cursor-pointer"
             title="Edit loop conditions"
-            style={{ zIndex: 1001 }}
+            style={{ zIndex: 1001, pointerEvents: 'all' }}
           >
             <Edit3 className="w-4 h-4 text-blue-600" />
           </button>
