@@ -522,7 +522,7 @@ export const Prompts: React.FC = () => {
       <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Import Prompt</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Import Prompt</h2>
             <button
               onClick={() => setShowImportModal(false)}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -786,7 +786,7 @@ export const Prompts: React.FC = () => {
     <div className="max-w-6xl mx-auto space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Prompt Library</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Prompt Library</h1>
           <p className="text-gray-600 mt-1">Manage AI prompts with variables for document processing</p>
         </div>
         {can.createPrompts && (
@@ -820,7 +820,7 @@ export const Prompts: React.FC = () => {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{prompt.name}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{prompt.name}</h3>
                     {prompt.isDefault && (
                       <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded flex items-center gap-1">
                         <Star className="w-3 h-3 fill-current" />
