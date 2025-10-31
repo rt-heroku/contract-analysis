@@ -22,11 +22,23 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
 
   useEffect(() => {
     if (node) {
+      console.log('🎯 NodeEditModal - node changed, updating formData:', node.data.config);
       setFormData(node.data.config || {});
     }
   }, [node]);
 
-  if (!isOpen || !node) return null;
+  useEffect(() => {
+    console.log('🔄 NodeEditModal - isOpen changed:', isOpen);
+    console.log('📝 NodeEditModal - node:', node);
+    console.log('📋 NodeEditModal - formData:', formData);
+  }, [isOpen, node, formData]);
+
+  if (!isOpen || !node) {
+    console.log('🚫 NodeEditModal - Not rendering (isOpen:', isOpen, ', node:', node, ')');
+    return null;
+  }
+
+  console.log('✅ NodeEditModal - Rendering modal for node:', node.data.label);
 
   const handleSave = () => {
     console.log('💾 NodeEditModal - handleSave called');
@@ -1358,7 +1370,12 @@ Consider: priority, amount, customer tier, and special requirements."
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={(e) => {
+              console.log('❌ X button clicked!');
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
@@ -1452,26 +1469,30 @@ Consider: priority, amount, customer tier, and special requirements."
         </div>
 
         <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-          <Button 
+          <button
             type="button"
-            onClick={(e: React.MouseEvent) => {
+            onClick={(e) => {
+              console.log('🔘 Cancel button clicked!');
+              e.preventDefault();
               e.stopPropagation();
               onClose();
             }}
-            className="bg-gray-200 hover:bg-gray-300"
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
           >
             Cancel
-          </Button>
-          <Button 
+          </button>
+          <button
             type="button"
-            onClick={(e: React.MouseEvent) => {
+            onClick={(e) => {
+              console.log('💾 Save button clicked!');
+              e.preventDefault();
               e.stopPropagation();
               handleSave();
             }}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
           >
             Save Changes
-          </Button>
+          </button>
         </div>
       </div>
 
