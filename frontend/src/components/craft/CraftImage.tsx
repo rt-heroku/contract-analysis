@@ -26,7 +26,7 @@ export const CraftImage: React.FC<CraftImageProps> & { craft?: any } = ({
   return (
     <div
       ref={(ref) => ref && connect(drag(ref))}
-      className={selected ? 'ring-2 ring-primary-500' : ''}
+      className={selected ? 'ring-2 ring-primary-500 dark:ring-primary-400' : ''}
       style={{ width, height: height !== 'auto' ? height : undefined }}
     >
       <img

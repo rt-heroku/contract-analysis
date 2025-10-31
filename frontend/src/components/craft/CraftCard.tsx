@@ -23,7 +23,7 @@ export const CraftCard: React.FC<CraftCardProps> & { craft?: any } = ({
     <div
       ref={(ref) => ref && connect(drag(ref))}
       className={`bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm ${
-        selected ? 'ring-2 ring-primary-500' : ''
+        selected ? 'ring-2 ring-primary-500 dark:ring-primary-400' : ''
       }`}
     >
       {title && (

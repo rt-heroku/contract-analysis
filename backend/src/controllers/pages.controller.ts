@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { prisma } from '../lib/prisma';
-import { logger } from '../utils/logger';
-import { loggingService } from '../services/logging.service';
+import prisma from '../config/database';
+import logger from '../utils/logger';
+import loggingService from '../services/logging.service';
 
 class PagesController {
   /**
@@ -92,10 +92,9 @@ class PagesController {
         userId,
         actionType: 'page.view',
         actionDescription: `Viewed page: ${page.name}`,
-        resourceType: 'page',
-        resourceId: page.id.toString(),
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
+        metadata: { pageId: page.id },
       });
 
       res.json(page);
@@ -142,10 +141,9 @@ class PagesController {
           userId: (req as any).user.id,
           actionType: 'page.view',
           actionDescription: `Viewed page: ${page.name} (slug: ${slug})`,
-          resourceType: 'page',
-          resourceId: page.id.toString(),
           ipAddress: req.ip,
           userAgent: req.get('user-agent'),
+          metadata: { pageId: page.id },
         });
       }
 
@@ -216,10 +214,9 @@ class PagesController {
         userId,
         actionType: 'page.create',
         actionDescription: `Created page: ${page.name}`,
-        resourceType: 'page',
-        resourceId: page.id.toString(),
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
+        metadata: { pageId: page.id },
       });
 
       logger.info(`Page created: ${page.name} (ID: ${page.id})`);
@@ -301,10 +298,9 @@ class PagesController {
         userId,
         actionType: 'page.update',
         actionDescription: `Updated page: ${page.name}`,
-        resourceType: 'page',
-        resourceId: page.id.toString(),
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
+        metadata: { pageId: page.id },
       });
 
       logger.info(`Page updated: ${page.name} (ID: ${page.id})`);
@@ -344,10 +340,9 @@ class PagesController {
         userId,
         actionType: 'page.delete',
         actionDescription: `Deleted page: ${existing.name}`,
-        resourceType: 'page',
-        resourceId: pageId.toString(),
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
+        metadata: { pageId },
       });
 
       logger.info(`Page deleted: ${existing.name} (ID: ${pageId})`);
@@ -391,10 +386,9 @@ class PagesController {
         userId,
         actionType: 'page.publish',
         actionDescription: `Published page: ${page.name}`,
-        resourceType: 'page',
-        resourceId: page.id.toString(),
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
+        metadata: { pageId: page.id },
       });
 
       logger.info(`Page published: ${page.name} (ID: ${page.id})`);
@@ -492,10 +486,9 @@ class PagesController {
         userId,
         actionType: 'page.export',
         actionDescription: `Exported page: ${page.name}`,
-        resourceType: 'page',
-        resourceId: page.id.toString(),
         ipAddress: req.ip,
         userAgent: req.get('user-agent'),
+        metadata: { pageId: page.id },
       });
 
       // Remove sensitive fields

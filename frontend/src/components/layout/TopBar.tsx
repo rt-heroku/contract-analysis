@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+import { useTheme } from '@/context/ThemeContext';
 import api from '@/lib/api';
-import { Menu, Bell, User, Settings, LogOut, Search, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { Menu, Bell, User, Settings, LogOut, Search, CheckCircle, AlertCircle, Info, Sun, Moon } from 'lucide-react';
 
 interface Notification {
   id: number;
@@ -20,6 +21,7 @@ export const TopBar: React.FC = () => {
   const { toggleSidebar } = useApp();
   const { user, logout } = useAuth();
   const { showToast } = useToast();
+  const { theme, toggleTheme } = useTheme();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -149,7 +151,20 @@ export const TopBar: React.FC = () => {
       </div>
 
       {/* Right Side - Push to far right */}
-      <div className="flex items-center gap-4 ml-auto">
+      <div className="flex items-center gap-2 ml-auto">
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+          ) : (
+            <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+          )}
+        </button>
+
         {/* Notifications */}
         <div className="relative">
           <button

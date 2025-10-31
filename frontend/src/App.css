@@ -163,3 +163,88 @@
   @apply bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800;
 }
 
+/* Craft.js Layers Dark Mode Support */
+.layers-dark-mode {
+  color: #e5e7eb; /* gray-200 for dark mode text */
+}
+
+.dark .layers-dark-mode {
+  color: #e5e7eb;
+  background-color: transparent;
+}
+
+/* All divs, buttons, and spans inherit text color */
+.dark .layers-dark-mode div,
+.dark .layers-dark-mode button,
+.dark .layers-dark-mode span {
+  color: #e5e7eb !important;
+  background-color: transparent;
+}
+
+/* Override white backgrounds in layers */
+.dark .layers-dark-mode > div,
+.dark .layers-dark-mode > div > div {
+  background-color: transparent !important;
+}
+
+/* Layer items background */
+.dark .layers-dark-mode button,
+.dark .layers-dark-mode [role="button"] {
+  background-color: rgba(55, 65, 81, 0.3) !important; /* gray-700 with opacity */
+  border-color: rgba(75, 85, 99, 0.5) !important; /* gray-600 border */
+}
+
+.dark .layers-dark-mode button:hover,
+.dark .layers-dark-mode [role="button"]:hover {
+  background-color: rgba(55, 65, 81, 0.6) !important; /* darker on hover */
+}
+
+/* Selected/Active layer items */
+.dark .layers-dark-mode button[style*="background"] {
+  background-color: rgba(59, 130, 246, 0.5) !important; /* blue for selected */
+}
+
+/* Nested layer items */
+.dark .layers-dark-mode [style*="padding-left"] {
+  background-color: rgba(55, 65, 81, 0.2) !important;
+}
+
+/* Layer panel container */
+.dark .layers-dark-mode > div:first-child {
+  background-color: #1f2937 !important; /* gray-800 */
+  border: 1px solid #374151; /* gray-700 */
+  border-radius: 0.375rem;
+}
+
+/* Craft.js editor indicator styles for dark mode */
+.dark .craftjs-renderer {
+  color: #e5e7eb;
+}
+
+.dark .craftjs-renderer > div {
+  color: #e5e7eb;
+}
+
+/* Component Toolbar Animations */
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: slideInDown 0.2s ease-out;
+}
+
+/* Hover effect for draggable components */
+.craftjs-renderer [draggable="true"]:hover {
+  cursor: move;
+  outline: 2px dashed rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}
+

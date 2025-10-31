@@ -25,7 +25,7 @@ export const DataTable: React.FC<DataTableProps> & { craft?: any } = ({
   return (
     <div
       ref={(ref) => ref && connect(drag(ref))}
-      className={`${selected ? 'ring-2 ring-primary-500' : ''} p-4`}
+      className={`${selected ? 'ring-2 ring-primary-500 dark:ring-primary-400' : ''} p-4`}
     >
       {title && (
         <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">
