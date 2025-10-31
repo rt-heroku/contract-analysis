@@ -367,6 +367,12 @@ const ProcessDesignerInner: React.FC = () => {
       return false;
     }
     
+    // Get source and target nodes for exemption checks
+    const sourceNode = nodes.find(n => n.id === source);
+    const targetNode = nodes.find(n => n.id === target);
+    
+    if (!sourceNode || !targetNode) return false;
+    
     // Allow loop-internal connections (loop-start -> actions -> loop-end)
     // These are not cycles, they're the intended loop structure
     const isLoopInternalConnection = 
@@ -375,8 +381,17 @@ const ProcessDesignerInner: React.FC = () => {
       sourceHandle === 'loop-end' ||
       targetHandle === 'loop-start';
     
-    // Prevent cycles (except for loop-internal connections)
-    if (!isLoopInternalConnection && wouldCreateCycle(source, target, edges)) {
+    // Connections to Break/Continue are valid loop exits, not cycles
+    const isBreakOrContinueTarget = 
+      targetNode.type === 'break' || 
+      targetNode.type === 'continue';
+    
+    if (isBreakOrContinueTarget) {
+      console.log('✅ Allowing connection to Break/Continue (valid loop exit)');
+    }
+    
+    // Prevent cycles (except for loop-internal connections and break/continue exits)
+    if (!isLoopInternalConnection && !isBreakOrContinueTarget && wouldCreateCycle(source, target, edges)) {
       console.log('❌ Invalid: Would create a cycle');
       setAlertDialog({
         isOpen: true,
@@ -386,12 +401,6 @@ const ProcessDesignerInner: React.FC = () => {
       });
       return false;
     }
-    
-    // Get source and target nodes
-    const sourceNode = nodes.find(n => n.id === source);
-    const targetNode = nodes.find(n => n.id === target);
-    
-    if (!sourceNode || !targetNode) return false;
     
     // Start node can only connect from its main output (not error)
     if (sourceNode.type === 'start' && sourceHandle === 'error') {
