@@ -167,7 +167,7 @@ export const CollapsibleActionPalette = ({
       a.name.toLowerCase().includes('variable') ||
       a.name.toLowerCase().includes('payload')
     ),
-    'AI Actions': actions.filter(a => a.category === 'ai'),
+    'AI Actions': actions.filter(a => a.category === 'ai' || a.category === 'llm'),
     'Execution': actions.filter(a =>
       a.category === 'execution' ||
       a.name.toLowerCase().includes('script') ||
