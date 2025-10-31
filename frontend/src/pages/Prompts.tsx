@@ -534,7 +534,7 @@ export const Prompts: React.FC = () => {
           <div
             onDrop={handleFileDrop}
             onDragOver={(e) => e.preventDefault()}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-primary-500 transition-colors cursor-pointer"
+            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-12 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
             <UploadIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -684,7 +684,7 @@ export const Prompts: React.FC = () => {
               <select
                 value={formData.flowName}
                 onChange={(e) => handleFlowSelect(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="">Select a flow...</option>
                 {flows.map((flow) => (
@@ -808,7 +808,7 @@ export const Prompts: React.FC = () => {
             placeholder="Search prompts..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
