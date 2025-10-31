@@ -245,8 +245,8 @@ export const UserManagement: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600 mt-1">Manage user accounts, roles, and permissions</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">User Management</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage user accounts, roles, and permissions</p>
         </div>
         <Button 
           onClick={handleOpenCreateModal}
@@ -280,42 +280,42 @@ export const UserManagement: React.FC = () => {
         {users.length > 0 ? (
           <>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       User
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Email
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Role
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Created
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Last Login
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50">
+                    <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-semibold">
+                          <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 font-semibold">
                             {(user.firstName?.[0] || user.email[0]).toUpperCase()}
                           </div>
                           <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               {user.firstName && user.lastName
                                 ? `${user.firstName} ${user.lastName}`
                                 : user.email.split('@')[0]}
@@ -324,8 +324,8 @@ export const UserManagement: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2 text-sm text-gray-700">
-                          <Mail className="w-4 h-4 text-gray-400" />
+                        <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                          <Mail className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                           {user.email}
                         </div>
                       </td>
@@ -345,20 +345,20 @@ export const UserManagement: React.FC = () => {
                           </Badge>
                         </button>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-gray-400" />
+                          <Calendar className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                           {formatDate(user.createdAt)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {formatDate(user.lastLogin)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleOpenEditModal(user)}
-                            className="text-primary-600 hover:text-primary-900 p-2 hover:bg-primary-50 rounded-lg transition-colors"
+                            className="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300 p-2 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
                             title="Edit user"
                           >
                             <Edit className="w-4 h-4" />
@@ -368,7 +368,7 @@ export const UserManagement: React.FC = () => {
                               setUserToDelete(user);
                               setShowDeleteModal(true);
                             }}
-                            className="text-red-600 hover:text-red-900 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                            className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                             title="Delete user"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -383,8 +383,8 @@ export const UserManagement: React.FC = () => {
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600">
+              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
                   {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} users
                 </p>
@@ -396,7 +396,7 @@ export const UserManagement: React.FC = () => {
                   >
                     Previous
                   </Button>
-                  <span className="px-4 py-2 text-sm text-gray-600">
+                  <span className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
                     Page {pagination.page} of {pagination.totalPages}
                   </span>
                   <Button
@@ -411,8 +411,8 @@ export const UserManagement: React.FC = () => {
             )}
           </>
         ) : (
-          <div className="text-center py-12 text-gray-500">
-            <User className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <User className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
             <p>No users found</p>
             {searchTerm && (
               <p className="text-sm mt-2">Try a different search term</p>
@@ -494,13 +494,13 @@ export const UserManagement: React.FC = () => {
           />
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Role
             </label>
             <select
               value={userFormData.role}
               onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
               {roles.map((role) => (
                 <option key={role.id} value={role.name}>
@@ -508,19 +508,19 @@ export const UserManagement: React.FC = () => {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {roles.find(r => r.name === userFormData.role)?.description}
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Default Landing Page (Optional)
             </label>
             <select
               value={userFormData.defaultMenuItem}
               onChange={(e) => setUserFormData({ ...userFormData, defaultMenuItem: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
               <option value="">Use role default</option>
               <option value="dashboard">Dashboard</option>
@@ -529,7 +529,7 @@ export const UserManagement: React.FC = () => {
               <option value="prompts">Prompts</option>
               <option value="profile">Profile</option>
             </select>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Page to show after login (viewers default to History)
             </p>
           </div>

@@ -19,39 +19,37 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
   const [formData, setFormData] = useState<any>({});
   const [activeTab, setActiveTab] = useState('configuration');
   const [showConditionalEditor, setShowConditionalEditor] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     if (node) {
-      console.log('🎯 NodeEditModal - node changed, updating formData:', node.data.config);
       setFormData(node.data.config || {});
     }
   }, [node]);
 
+  // Prevent immediate closing when modal opens
   useEffect(() => {
-    console.log('🔄 NodeEditModal - isOpen changed:', isOpen);
-    console.log('📝 NodeEditModal - node:', node);
-    console.log('📋 NodeEditModal - formData:', formData);
-  }, [isOpen, node, formData]);
+    if (isOpen) {
+      setIsReady(false);
+      // Small delay to ensure modal is fully rendered before accepting close events
+      const timer = setTimeout(() => setIsReady(true), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   if (!isOpen || !node) {
-    console.log('🚫 NodeEditModal - Not rendering (isOpen:', isOpen, ', node:', node, ')');
     return null;
   }
 
-  console.log('✅ NodeEditModal - Rendering modal for node:', node.data.label);
-
   const handleSave = () => {
-    console.log('💾 NodeEditModal - handleSave function called');
-    console.log('  - nodeId:', node.id);
-    console.log('  - formData:', formData);
-    console.log('  - onSave exists:', !!onSave);
-    console.log('  - onClose exists:', !!onClose);
-    console.log('  Calling onSave callback...');
     onSave(node.id, formData);
-    console.log('  ✅ onSave callback executed');
-    console.log('  Calling onClose...');
     onClose();
-    console.log('  ✅ onClose called - modal should close now');
+  };
+
+  const handleClose = () => {
+    if (isReady) {
+      onClose();
+    }
   };
 
   // Get incoming calls (edges that target this node)
@@ -146,11 +144,11 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
     <div className="space-y-4">
       <div className="grid grid-cols-4 gap-4">
         <div className="col-span-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Method</label>
           <select
             value={formData.method || 'GET'}
             onChange={(e) => setFormData({ ...formData, method: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
           >
             <option>GET</option>
             <option>POST</option>
@@ -160,19 +158,19 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
           </select>
         </div>
         <div className="col-span-3">
-          <label className="block text-sm font-medium text-gray-700 mb-1">URL / Endpoint</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">URL / Endpoint</label>
           <input
             type="text"
             value={formData.url || ''}
             onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
             placeholder="https://api.example.com/endpoint or /api/users"
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Headers</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Headers</label>
         {Object.entries(formData.headers || {}).map(([key, value]) => (
           <div key={key} className="flex space-x-2 mb-2">
             <input
@@ -220,7 +218,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Request Body</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Request Body</label>
         <textarea
           value={formData.body || ''}
           onChange={(e) => setFormData({ ...formData, body: e.target.value })}
@@ -235,7 +233,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
   const renderScriptFields = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">JavaScript Code</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">JavaScript Code</label>
         <textarea
           value={formData.code || ''}
           onChange={(e) => setFormData({ ...formData, code: e.target.value })}
@@ -245,12 +243,12 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Timeout (ms)</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timeout (ms)</label>
         <input
           type="number"
           value={formData.timeout || 5000}
           onChange={(e) => setFormData({ ...formData, timeout: parseInt(e.target.value) })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
           min="100"
           max="30000"
         />
@@ -261,21 +259,21 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
   const renderIdpFields = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">IDP Execution ID</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IDP Execution ID</label>
         <input
           type="number"
           value={formData.idpExecutionId || ''}
           onChange={(e) => setFormData({ ...formData, idpExecutionId: parseInt(e.target.value) })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Document Type</label>
         <input
           type="text"
           value={formData.documentType || 'contract'}
           onChange={(e) => setFormData({ ...formData, documentType: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
           placeholder="contract, invoice, etc."
         />
       </div>
@@ -285,7 +283,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
   const renderIfThenElseFields = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Conditions</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Conditions</label>
         <button
           type="button"
           onClick={() => setShowConditionalEditor(true)}
@@ -318,22 +316,22 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
   const renderForEachFields = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Array</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Array</label>
         <input
           type="text"
           value={formData.array || ''}
           onChange={(e) => setFormData({ ...formData, array: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
           placeholder="{{input.items}}"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Item Variable Name</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Item Variable Name</label>
         <input
           type="text"
           value={formData.itemVar || 'item'}
           onChange={(e) => setFormData({ ...formData, itemVar: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
           placeholder="item"
         />
       </div>
@@ -343,22 +341,22 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
   const renderWhileFields = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Condition</label>
         <input
           type="text"
           value={formData.condition || ''}
           onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
           placeholder="{{context.counter}} < 10"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Max Iterations</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Iterations</label>
         <input
           type="number"
           value={formData.maxIterations || 100}
           onChange={(e) => setFormData({ ...formData, maxIterations: parseInt(e.target.value) })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
           min="1"
           max="1000"
         />
@@ -373,7 +371,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
       <div className="space-y-6">
         {/* Delay Type Selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             <span className="text-red-500">*</span> Delay Type
           </label>
           <select
@@ -394,7 +392,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
           <h3 className="text-sm font-semibold text-gray-900 mb-3">General Information</h3>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 <span className="text-red-500">*</span> Title
               </label>
               <input
@@ -406,7 +404,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 <span className="text-red-500">*</span> Status
               </label>
               <select
@@ -419,7 +417,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 <span className="text-red-500">*</span> Description
               </label>
               <textarea
@@ -443,7 +441,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
               <div className="space-y-3">
                 <div className="flex space-x-3">
                   <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Time Units:</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time Units:</label>
                     <select
                       value={formData.timeUnits || 'seconds'}
                       onChange={(e) => setFormData({ ...formData, timeUnits: e.target.value })}
@@ -457,7 +455,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     <span className="text-red-500">*</span> Delay Amount:
                   </label>
                   <input
@@ -476,7 +474,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
             {delayType === 'dynamic' && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration Expression</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Duration Expression</label>
                   <input
                     type="text"
                     value={formData.durationExpression || ''}
@@ -489,7 +487,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Wait Time:</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Wait Time:</label>
                   <select
                     value={formData.maxWaitTime || '24 hours'}
                     onChange={(e) => setFormData({ ...formData, maxWaitTime: e.target.value })}
@@ -510,7 +508,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
             {delayType === 'conditional' && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Conditions</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Conditions</label>
                   <button
                     type="button"
                     onClick={() => setShowConditionalEditor(true)}
@@ -528,7 +526,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Check Interval (seconds)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check Interval (seconds)</label>
                   <input
                     type="number"
                     value={formData.checkInterval || 60}
@@ -548,7 +546,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
             {delayType === 'until' && (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     <span className="text-red-500">*</span> Target Date/Time
                   </label>
                   <input
@@ -562,7 +560,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                   </p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Time Zone</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time Zone</label>
                   <select
                     value={formData.timeZone || 'UTC'}
                     onChange={(e) => setFormData({ ...formData, timeZone: e.target.value })}
@@ -593,7 +591,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
       <div className="space-y-6">
         {/* Notification Type Selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Select Notification Type
           </label>
           <select
@@ -615,7 +613,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
           <h3 className="text-sm font-semibold text-gray-900 mb-3">General Information</h3>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
               <input
                 type="text"
                 value={formData.title || 'Notification'}
@@ -625,7 +623,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
               <select
                 value={formData.status || 'active'}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
@@ -636,7 +634,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
               <textarea
                 value={formData.description || 'Send alerts or notifications'}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -657,7 +655,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Email Settings</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Send To</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Send To</label>
                     <input
                       type="email"
                       value={formData.emailTo || ''}
@@ -667,7 +665,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">CC / BCC</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CC / BCC</label>
                     <input
                       type="text"
                       value={formData.emailCc || ''}
@@ -677,7 +675,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subject</label>
                     <input
                       type="text"
                       value={formData.emailSubject || ''}
@@ -687,7 +685,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Body</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Body</label>
                     <textarea
                       value={formData.emailBody || ''}
                       onChange={(e) => setFormData({ ...formData, emailBody: e.target.value })}
@@ -697,7 +695,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
                     <select
                       value={formData.emailPriority || 'normal'}
                       onChange={(e) => setFormData({ ...formData, emailPriority: e.target.value })}
@@ -720,7 +718,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                   </div>
                   {formData.retryOnFailure && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Number of retries</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Number of retries</label>
                       <input
                         type="number"
                         value={formData.numberOfRetries || 3}
@@ -742,7 +740,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">SMS Settings</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
                     <input
                       type="tel"
                       value={formData.smsTo || ''}
@@ -752,7 +750,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message</label>
                     <textarea
                       value={formData.smsMessage || ''}
                       onChange={(e) => setFormData({ ...formData, smsMessage: e.target.value })}
@@ -775,7 +773,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Push Notification Settings</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
                     <input
                       type="text"
                       value={formData.pushTitle || ''}
@@ -785,7 +783,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Body</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Body</label>
                     <textarea
                       value={formData.pushBody || ''}
                       onChange={(e) => setFormData({ ...formData, pushBody: e.target.value })}
@@ -795,7 +793,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Additional Data (JSON)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Additional Data (JSON)</label>
                     <textarea
                       value={typeof formData.pushData === 'string' ? formData.pushData : JSON.stringify(formData.pushData || {}, null, 2)}
                       onChange={(e) => {
@@ -820,7 +818,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Webhook Settings</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Webhook URL</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Webhook URL</label>
                     <input
                       type="url"
                       value={formData.webhookUrl || ''}
@@ -830,7 +828,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Method</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Method</label>
                     <select
                       value={formData.webhookMethod || 'POST'}
                       onChange={(e) => setFormData({ ...formData, webhookMethod: e.target.value })}
@@ -842,7 +840,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Payload (JSON)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payload (JSON)</label>
                     <textarea
                       value={typeof formData.webhookPayload === 'string' ? formData.webhookPayload : JSON.stringify(formData.webhookPayload || {}, null, 2)}
                       onChange={(e) => {
@@ -858,7 +856,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Custom Headers (JSON)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Custom Headers (JSON)</label>
                     <textarea
                       value={typeof formData.webhookHeaders === 'string' ? formData.webhookHeaders : JSON.stringify(formData.webhookHeaders || {}, null, 2)}
                       onChange={(e) => {
@@ -883,7 +881,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Slack Settings</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Channel / User</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Channel / User</label>
                     <input
                       type="text"
                       value={formData.slackChannel || ''}
@@ -893,7 +891,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Message</label>
                     <textarea
                       value={formData.slackMessage || ''}
                       onChange={(e) => setFormData({ ...formData, slackMessage: e.target.value })}
@@ -903,7 +901,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Attachments (JSON Array)</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Attachments (JSON Array)</label>
                     <textarea
                       value={typeof formData.slackAttachments === 'string' ? formData.slackAttachments : JSON.stringify(formData.slackAttachments || [], null, 2)}
                       onChange={(e) => {
@@ -932,7 +930,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
       <div className="space-y-6">
         {/* LLM Connector Selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             <span className="text-red-500">*</span> LLM Connector
           </label>
           <select
@@ -954,7 +952,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
 
         {/* Model Selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             <span className="text-red-500">*</span> Model
           </label>
           <select
@@ -983,7 +981,7 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
 
         {/* Prompt */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             <span className="text-red-500">*</span> Prompt
           </label>
           <textarea
@@ -1007,7 +1005,7 @@ Consider: priority, amount, customer tier, and special requirements."
 
         {/* Routes Configuration */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Available Routes</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Available Routes</label>
           <div className="space-y-2">
             {(formData.routes || []).map((route: any, index: number) => (
               <div key={index} className="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
@@ -1065,7 +1063,7 @@ Consider: priority, amount, customer tier, and special requirements."
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Advanced Settings</h3>
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Temperature: {formData.temperature ?? 0.0}
               </label>
               <input
@@ -1083,7 +1081,7 @@ Consider: priority, amount, customer tier, and special requirements."
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Max Tokens</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Tokens</label>
               <input
                 type="number"
                 value={formData.maxTokens || 150}
@@ -1095,7 +1093,7 @@ Consider: priority, amount, customer tier, and special requirements."
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fallback Route</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fallback Route</label>
               <input
                 type="text"
                 value={formData.fallbackRoute || ''}
@@ -1136,7 +1134,7 @@ Consider: priority, amount, customer tier, and special requirements."
       <div className="space-y-6">
         {/* Workflow Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             <span className="text-red-500">*</span> Select Workflow
           </label>
           <select
@@ -1163,7 +1161,7 @@ Consider: priority, amount, customer tier, and special requirements."
 
         {/* Input Mapping Section */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center space-x-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center space-x-2">
             <span>Input Mapping</span>
             <div className="relative group">
               <div className="w-4 h-4 rounded-full border-2 border-gray-400 flex items-center justify-center text-gray-400 text-xs cursor-help">
@@ -1244,7 +1242,7 @@ Consider: priority, amount, customer tier, and special requirements."
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Timeout (ms)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timeout (ms)</label>
                 <input
                   type="number"
                   value={formData.timeoutMs || 300000}
@@ -1280,7 +1278,7 @@ Consider: priority, amount, customer tier, and special requirements."
   const renderTransformFields = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Transformation Script</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Transformation Script</label>
         <textarea
           value={formData.transform || ''}
           onChange={(e) => setFormData({ ...formData, transform: e.target.value })}
@@ -1295,7 +1293,7 @@ Consider: priority, amount, customer tier, and special requirements."
   const renderValidateFields = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">JSON Schema</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">JSON Schema</label>
         <textarea
           value={formData.schema || ''}
           onChange={(e) => setFormData({ ...formData, schema: e.target.value })}
@@ -1310,21 +1308,21 @@ Consider: priority, amount, customer tier, and special requirements."
   const renderVariableFields = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Variable Name</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Variable Name</label>
         <input
           type="text"
           value={formData.variableName || ''}
           onChange={(e) => setFormData({ ...formData, variableName: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
           placeholder="myVariable"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Value</label>
         <textarea
           value={formData.value || ''}
           onChange={(e) => setFormData({ ...formData, value: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
           rows={4}
           placeholder="{{input.data}} or static value"
         />
@@ -1335,7 +1333,7 @@ Consider: priority, amount, customer tier, and special requirements."
   const renderGenericFields = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Configuration (JSON)</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Configuration (JSON)</label>
         <textarea
           value={JSON.stringify(formData, null, 2)}
           onChange={(e) => {
@@ -1358,40 +1356,30 @@ Consider: priority, amount, customer tier, and special requirements."
       style={{ zIndex: 1000 }}
       onClick={(e) => {
         // Close modal if backdrop is clicked
-        console.log('🎯 Backdrop clicked');
-        console.log('  e.target === e.currentTarget:', e.target === e.currentTarget);
         if (e.target === e.currentTarget) {
-          console.log('  ✅ Backdrop clicked (not modal content), calling onClose()');
-          onClose();
-        } else {
-          console.log('  ⚠️ Modal content clicked, not closing');
+          handleClose();
         }
       }}
     >
       <div 
-        className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Edit Action</h2>
-            <p className="text-sm text-gray-600 mt-1">{node.data.label}</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Edit Action</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{node.data.label}</p>
           </div>
           <button
             type="button"
             onClick={(e) => {
-              console.log('❌ X button clicked!');
-              console.log('  onClose exists:', !!onClose);
-              console.log('  onClose type:', typeof onClose);
-              e.preventDefault();
               e.stopPropagation();
-              console.log('  Calling onClose()...');
-              onClose();
-              console.log('  ✅ onClose() called');
+              handleClose();
             }}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+            aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-gray-600 dark:text-gray-300" />
           </button>
         </div>
 
@@ -1406,12 +1394,12 @@ Consider: priority, amount, customer tier, and special requirements."
 
             <TabsContent value="configuration" className="mt-4">
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Node Label</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Node Label</label>
                 <input
                   type="text"
                   value={formData.nodeLabel || node.data.label}
                   onChange={(e) => setFormData({ ...formData, nodeLabel: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
                   placeholder="Custom label for this node"
                 />
               </div>
@@ -1421,12 +1409,12 @@ Consider: priority, amount, customer tier, and special requirements."
 
             <TabsContent value="calls" className="mt-4">
               <div className="space-y-3">
-                <div className="text-sm text-gray-600 mb-3">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                   Actions that call this node:
                 </div>
 
                 {incomingCalls.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     <p className="text-sm">No incoming connections</p>
                     <p className="text-xs mt-1">This action is not being called by any other actions</p>
                   </div>
@@ -1434,7 +1422,7 @@ Consider: priority, amount, customer tier, and special requirements."
                   incomingCalls.map((call) => (
                     <div
                       key={call.edgeId}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-500 transition-colors"
                     >
                       <div className="flex items-center space-x-3 flex-1">
                         <div
@@ -1444,15 +1432,15 @@ Consider: priority, amount, customer tier, and special requirements."
                           <div className="w-4 h-4" style={{ color: call.sourceNode?.data?.color || '#6366f1' }}>●</div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 truncate">
+                          <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
                             {call.sourceNode?.data?.label || 'Unknown'}
                           </div>
-                          <div className="text-xs text-gray-500 flex items-center space-x-2">
+                          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center space-x-2">
                             <span>{call.sourceNode?.type === 'start' ? 'Start Node' : call.sourceNode?.data?.category}</span>
                             {call.label && (
                               <>
                                 <ArrowRight className="w-3 h-3" />
-                                <span className="font-medium text-blue-600">{call.label}</span>
+                                <span className="font-medium text-blue-600 dark:text-blue-400">{call.label}</span>
                               </>
                             )}
                           </div>
@@ -1467,7 +1455,7 @@ Consider: priority, amount, customer tier, and special requirements."
                               onDeleteEdge(call.edgeId);
                             }
                           }}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                           title="Delete connection"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -1481,34 +1469,22 @@ Consider: priority, amount, customer tier, and special requirements."
           </Tabs>
         </div>
 
-        <div className="sticky bottom-0 bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+        <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-700 px-6 py-4 border-t border-gray-200 dark:border-gray-600 flex justify-end space-x-3">
           <button
             type="button"
             onClick={(e) => {
-              console.log('🔘 Cancel button clicked!');
-              console.log('  onClose exists:', !!onClose);
-              console.log('  onClose type:', typeof onClose);
-              e.preventDefault();
               e.stopPropagation();
-              console.log('  Calling onClose()...');
-              onClose();
-              console.log('  ✅ onClose() called');
+              handleClose();
             }}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors"
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-lg font-medium transition-colors"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={(e) => {
-              console.log('💾 Save button clicked!');
-              console.log('  handleSave exists:', !!handleSave);
-              console.log('  handleSave type:', typeof handleSave);
-              e.preventDefault();
               e.stopPropagation();
-              console.log('  Calling handleSave()...');
               handleSave();
-              console.log('  ✅ handleSave() called');
             }}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
           >

@@ -127,23 +127,23 @@ export const TopBar: React.FC = () => {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center px-6">
+    <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-6">
       {/* Hamburger Menu */}
       <button
         onClick={toggleSidebar}
-        className="p-2 hover:bg-gray-100 rounded-lg transition-colors mr-4"
+        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors mr-4"
       >
-        <Menu className="w-5 h-5 text-gray-700" />
+        <Menu className="w-5 h-5 text-gray-700 dark:text-gray-300" />
       </button>
 
       {/* Search Bar */}
       <div className="flex-1 max-w-2xl">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
           <input
             type="text"
             placeholder="Search analyses, documents..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
         </div>
       </div>
@@ -154,9 +154,9 @@ export const TopBar: React.FC = () => {
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
-            <Bell className="w-5 h-5 text-gray-700" />
+            <Bell className="w-5 h-5 text-gray-700 dark:text-gray-300" />
             {unreadCount > 0 && (
               <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                 {unreadCount > 9 ? '9+' : unreadCount}
@@ -171,11 +171,11 @@ export const TopBar: React.FC = () => {
                 className="fixed inset-0 z-10"
                 onClick={() => setShowNotifications(false)}
               />
-              <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-20 max-h-[500px] overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-gray-200">
-                  <h3 className="font-semibold text-gray-900">Notifications</h3>
+              <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20 max-h-[500px] overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">Notifications</h3>
                   {unreadCount > 0 && (
-                    <p className="text-sm text-gray-500 mt-1">{unreadCount} unread</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{unreadCount} unread</p>
                   )}
                 </div>
 
@@ -184,8 +184,8 @@ export const TopBar: React.FC = () => {
                     notifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer ${
-                          !notification.isRead ? 'bg-blue-50' : ''
+                        className={`p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${
+                          !notification.isRead ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                         }`}
                         onClick={() => {
                           setShowNotifications(false);
@@ -197,13 +197,13 @@ export const TopBar: React.FC = () => {
                             {getNotificationIcon(notification.type)}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 text-sm">
+                            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">
                               {notification.title}
                             </p>
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
                               {notification.message}
                             </p>
-                            <p className="text-xs text-gray-500 mt-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
                               {formatNotificationTime(notification.createdAt)}
                             </p>
                           </div>
@@ -216,21 +216,21 @@ export const TopBar: React.FC = () => {
                       </div>
                     ))
                   ) : (
-                    <div className="p-8 text-center text-gray-500">
-                      <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                      <Bell className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
                       <p>No notifications</p>
                     </div>
                   )}
                 </div>
 
                 {notifications.length > 0 && (
-                  <div className="p-3 border-t border-gray-200">
+                  <div className="p-3 border-t border-gray-200 dark:border-gray-700">
                     <button
                       onClick={() => {
                         setShowNotifications(false);
                         navigate('/notifications');
                       }}
-                      className="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium"
+                      className="w-full text-center text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium"
                     >
                       View All Notifications
                     </button>
@@ -245,24 +245,24 @@ export const TopBar: React.FC = () => {
         <div className="relative">
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="flex items-center gap-3 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
             {avatarUrl ? (
               <img
                 src={avatarUrl}
                 alt="Profile"
-                className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                className="w-8 h-8 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
               />
             ) : (
-              <div className="w-8 h-8 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full flex items-center justify-center">
                 <User className="w-5 h-5" />
               </div>
             )}
             <div className="text-left hidden md:block">
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                 {user?.firstName || user?.email?.split('@')[0]}
               </p>
-              <p className="text-xs text-gray-500">{user?.email}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
             </div>
           </button>
 
@@ -273,13 +273,13 @@ export const TopBar: React.FC = () => {
                 className="fixed inset-0 z-10"
                 onClick={() => setShowUserMenu(false)}
               />
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-20">
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-20">
                 <button
                   onClick={() => {
                     navigate('/profile');
                     setShowUserMenu(false);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <User className="w-4 h-4" />
                   <span>Profile</span>
@@ -289,15 +289,15 @@ export const TopBar: React.FC = () => {
                     navigate('/settings');
                     setShowUserMenu(false);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <Settings className="w-4 h-4" />
                   <span>Settings</span>
                 </button>
-                <hr className="my-2" />
+                <hr className="my-2 border-gray-200 dark:border-gray-700" />
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Sign Out</span>

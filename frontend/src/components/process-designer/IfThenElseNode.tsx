@@ -42,8 +42,8 @@ export const IfThenElseNode = memo(({ data, selected }: NodeProps<IfThenElseNode
       {/* Card Container */}
       <div 
         className={`
-          bg-white rounded-lg shadow-lg border-2 transition-all duration-200
-          ${selected ? 'border-blue-500 shadow-xl' : 'border-gray-200'}
+          bg-white dark:bg-gray-800 rounded-lg shadow-lg border-2 transition-all duration-200
+          ${selected ? 'border-blue-500 shadow-xl' : 'border-gray-200 dark:border-gray-700'}
         `}
         style={{ 
           minHeight: '90px',
@@ -51,14 +51,14 @@ export const IfThenElseNode = memo(({ data, selected }: NodeProps<IfThenElseNode
         }}
       >
         {/* Header Section */}
-        <div className="flex items-center justify-between p-3 border-b border-gray-100">
+        <div className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700">
           {/* Left: Icon + Title */}
           <div className="flex items-center space-x-2 flex-1">
-            <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center flex-shrink-0">
-              <GitBranch className="w-5 h-5 text-blue-600" />
+            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-md flex items-center justify-center flex-shrink-0">
+              <GitBranch className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-gray-900 truncate">
+              <div className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                 {data.label || 'IF THEN ELSE'}
               </div>
             </div>
@@ -68,17 +68,17 @@ export const IfThenElseNode = memo(({ data, selected }: NodeProps<IfThenElseNode
           {data.onEdit && (
             <button
               onClick={handleEditClick}
-              className="w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center justify-center flex-shrink-0 ml-2"
+              className="w-6 h-6 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md flex items-center justify-center flex-shrink-0 ml-2"
               title="Edit condition"
             >
-              <Edit3 className="w-3 h-3 text-gray-600" />
+              <Edit3 className="w-3 h-3 text-gray-600 dark:text-gray-300" />
             </button>
           )}
         </div>
 
         {/* Condition Display */}
-        <div className="px-3 py-2 bg-gray-50">
-          <div className="text-xs text-gray-500 font-mono truncate">
+        <div className="px-3 py-2 bg-gray-50 dark:bg-gray-700">
+          <div className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">
             {displayCondition}
           </div>
         </div>
@@ -86,12 +86,12 @@ export const IfThenElseNode = memo(({ data, selected }: NodeProps<IfThenElseNode
         {/* IF/ELSE Labels Row */}
         <div className="flex items-center justify-between px-3 py-2">
           <div className="flex items-center space-x-1">
-            <div className="text-xs font-bold text-green-600">IF</div>
+            <div className="text-xs font-bold text-green-600 dark:text-green-400">IF</div>
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
           </div>
           <div className="flex items-center space-x-1">
             <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-            <div className="text-xs font-bold text-red-600">ELSE</div>
+            <div className="text-xs font-bold text-red-600 dark:text-red-400">ELSE</div>
           </div>
         </div>
       </div>

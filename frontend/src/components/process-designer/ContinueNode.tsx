@@ -28,8 +28,8 @@ export const ContinueNode = memo(({ data, selected }: NodeProps<ContinueNodeData
   return (
     <div 
       className={`
-        relative bg-white rounded-lg shadow-lg transition-all duration-200
-        ${selected ? 'ring-4 ring-green-300' : 'hover:shadow-xl'}
+        relative bg-white dark:bg-gray-800 rounded-lg shadow-lg transition-all duration-200
+        ${selected ? 'ring-4 ring-green-300 dark:ring-green-500' : 'hover:shadow-xl'}
       `}
       style={{ 
         width: '200px',
@@ -51,29 +51,29 @@ export const ContinueNode = memo(({ data, selected }: NodeProps<ContinueNodeData
 
       {/* Content */}
       <div className="flex items-start space-x-3">
-        <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-          <CornerDownRight className="w-6 h-6 text-green-600" />
+        <div className="flex-shrink-0 w-10 h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+          <CornerDownRight className="w-6 h-6 text-green-600 dark:text-green-400" />
         </div>
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900">Continue</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Continue</h3>
             
             {data.onEdit && (
               <button
                 onClick={handleEditClick}
-                className="w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded flex items-center justify-center transition-colors"
+                className="w-6 h-6 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded flex items-center justify-center transition-colors"
                 title="Edit continue"
               >
-                <Edit3 className="w-3 h-3 text-gray-600" />
+                <Edit3 className="w-3 h-3 text-gray-600 dark:text-gray-300" />
               </button>
             )}
           </div>
           
-          <p className="text-xs text-gray-500 mt-0.5">Skip to next iteration</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Skip to next iteration</p>
           
           {data.skipCount && data.skipCount > 1 && (
-            <div className="mt-2 px-2 py-1 bg-green-50 rounded text-xs text-green-700 font-mono">
+            <div className="mt-2 px-2 py-1 bg-green-50 dark:bg-green-900/30 rounded text-xs text-green-700 dark:text-green-300 font-mono">
               Skip: {data.skipCount} iterations
             </div>
           )}

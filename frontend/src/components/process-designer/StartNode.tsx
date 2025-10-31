@@ -89,8 +89,8 @@ export const StartNode = memo(({ data, selected }: NodeProps<StartNodeData>) => 
   return (
     <div
       className={`
-        bg-white rounded-lg shadow-lg border-2 transition-all duration-200 relative
-        ${selected ? 'border-green-500 shadow-xl scale-105' : 'border-green-300 hover:border-green-400'}
+        bg-white dark:bg-gray-800 rounded-lg shadow-lg border-2 transition-all duration-200 relative
+        ${selected ? 'border-green-500 shadow-xl scale-105' : 'border-green-300 dark:border-green-600 hover:border-green-400'}
       `}
       style={{ minWidth: '200px' }}
     >
@@ -103,10 +103,10 @@ export const StartNode = memo(({ data, selected }: NodeProps<StartNodeData>) => 
               data.onConfigure();
             }
           }}
-          className="absolute top-2 right-2 p-1.5 bg-white rounded-md shadow-md hover:bg-gray-50 transition-colors z-10 border border-gray-200"
+          className="absolute top-2 right-2 p-1.5 bg-white dark:bg-gray-700 rounded-md shadow-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors z-10 border border-gray-200 dark:border-gray-600"
           title="Configure trigger"
         >
-          <Settings className="w-3.5 h-3.5 text-gray-600" />
+          <Settings className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300" />
         </button>
       )}
 
@@ -132,7 +132,7 @@ export const StartNode = memo(({ data, selected }: NodeProps<StartNodeData>) => 
 
         {/* Label */}
         <div className="text-center mb-2">
-          <h3 className="font-bold text-gray-900 text-lg">{data.label}</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg">{data.label}</h3>
         </div>
 
         {/* Trigger Summary */}
@@ -140,7 +140,7 @@ export const StartNode = memo(({ data, selected }: NodeProps<StartNodeData>) => 
           <div
             className={`
               text-xs px-3 py-1.5 rounded-full inline-block
-              ${hasConfig ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}
+              ${hasConfig ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}
             `}
           >
             {summary}
@@ -157,7 +157,7 @@ export const StartNode = memo(({ data, selected }: NodeProps<StartNodeData>) => 
                   data.onConfigure();
                 }
               }}
-              className="text-xs text-blue-600 hover:text-blue-700 underline"
+              className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
             >
               Configure trigger
             </button>

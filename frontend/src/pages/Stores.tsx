@@ -249,8 +249,8 @@ export const Stores: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Storage Stores</h1>
-          <p className="text-gray-600 mt-1">Manage data storage backends</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Storage Stores</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage data storage backends</p>
         </div>
         <Button
           onClick={() => {
@@ -268,8 +268,8 @@ export const Stores: React.FC = () => {
       {stores.length === 0 ? (
         <Card>
           <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No stores configured</h3>
-            <p className="text-gray-600 mb-4">Create your first storage backend</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No stores configured</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">Create your first storage backend</p>
             <Button
               onClick={() => {
                 resetForm();
@@ -288,7 +288,7 @@ export const Stores: React.FC = () => {
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{store.name}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{store.name}</h3>
                     {store.isDefault && <Star className="w-5 h-5 text-yellow-500 fill-current" />}
                   </div>
                   <div className="mt-1">
@@ -300,7 +300,7 @@ export const Stores: React.FC = () => {
                 </Badge>
               </div>
 
-              <div className="space-y-2 mb-4 text-sm text-gray-600">
+              <div className="space-y-2 mb-4 text-sm text-gray-600 dark:text-gray-400">
                 {store.storeType === 'database' && store.config.host && (
                   <div>
                     <span className="font-medium">Host:</span> {store.config.host}:{store.config.port}
@@ -367,15 +367,15 @@ export const Stores: React.FC = () => {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">
+              <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
                 {editingStore ? 'Edit Store' : 'Create Store'}
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Store Name *
                   </label>
                   <input
@@ -383,19 +383,19 @@ export const Stores: React.FC = () => {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     placeholder="My Database Store"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Store Type *
                   </label>
                   <select
                     value={formData.storeType}
                     onChange={(e) => setFormData({ ...formData, storeType: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="database">Database (PostgreSQL)</option>
                     <option value="s3">Amazon S3</option>
@@ -413,7 +413,7 @@ export const Stores: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
                     className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                   />
-                  <label htmlFor="isDefault" className="ml-2 text-sm text-gray-700">
+                  <label htmlFor="isDefault" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
                     Set as default store
                   </label>
                 </div>
@@ -422,7 +422,7 @@ export const Stores: React.FC = () => {
                 {formData.storeType === 'database' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Host *</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Host *</label>
                       <input
                         type="text"
                         required
@@ -431,13 +431,13 @@ export const Stores: React.FC = () => {
                           ...formData,
                           config: { ...formData.config, host: e.target.value }
                         })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
                         placeholder="localhost"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Port *</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Port *</label>
                         <input
                           type="number"
                           required
@@ -446,11 +446,11 @@ export const Stores: React.FC = () => {
                             ...formData,
                             config: { ...formData.config, port: parseInt(e.target.value) }
                           })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Database *</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Database *</label>
                         <input
                           type="text"
                           required
@@ -459,13 +459,13 @@ export const Stores: React.FC = () => {
                             ...formData,
                             config: { ...formData.config, database: e.target.value }
                           })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
                         <input
                           type="text"
                           value={formData.config.username}
@@ -473,11 +473,11 @@ export const Stores: React.FC = () => {
                             ...formData,
                             config: { ...formData.config, username: e.target.value }
                           })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
                         <input
                           type="password"
                           value={formData.config.password}
@@ -485,7 +485,7 @@ export const Stores: React.FC = () => {
                             ...formData,
                             config: { ...formData.config, password: e.target.value }
                           })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
                         />
                       </div>
                     </div>
@@ -497,7 +497,7 @@ export const Stores: React.FC = () => {
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Region *</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Region *</label>
                         <input
                           type="text"
                           required
@@ -506,12 +506,12 @@ export const Stores: React.FC = () => {
                             ...formData,
                             config: { ...formData.config, region: e.target.value }
                           })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
                           placeholder="us-east-1"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Bucket *</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bucket *</label>
                         <input
                           type="text"
                           required
@@ -520,12 +520,12 @@ export const Stores: React.FC = () => {
                             ...formData,
                             config: { ...formData.config, bucket: e.target.value }
                           })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Access Key ID *</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Access Key ID *</label>
                       <input
                         type="text"
                         required
@@ -534,11 +534,11 @@ export const Stores: React.FC = () => {
                           ...formData,
                           config: { ...formData.config, accessKeyId: e.target.value }
                         })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Secret Access Key *</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Secret Access Key *</label>
                       <input
                         type="password"
                         required
@@ -547,7 +547,7 @@ export const Stores: React.FC = () => {
                           ...formData,
                           config: { ...formData.config, secretAccessKey: e.target.value }
                         })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
                       />
                     </div>
                   </>
@@ -556,7 +556,7 @@ export const Stores: React.FC = () => {
                 {/* Redis Configuration */}
                 {formData.storeType === 'redis' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Redis URL *</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Redis URL *</label>
                     <input
                       type="text"
                       required
@@ -574,7 +574,7 @@ export const Stores: React.FC = () => {
                 {/* File System Configuration */}
                 {formData.storeType === 'local_file' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Base Path *</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Base Path *</label>
                     <input
                       type="text"
                       required
@@ -597,7 +597,7 @@ export const Stores: React.FC = () => {
                       setEditingStore(null);
                       resetForm();
                     }}
-                    className="bg-gray-200 hover:bg-gray-300"
+                    className="bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200"
                   >
                     Cancel
                   </Button>

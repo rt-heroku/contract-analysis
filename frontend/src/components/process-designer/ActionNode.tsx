@@ -60,13 +60,13 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
   const getBadgeClass = () => {
     switch (data.actionType) {
       case 'system':
-        return 'bg-purple-100 text-purple-700 border-purple-200';
+        return 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700';
       case 'user_defined':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
+        return 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700';
       case 'connector':
-        return 'bg-green-100 text-green-700 border-green-200';
+        return 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700';
       default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600';
     }
   };
 
@@ -147,8 +147,8 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
     <div
       onDoubleClick={handleDoubleClick}
       className={`
-        bg-white rounded-lg shadow-lg border-2 transition-all duration-200
-        ${selected ? 'border-blue-500 shadow-xl' : 'border-gray-200 hover:border-blue-300'}
+        bg-white dark:bg-gray-800 rounded-lg shadow-lg border-2 transition-all duration-200
+        ${selected ? 'border-blue-500 shadow-xl' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}
         cursor-pointer relative
       `}
       style={{ minWidth: '240px', maxWidth: '300px' }}
@@ -189,7 +189,7 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
 
           {/* Title */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 text-sm leading-tight truncate">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm leading-tight truncate">
               {data.label}
             </h3>
           </div>
@@ -198,23 +198,23 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
           {data.onEdit && (
             <button
               onClick={handleEditClick}
-              className="flex-shrink-0 w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-md flex items-center justify-center transition-colors"
+              className="flex-shrink-0 w-6 h-6 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md flex items-center justify-center transition-colors"
               title="Edit action"
             >
-              <Edit3 className="w-3 h-3 text-gray-600" />
+              <Edit3 className="w-3 h-3 text-gray-600 dark:text-gray-300" />
             </button>
           )}
         </div>
 
         {/* Metadata Row (if exists) */}
         {(data.metadata || data.connectorName) && (
-          <div className="flex items-center space-x-2 text-xs text-gray-600 bg-gray-50 px-2 py-1.5 rounded-md">
-            <LucideIcons.Zap className="w-3 h-3 text-gray-400" />
+          <div className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 px-2 py-1.5 rounded-md">
+            <LucideIcons.Zap className="w-3 h-3 text-gray-400 dark:text-gray-500" />
             <span className="truncate">
               {data.metadata || data.connectorName}
             </span>
             {data.actionType === 'connector' && (
-              <LucideIcons.Eye className="w-3 h-3 text-gray-400 ml-auto" />
+              <LucideIcons.Eye className="w-3 h-3 text-gray-400 dark:text-gray-500 ml-auto" />
             )}
           </div>
         )}
@@ -268,7 +268,7 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
             />
             {handle.label && (
               <div
-                className="absolute text-xs font-medium px-2 py-0.5 bg-white rounded shadow-sm border border-gray-300 whitespace-nowrap pointer-events-none"
+                className="absolute text-xs font-medium px-2 py-0.5 bg-white dark:bg-gray-800 rounded shadow-sm border border-gray-300 dark:border-gray-600 whitespace-nowrap pointer-events-none"
                 style={
                   layoutDirection === 'horizontal'
                     ? {

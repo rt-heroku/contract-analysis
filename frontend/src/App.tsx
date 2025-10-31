@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { ToastProvider } from './context/ToastContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { MainLayout } from './components/layout/MainLayout';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
@@ -37,11 +38,12 @@ import { FirstTimeSetup } from './pages/FirstTimeSetup';
 
 const App = () => {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <ToastProvider>
-          <Router>
-          <Routes>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppProvider>
+          <ToastProvider>
+            <Router>
+            <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -82,11 +84,12 @@ const App = () => {
 
             {/* Default Route */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-          </Router>
-        </ToastProvider>
-      </AppProvider>
-    </AuthProvider>
+            </Routes>
+            </Router>
+          </ToastProvider>
+        </AppProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

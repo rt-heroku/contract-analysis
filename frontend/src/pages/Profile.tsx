@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useTheme } from '@/context/ThemeContext';
 import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { User, Mail, Calendar, Upload, X, Camera, Save, Send, Lock, Key } from 'lucide-react';
+import { User, Mail, Calendar, Upload, X, Camera, Save, Send, Lock, Key, Moon, Sun } from 'lucide-react';
 
 interface UserProfile {
   id: number;
@@ -26,6 +27,7 @@ interface UserProfile {
 export const Profile: React.FC = () => {
   const { refreshAuth } = useAuth();
   const { can, isViewer } = usePermissions();
+  const { theme, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -263,8 +265,8 @@ export const Profile: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">My Profile</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             {isViewer ? 'View your personal information' : 'Manage your personal information'}
           </p>
         </div>
@@ -471,6 +473,50 @@ export const Profile: React.FC = () => {
             </Button>
           </div>
         )}
+      </Card>
+
+      {/* Appearance Settings */}
+      <Card title="Appearance">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white dark:bg-gray-700 rounded-lg">
+                {theme === 'dark' ? (
+                  <Moon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                ) : (
+                  <Sun className="w-6 h-6 text-amber-500" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Theme</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {theme === 'dark' ? 'Dark mode is enabled' : 'Light mode is enabled'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={toggleTheme}
+              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                theme === 'dark' ? 'bg-indigo-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                  theme === 'dark' ? 'translate-x-7' : 'translate-x-1'
+                }`}
+              >
+                {theme === 'dark' ? (
+                  <Moon className="w-4 h-4 text-indigo-600 m-1" />
+                ) : (
+                  <Sun className="w-4 h-4 text-amber-500 m-1" />
+                )}
+              </span>
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Choose your preferred theme. Dark mode reduces eye strain in low-light environments.
+          </p>
+        </div>
       </Card>
 
       {/* Change Password */}

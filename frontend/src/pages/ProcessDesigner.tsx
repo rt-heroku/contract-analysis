@@ -21,6 +21,7 @@ import 'reactflow/dist/style.css';
 import dagre from 'dagre';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '@/lib/api';
+import { useTheme } from '@/context/ThemeContext';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { Play, Save, Download, Search, Plus, Settings, ZoomIn, ZoomOut, RefreshCw, ArrowLeftRight, ArrowUpDown, DatabaseZap, MousePointerSquareDashed, Variable, FileUp, Edit2 } from 'lucide-react';
@@ -60,6 +61,7 @@ const ProcessDesignerInner: React.FC = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
+  const { theme } = useTheme();
   
   // Layout Configuration - Node Positions
   const LAYOUT_CONFIG = {
@@ -487,16 +489,29 @@ const ProcessDesignerInner: React.FC = () => {
       }
     });
     
-    // Add edges to dagre graph (only between non-fixed nodes)
+    // Add edges to dagre graph
+    // Include edges FROM start (to properly position first-level nodes)
+    // but exclude edges TO start or edges involving globalError
     edges.forEach((edge) => {
       const sourceNode = nodes.find(n => n.id === edge.source);
       const targetNode = nodes.find(n => n.id === edge.target);
       
-      // Only add edge if neither endpoint is Start or Global Error
-      if (sourceNode?.type !== 'start' && 
-          sourceNode?.type !== 'globalError' &&
-          targetNode?.type !== 'start' && 
-          targetNode?.type !== 'globalError') {
+      // Skip edges involving globalError or edges going TO start
+      if (sourceNode?.type === 'globalError' || 
+          targetNode?.type === 'globalError' ||
+          targetNode?.type === 'start') {
+        return;
+      }
+      
+      // For edges FROM start, we need to add a virtual start node to dagre
+      if (sourceNode?.type === 'start') {
+        // Add start node to dagre temporarily for edge calculation
+        if (!dagreGraph.hasNode('__virtual_start__')) {
+          dagreGraph.setNode('__virtual_start__', { width: 0, height: 0 });
+        }
+        dagreGraph.setEdge('__virtual_start__', edge.target);
+      } else {
+        // Regular edge between action nodes
         dagreGraph.setEdge(edge.source, edge.target);
       }
     });
@@ -504,13 +519,27 @@ const ProcessDesignerInner: React.FC = () => {
     // Run dagre layout algorithm
     dagre.layout(dagreGraph);
     
-    // Calculate offset to position dagre layout relative to Start node
-    const startOffsetX = useDirection === 'horizontal' 
-      ? LAYOUT_CONFIG.START_POSITION.x + 300  // Position action nodes to the right of Start
-      : LAYOUT_CONFIG.START_POSITION.x - 200; // Offset left to align with Start (compensate for dagre centering)
-    const startOffsetY = useDirection === 'horizontal'
-      ? LAYOUT_CONFIG.START_POSITION.y - (NODE_HEIGHT / 2)  // Align vertically with Start center
-      : LAYOUT_CONFIG.START_POSITION.y + 300; // Position action nodes below Start with proper spacing
+    // Get virtual start node position to calculate offset
+    const virtualStartNode = dagreGraph.node('__virtual_start__');
+    
+    // Calculate offset to position dagre layout relative to actual Start node
+    let startOffsetX, startOffsetY;
+    
+    if (useDirection === 'horizontal') {
+      // Horizontal layout: nodes flow left to right
+      startOffsetX = LAYOUT_CONFIG.START_POSITION.x + 300; // Position nodes to the right of Start
+      // Align first rank vertically with Start center, compensating for virtual start position
+      startOffsetY = virtualStartNode 
+        ? LAYOUT_CONFIG.START_POSITION.y - virtualStartNode.y 
+        : LAYOUT_CONFIG.START_POSITION.y - (NODE_HEIGHT / 2);
+    } else {
+      // Vertical layout: nodes flow top to bottom
+      // Align first rank horizontally with Start center, compensating for virtual start position
+      startOffsetX = virtualStartNode
+        ? LAYOUT_CONFIG.START_POSITION.x - virtualStartNode.x
+        : LAYOUT_CONFIG.START_POSITION.x - 200;
+      startOffsetY = LAYOUT_CONFIG.START_POSITION.y + 300; // Position nodes below Start
+    }
     
     // Update node positions with dagre calculated positions + layoutDirection
     // and save them to the appropriate layout property
@@ -987,7 +1016,6 @@ const ProcessDesignerInner: React.FC = () => {
     
     // Loop containers should use loop condition modal instead
     if (node && node.type === 'loopContainer') {
-      console.log('⚠️ ProcessDesigner - Loop container detected, opening condition modal instead');
       setCurrentLoopNodeId(nodeId);
       setCurrentLoopConditions(node.data.conditions || []);
       setLoopConditionModalOpen(true);
@@ -995,15 +1023,8 @@ const ProcessDesignerInner: React.FC = () => {
     }
     
     if (node) {
-      console.log('✅ ProcessDesigner - Opening NodeEditModal for node type:', node.type);
-      console.log('  📍 BEFORE state update - editModalOpen:', editModalOpen);
-      console.log('  📍 BEFORE state update - selectedNode:', selectedNode);
       setSelectedNode(node);
       setEditModalOpen(true);
-      console.log('  ✅ State update called - modal should open now');
-      // Note: State updates are async, so the actual values won't change immediately here
-    } else {
-      console.log('❌ ProcessDesigner - Node not found');
     }
   }, [nodes, editModalOpen, selectedNode]);
 
@@ -1834,17 +1855,17 @@ const ProcessDesignerInner: React.FC = () => {
   }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-50" onClick={closeCanvasContextMenu}>
+    <div className="h-screen flex overflow-hidden bg-gray-50 dark:bg-gray-900" onClick={closeCanvasContextMenu}>
         {/* Left Panel - Collapsible Action Palette */}
         {/* Left Panel Hidden - Now using Floating Actions Modal */}
 
         {/* Canvas - Fill remaining space */}
         <div className="flex-1 flex flex-col min-w-0" ref={reactFlowWrapper}>
           {nodes.length === 0 ? (
-            <div className="flex items-center justify-center h-full bg-gray-50">
+            <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900">
               <div className="text-center">
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">Empty Process Canvas</h3>
-                <p className="text-gray-500 mb-4">Add a start node to begin building your process</p>
+                <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">Empty Process Canvas</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">Add a start node to begin building your process</p>
                 <Button
                   onClick={() => {
                     const startNode: Node = {
@@ -1914,24 +1935,24 @@ const ProcessDesignerInner: React.FC = () => {
                     variant={backgroundPattern === 'dots' ? BackgroundVariant.Dots : BackgroundVariant.Lines} 
                     gap={20} 
                     size={backgroundPattern === 'dots' ? 2 : 1} 
-                    color="#e5e7eb"
-                    style={{ backgroundColor: '#f9fafb' }}
+                    color={theme === 'dark' ? '#374151' : '#e5e7eb'}
+                    style={{ backgroundColor: theme === 'dark' ? '#111827' : '#f9fafb' }}
                   />
                   {/* Controls positioned at top-left */}
                   <Controls 
                     position="top-left" 
-                    className="bg-white shadow-lg rounded-lg border border-gray-200"
+                    className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700"
                   />
                   
                   {/* Actions Button */}
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '35px' }}>
                     <button
                       onClick={() => setActionsModalOpen(true)}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 px-2 py-2 h-10 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                      className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 px-2 py-2 h-10 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center space-x-2"
                       title="Actions Library"
                     >
-                      <DatabaseZap className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm font-medium text-gray-700">Actions</span>
+                      <DatabaseZap className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Actions</span>
                     </button>
                   </div>
                   
@@ -1939,10 +1960,10 @@ const ProcessDesignerInner: React.FC = () => {
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '135px' }}>
                     <button
                       onClick={() => setProcessPropertiesOpen(true)}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                      className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-2 h-10 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
                       title="Process Properties"
                     >
-                      <Settings className="w-4 h-4 text-gray-600" />
+                      <Settings className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                     </button>
                   </div>
                   
@@ -1950,10 +1971,10 @@ const ProcessDesignerInner: React.FC = () => {
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '177px' }}>
                     <button
                       onClick={() => setVariablesPanelOpen(true)}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                      className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-2 h-10 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
                       title="Process Variables"
                     >
-                      <Variable className="w-4 h-4 text-gray-600" />
+                      <Variable className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                     </button>
                   </div>
                   
@@ -1961,12 +1982,12 @@ const ProcessDesignerInner: React.FC = () => {
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '220px' }}>
                     <button
                       onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
-                      className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center ${
-                        isMultiSelectMode ? 'bg-blue-50 border-blue-400' : ''
+                      className={`bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-2 h-10 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center ${
+                        isMultiSelectMode ? 'bg-blue-50 dark:bg-blue-900 border-blue-400' : ''
                       }`}
                       title={isMultiSelectMode ? 'Disable Multi-Select' : 'Enable Multi-Select'}
                     >
-                      <MousePointerSquareDashed className={`w-4 h-4 ${isMultiSelectMode ? 'text-blue-600' : 'text-gray-600'}`} />
+                      <MousePointerSquareDashed className={`w-4 h-4 ${isMultiSelectMode ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-300'}`} />
                     </button>
                   </div>
                   
@@ -1974,13 +1995,13 @@ const ProcessDesignerInner: React.FC = () => {
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '262px' }}>
                     <button
                       onClick={toggleLayout}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                      className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-2 h-10 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
                       title={`Switch to ${layoutDirection === 'horizontal' ? 'Vertical' : 'Horizontal'} Layout`}
                     >
                       {layoutDirection === 'horizontal' ? (
-                        <ArrowUpDown className="w-4 h-4 text-gray-600" />
+                        <ArrowUpDown className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                       ) : (
-                        <ArrowLeftRight className="w-4 h-4 text-gray-600" />
+                        <ArrowLeftRight className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                       )}
                     </button>
                   </div>
@@ -1989,17 +2010,17 @@ const ProcessDesignerInner: React.FC = () => {
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '305px' }}>
                     <button
                       onClick={autoArrange}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                      className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-2 h-10 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
                       title="Auto-Arrange Nodes"
                     >
-                      <RefreshCw className="w-4 h-4 text-gray-600" />
+                      <RefreshCw className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                     </button>
                   </div>
                   
                   {/* Zoom Percentage Display */}
                   <div className="absolute top-4 left-4 z-10" style={{ marginLeft: '350px' }}>
-                    <div className="bg-white shadow-lg rounded-lg border border-gray-200 px-3 h-10 flex items-center justify-center">
-                      <span className="text-xs font-semibold text-gray-700">
+                    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 px-3 h-10 flex items-center justify-center">
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                         {Math.round(currentZoom * 100)}%
                       </span>
                     </div>
@@ -2008,12 +2029,12 @@ const ProcessDesignerInner: React.FC = () => {
                   {/* Process Name/Description - Center */}
                   <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
                     {editingProcessName ? (
-                      <div className="bg-white shadow-lg rounded-lg border border-gray-200 p-3" style={{ minWidth: '300px' }}>
+                      <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-3" style={{ minWidth: '300px' }}>
                         <input
                           type="text"
                           value={processName}
                           onChange={(e) => setProcessName(e.target.value)}
-                          className="w-full text-lg font-bold border-none outline-none focus:ring-0 bg-transparent mb-2"
+                          className="w-full text-lg font-bold border-none outline-none focus:ring-0 bg-transparent dark:text-gray-100 mb-2"
                           placeholder="Process Name"
                           autoFocus
                         />
@@ -2021,7 +2042,7 @@ const ProcessDesignerInner: React.FC = () => {
                           type="text"
                           value={processDescription}
                           onChange={(e) => setProcessDescription(e.target.value)}
-                          className="w-full text-sm text-gray-600 border-none outline-none focus:ring-0 bg-transparent"
+                          className="w-full text-sm text-gray-600 dark:text-gray-400 border-none outline-none focus:ring-0 bg-transparent"
                           placeholder="Add description..."
                         />
                         <div className="mt-2 flex justify-end">
@@ -2036,16 +2057,16 @@ const ProcessDesignerInner: React.FC = () => {
                     ) : (
                       <button
                         onClick={() => setEditingProcessName(true)}
-                        className="bg-white shadow-lg rounded-lg border border-gray-200 px-4 py-2 h-10 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+                        className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 h-10 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center space-x-2"
                         title="Edit Process Name"
                       >
                         <div className="text-left">
-                          <div className="text-sm font-semibold text-gray-900">{processName}</div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{processName}</div>
                           {processDescription && (
-                            <div className="text-xs text-gray-500 truncate max-w-xs">{processDescription}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-xs">{processDescription}</div>
                           )}
                         </div>
-                        <Edit2 className="w-3 h-3 text-gray-400" />
+                        <Edit2 className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                       </button>
                     )}
                   </div>
@@ -2055,43 +2076,43 @@ const ProcessDesignerInner: React.FC = () => {
                     {/* Export Button */}
                     <button
                       onClick={handleExport}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                      className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-2 h-10 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
                       title="Export Process"
                     >
-                      <Download className="w-4 h-4 text-gray-600" />
+                      <Download className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                     </button>
 
                     {/* Save Button */}
                     <button
                       onClick={handleSave}
                       disabled={saving}
-                      className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center ${
+                      className={`bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-2 h-10 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center ${
                         saving ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                       title="Save Process"
                     >
-                      <Save className="w-4 h-4 text-blue-600" />
+                      <Save className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     </button>
 
                     {/* Publish Button */}
                     <button
                       onClick={handlePublish}
                       disabled={saving}
-                      className={`bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center ${
+                      className={`bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-2 h-10 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center ${
                         saving ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
                       title="Publish Process"
                     >
-                      <FileUp className="w-4 h-4 text-purple-600" />
+                      <FileUp className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                     </button>
 
                     {/* Run Button */}
                     <button
                       onClick={handleExecute}
-                      className="bg-white shadow-lg rounded-lg border border-gray-200 p-2 h-10 hover:bg-gray-50 transition-colors flex items-center justify-center"
+                      className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-2 h-10 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
                       title="Run Process"
                     >
-                      <Play className="w-4 h-4 text-green-600" />
+                      <Play className="w-4 h-4 text-green-600 dark:text-green-400" />
                     </button>
                   </div>
                   
@@ -2104,7 +2125,7 @@ const ProcessDesignerInner: React.FC = () => {
                       return node.data?.color as string || '#3b82f6';
                     }}
                     maskColor="rgba(0, 0, 0, 0.1)"
-                    className="bg-white shadow-lg rounded-lg border border-gray-200"
+                    className="bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700"
                     style={{ width: 120, height: 80 }}
                     pannable={false}
                     zoomable={false}
@@ -2303,14 +2324,10 @@ const ProcessDesignerInner: React.FC = () => {
         nodes={nodes}
         edges={edges}
         onClose={() => {
-          console.log('🚪 ProcessDesigner - NodeEditModal onClose called');
-          console.log('📊 Current state - editModalOpen:', editModalOpen);
           setEditModalOpen(false);
           setSelectedNode(null);
-          console.log('✅ ProcessDesigner - NodeEditModal state set to false');
         }}
         onSave={(nodeId, newConfig, newOutputSchema, newInputSchema) => {
-          console.log('💾 ProcessDesigner - NodeEditModal onSave called');
           setNodes((nds) =>
             nds.map((n) =>
               n.id === nodeId
@@ -2329,7 +2346,6 @@ const ProcessDesignerInner: React.FC = () => {
           );
           setEditModalOpen(false);
           setSelectedNode(null);
-          console.log('✅ ProcessDesigner - NodeEditModal closed after save');
         }}
         onDeleteEdge={(edgeId) => {
           setEdges((eds) => eds.filter((e) => e.id !== edgeId));
@@ -2490,10 +2506,7 @@ const ProcessDesignerInner: React.FC = () => {
       <LoopConditionModal
         isOpen={loopConditionModalOpen}
         currentConditions={currentLoopConditions}
-        onClose={() => {
-          console.log('🚪 ProcessDesigner - Modal onClose called, setting state to false');
-          setLoopConditionModalOpen(false);
-        }}
+        onClose={() => setLoopConditionModalOpen(false)}
         onSave={handleSaveLoopConditions}
       />
 

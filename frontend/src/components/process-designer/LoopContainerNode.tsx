@@ -108,9 +108,9 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
         }}
       >
         {/* Loop Label with Icon */}
-        <div className="flex items-center space-x-2 bg-white rounded-lg shadow-md px-3 py-2 border border-blue-200">
-          <RefreshCw className="w-5 h-5 text-blue-600" />
-          <span className="font-semibold text-blue-900 text-sm">{loopLabel}</span>
+        <div className="flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-lg shadow-md px-3 py-2 border border-blue-200 dark:border-blue-600">
+          <RefreshCw className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <span className="font-semibold text-blue-900 dark:text-blue-300 text-sm">{loopLabel}</span>
         </div>
 
         {/* Edit Button */}
@@ -127,17 +127,17 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
               console.log('👆 LoopContainerNode - CAPTURE Mouse down on edit button');
               e.stopPropagation();
             }}
-            className="w-8 h-8 bg-white hover:bg-gray-50 rounded-lg shadow-md border border-gray-200 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 flex items-center justify-center transition-colors cursor-pointer"
             title="Edit loop conditions"
             style={{ zIndex: 1001, pointerEvents: 'all' }}
           >
-            <Edit3 className="w-4 h-4 text-blue-600" />
+            <Edit3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </button>
         )}
 
         {/* Condition Display */}
-        <div className="bg-white rounded-lg shadow-md px-3 py-2 border border-gray-200 max-w-xs">
-          <span className="text-xs text-gray-600 font-mono truncate">{displayCondition}</span>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md px-3 py-2 border border-gray-200 dark:border-gray-700 max-w-xs">
+          <span className="text-xs text-gray-600 dark:text-gray-400 font-mono truncate">{displayCondition}</span>
         </div>
       </div>
       
@@ -149,7 +149,7 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
         <div 
           className={`
             rounded-lg border-2 border-dashed transition-all duration-200 relative
-            ${selected ? 'border-blue-500 bg-blue-50' : 'border-blue-300 bg-blue-50'}
+            ${selected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/10'}
           `}
           style={{ 
             width: '100%',

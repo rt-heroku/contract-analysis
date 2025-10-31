@@ -33,8 +33,8 @@ export const GlobalErrorNode = memo(({ data, selected }: NodeProps<GlobalErrorNo
   return (
     <div
       className={`
-        bg-white rounded-lg shadow-lg border-2 transition-all duration-200 relative
-        ${selected ? 'border-red-500 shadow-xl scale-105' : 'border-red-300 hover:border-red-400'}
+        bg-white dark:bg-gray-800 rounded-lg shadow-lg border-2 transition-all duration-200 relative
+        ${selected ? 'border-red-500 shadow-xl scale-105' : 'border-red-300 dark:border-red-600 hover:border-red-400'}
       `}
       style={{ minWidth: '200px' }}
     >
@@ -47,10 +47,10 @@ export const GlobalErrorNode = memo(({ data, selected }: NodeProps<GlobalErrorNo
               data.onConfigure();
             }
           }}
-          className="absolute top-2 right-2 p-1.5 bg-white rounded-md shadow-md hover:bg-gray-50 transition-colors z-10 border border-gray-200"
+          className="absolute top-2 right-2 p-1.5 bg-white dark:bg-gray-700 rounded-md shadow-md hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors z-10 border border-gray-200 dark:border-gray-600"
           title="Configure global error handler"
         >
-          <Settings className="w-3.5 h-3.5 text-gray-600" />
+          <Settings className="w-3.5 h-3.5 text-gray-600 dark:text-gray-300" />
         </button>
       )}
 
@@ -79,7 +79,7 @@ export const GlobalErrorNode = memo(({ data, selected }: NodeProps<GlobalErrorNo
 
         {/* Label */}
         <div className="text-center mb-2">
-          <h3 className="font-bold text-gray-900 text-lg">{data.label}</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg">{data.label}</h3>
         </div>
 
         {/* Configuration Summary */}
@@ -87,7 +87,7 @@ export const GlobalErrorNode = memo(({ data, selected }: NodeProps<GlobalErrorNo
           <div
             className={`
               text-xs px-3 py-1.5 rounded-full inline-block
-              ${hasConfig ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}
+              ${hasConfig ? 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}
             `}
           >
             {getSummary()}
@@ -104,7 +104,7 @@ export const GlobalErrorNode = memo(({ data, selected }: NodeProps<GlobalErrorNo
                   data.onConfigure();
                 }
               }}
-              className="text-xs text-red-600 hover:text-red-700 underline"
+              className="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 underline"
             >
               Configure handler
             </button>

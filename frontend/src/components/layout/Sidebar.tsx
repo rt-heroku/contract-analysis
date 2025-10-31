@@ -129,7 +129,7 @@ export const Sidebar: React.FC = () => {
           <button
             onClick={() => toggleExpanded(item.id)}
             className={cn(
-              'w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors',
+              'w-full flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
               depth > 0 && 'pl-12'
             )}
           >
@@ -145,8 +145,8 @@ export const Sidebar: React.FC = () => {
           <Link
             to={item.route || '#'}
             className={cn(
-              'flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors',
-              isActive && 'bg-primary-50 text-primary-700 border-r-4 border-primary-600',
+              'flex items-center gap-3 px-4 py-3 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
+              isActive && 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border-r-4 border-primary-600 dark:border-primary-400',
               depth > 0 && 'pl-12'
             )}
           >
@@ -167,9 +167,9 @@ export const Sidebar: React.FC = () => {
   if (!sidebarOpen) return null;
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen">
+    <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-screen">
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-gray-200">
+      <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
           {appLogo ? (
             <img 
@@ -186,7 +186,7 @@ export const Sidebar: React.FC = () => {
               <FileText className="w-5 h-5 text-white" />
             </div>
           )}
-          <span className="font-bold text-lg text-gray-900">{appName}</span>
+          <span className="font-bold text-lg text-gray-900 dark:text-gray-100">{appName}</span>
         </div>
       </div>
 
@@ -196,9 +196,9 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200 space-y-3">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
         <div className="flex items-center justify-center gap-2">
-          <span className="text-xs text-gray-500">Powered by</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">Powered by</span>
           <img 
             src="/images/logos/MuleSoft-RGB-icon.png" 
             alt="MuleSoft" 

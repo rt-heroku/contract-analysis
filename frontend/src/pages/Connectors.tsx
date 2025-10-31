@@ -337,7 +337,7 @@ export const Connectors: React.FC = () => {
     return (
       <div
         key={connector.id}
-        className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 relative"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 relative"
         style={{ borderLeft: `4px solid ${color}` }}
       >
         {/* Edit and Delete icons in top-right corner */}
@@ -363,7 +363,7 @@ export const Connectors: React.FC = () => {
             <IconComponent className="w-8 h-8" style={{ color }} />
           </div>
           <div className="flex-1">
-            <h3 className="text-xl font-semibold text-gray-900 mb-1 pr-20">{connector.name}</h3>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1 pr-20">{connector.name}</h3>
             <div className="flex items-center space-x-2">
               <Badge variant={connector.isActive ? 'success' : 'default'}>
                 {connector.isActive ? 'Active' : 'Inactive'}
@@ -438,7 +438,7 @@ export const Connectors: React.FC = () => {
             <IconComponent className="w-12 h-12" style={{ color }} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">{viewingConnector.name}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{viewingConnector.name}</h2>
             <p className="text-gray-600 capitalize">{viewingConnector.connectorType} Connector</p>
           </div>
         </div>
@@ -686,8 +686,8 @@ export const Connectors: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Connectors</h1>
-          <p className="text-gray-600 mt-1">Manage external service connections</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Connectors</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage external service connections</p>
         </div>
         <Button
           onClick={() => {
@@ -721,7 +721,7 @@ export const Connectors: React.FC = () => {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-4">
                 {editingConnector ? 'Edit Connector' : 'Create New Connector'}
@@ -865,7 +865,7 @@ export const Connectors: React.FC = () => {
       {/* OpenAPI Import Modal */}
       {showOpenApiModal && selectedConnector && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-4">
                 Import OpenAPI Spec for {selectedConnector.name}
