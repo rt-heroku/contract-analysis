@@ -16,6 +16,7 @@ interface LoopContainerNodeData {
   loopType?: 'for_each' | 'while' | 'do_while' | 'times';
   condition?: string;
   conditions?: ConditionalGroup[];
+  layoutDirection?: 'vertical' | 'horizontal';
   onEdit?: () => void;
   onAddNext?: () => void;
   showPlusButton?: boolean;
@@ -26,6 +27,9 @@ interface LoopContainerNodeData {
 export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContainerNodeData>) => {
   console.log('🔄 LoopContainerNode - Rendering, selected:', selected);
   console.log('📋 LoopContainerNode - Data:', data);
+  
+  // Default layout direction to vertical if not set
+  const layoutDirection = data.layoutDirection || 'vertical';
   
   // Track selection changes (when resize handles should appear)
   useEffect(() => {
@@ -256,34 +260,50 @@ export const LoopContainerNode = memo(({ data, selected }: NodeProps<LoopContain
         </div>
       </div>
 
-      {/* EXTERNAL HANDLES */}
+      {/* EXTERNAL HANDLES - Position changes based on layout direction */}
       
-      {/* Entry Point - Left Side */}
+      {/* Entry Point - Top (vertical) or Left (horizontal) */}
       <Handle
         type="target"
-        position={Position.Left}
+        position={layoutDirection === 'vertical' ? Position.Top : Position.Left}
         id="entry"
         className="w-4 h-4 !bg-blue-600 !border-2 !border-white"
-        style={{ left: -8, top: '50%' }}
+        style={
+          layoutDirection === 'vertical'
+            ? { top: -8, left: '50%', transform: 'translateX(-50%)' }
+            : { left: -8, top: '50%' }
+        }
       />
       <div
         className="absolute text-xs font-semibold px-2 py-0.5 bg-white rounded shadow-sm border border-blue-300 whitespace-nowrap pointer-events-none"
-        style={{ left: -45, top: 'calc(50% - 10px)', color: '#2563eb' }}
+        style={
+          layoutDirection === 'vertical'
+            ? { top: -30, left: '50%', transform: 'translateX(-50%)', color: '#2563eb' }
+            : { left: -45, top: 'calc(50% - 10px)', color: '#2563eb' }
+        }
       >
         entry
       </div>
 
-      {/* Exit Point - Right Side */}
+      {/* Exit Point - Bottom (vertical) or Right (horizontal) */}
       <Handle
         type="source"
-        position={Position.Right}
+        position={layoutDirection === 'vertical' ? Position.Bottom : Position.Right}
         id="exit"
         className="w-4 h-4 !bg-green-600 !border-2 !border-white"
-        style={{ right: -8, top: '50%' }}
+        style={
+          layoutDirection === 'vertical'
+            ? { bottom: -8, left: '50%', transform: 'translateX(-50%)' }
+            : { right: -8, top: '50%' }
+        }
       />
       <div
         className="absolute text-xs font-semibold px-2 py-0.5 bg-white rounded shadow-sm border border-green-300 whitespace-nowrap pointer-events-none"
-        style={{ right: -35, top: 'calc(50% - 10px)', color: '#16a34a' }}
+        style={
+          layoutDirection === 'vertical'
+            ? { bottom: -30, left: '50%', transform: 'translateX(-50%)', color: '#16a34a' }
+            : { right: -35, top: 'calc(50% - 10px)', color: '#16a34a' }
+        }
       >
         exit
       </div>
