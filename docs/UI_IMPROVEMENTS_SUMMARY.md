@@ -59,22 +59,22 @@
 └─────────────┴──────────────────┴──────────────┘
 ```
 
-**After:** Bottom-right, resizable
+**After:** Bottom of Settings panel, resizable
 ```
 ┌─────────────┬──────────────────┬──────────────┐
 │ Components  │                  │   Settings   │
 │             │      Canvas      │              │
-│             ├──────┬───────────┤              │
-│             │      │  Layers ▲ │              │
-└─────────────┴──────┴───────────┴──────────────┘
-                      └── Drag to resize
+│             │                  ├──────────────┤
+│             │                  │   Layers ▲   │
+└─────────────┴──────────────────┴──────────────┘
+                                  └── Drag to resize
 ```
 
 **How to Resize:**
-1. Move cursor to **top edge** of Layers panel
+1. Find the **horizontal divider** between Settings and Layers
 2. Cursor changes to ↕
 3. **Click and drag** up/down
-4. **Min:** 150px, **Max:** 600px
+4. **Min:** 150px, **Max:** 500px
 
 **Visual Feedback:**
 - Gray bar when idle
@@ -234,13 +234,13 @@
 - Range: 150px - 600px
 
 **Q: Where did Layers go?**
-- Check **bottom-right corner**
-- Fixed position, always there
-- Above settings panel edge
+- Check **bottom of Settings panel** (right sidebar)
+- Integrated with Settings
+- Look for the horizontal divider
 
 **Q: Can I move the Layers panel?**
 - Not yet (planned for future)
-- Current: fixed bottom-right
+- Current: bottom of Settings panel
 
 **Q: Icons too small?**
 - Switch to text mode (☰ button)

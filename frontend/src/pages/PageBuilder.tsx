@@ -155,8 +155,8 @@ const Toolbox: React.FC = () => {
   );
 };
 
-const ResizableLayers: React.FC = () => {
-  const [height, setHeight] = useState(300);
+const SettingsPanel: React.FC = () => {
+  const [layersHeight, setLayersHeight] = useState(250);
   const [isResizing, setIsResizing] = useState(false);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -167,8 +167,12 @@ const ResizableLayers: React.FC = () => {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isResizing) {
-        const newHeight = window.innerHeight - e.clientY;
-        setHeight(Math.max(150, Math.min(600, newHeight)));
+        const settingsPanel = document.querySelector('.settings-panel') as HTMLElement;
+        if (settingsPanel) {
+          const panelRect = settingsPanel.getBoundingClientRect();
+          const newHeight = panelRect.bottom - e.clientY;
+          setLayersHeight(Math.max(150, Math.min(500, newHeight)));
+        }
       }
     };
 
@@ -186,32 +190,6 @@ const ResizableLayers: React.FC = () => {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing]);
-
-  return (
-    <div
-      className="fixed bottom-0 right-80 bg-white dark:bg-gray-800 border-t border-l border-gray-200 dark:border-gray-700 shadow-lg"
-      style={{ height: `${height}px`, width: '320px' }}
-    >
-      {/* Resize Handle */}
-      <div
-        onMouseDown={handleMouseDown}
-        className={`absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-primary-500 transition-colors ${
-          isResizing ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600'
-        }`}
-      />
-      
-      {/* Content */}
-      <div className="h-full flex flex-col pt-3 pb-4 px-4">
-        <h3 className="font-bold mb-3 text-gray-900 dark:text-gray-100 text-sm">Layers</h3>
-        <div className="flex-1 overflow-y-auto layers-dark-mode">
-          <Layers expandRootOnLoad={true} />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const SettingsPanel: React.FC = () => {
   const { selected, actions } = useEditor((state, query) => {
     const currentNodeId = state.events.selected.values().next().value;
     
@@ -231,44 +209,68 @@ const SettingsPanel: React.FC = () => {
   });
 
   return (
-    <div className="w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
-      <div className="flex items-center gap-2 mb-4">
-        <SettingsIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-        <h3 className="font-bold text-gray-900 dark:text-gray-100">Settings</h3>
-      </div>
+    <div className="w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col settings-panel">
+      {/* Settings Section - Scrollable */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <SettingsIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+          <h3 className="font-bold text-gray-900 dark:text-gray-100">Settings</h3>
+        </div>
 
-      {selected ? (
-        <div className="space-y-4">
-          <div>
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              {selected.name}
-            </h4>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-              Component ID: {selected.id.substring(0, 8)}...
+        {selected ? (
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                {selected.name}
+              </h4>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Component ID: {selected.id.substring(0, 8)}...
+              </p>
+            </div>
+
+            {selected.settings && React.createElement(selected.settings)}
+
+            {selected.isDeletable && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => actions.delete(selected.id)}
+                  className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  Delete Component
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <SettingsIcon className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Select a component to edit its properties
             </p>
           </div>
+        )}
+      </div>
 
-          {selected.settings && React.createElement(selected.settings)}
+      {/* Resize Handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className={`h-1 cursor-ns-resize hover:bg-primary-500 transition-colors ${
+          isResizing ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600'
+        }`}
+      />
 
-          {selected.isDeletable && (
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={() => actions.delete(selected.id)}
-                className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                Delete Component
-              </button>
-            </div>
-          )}
+      {/* Layers Section - Fixed Height, Resizable */}
+      <div
+        className="border-t border-gray-200 dark:border-gray-700 flex flex-col"
+        style={{ height: `${layersHeight}px` }}
+      >
+        <div className="p-4 pb-2">
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm">Layers</h3>
         </div>
-      ) : (
-        <div className="text-center py-8">
-          <SettingsIcon className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Select a component to edit its properties
-          </p>
+        <div className="flex-1 overflow-y-auto px-4 pb-4 layers-dark-mode">
+          <Layers expandRootOnLoad={true} />
         </div>
-      )}
+      </div>
     </div>
   );
 };
@@ -424,9 +426,6 @@ export const PageBuilder: React.FC = () => {
         
         {/* Component Toolbar - appears above selected components */}
         <ComponentToolbar />
-        
-        {/* Resizable Layers Panel - bottom right */}
-        <ResizableLayers />
       </Editor>
 
       <AlertDialog

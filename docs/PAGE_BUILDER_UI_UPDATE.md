@@ -40,30 +40,31 @@ The component toolbox now has **two display modes**:
 - ≡ Column - Align left icon
 - 🪟 Modal - App window icon
 
-### 2. 📍 Resizable Layers Panel (Bottom Right)
+### 2. 📍 Resizable Layers Panel (Bottom of Settings)
 
-The Layers panel has been **moved to the bottom-right corner** and is now **resizable**!
+The Layers panel has been **integrated into the Settings panel at the bottom** and is now **resizable**!
 
 #### Features:
-- **Fixed position**: Bottom-right corner
-- **Resizable height**: Drag the top edge up/down
-- **Height range**: 150px - 600px
-- **Width**: 320px (fixed)
+- **Integrated location**: Bottom of Settings panel (right sidebar)
+- **Resizable height**: Drag the divider handle up/down
+- **Height range**: 150px - 500px
+- **Settings scroll independently**: Top section scrolls, Layers fixed at bottom
 - **Smooth resizing**: Visual feedback during drag
 - **Active indicator**: Blue highlight when resizing
 
 #### Benefits:
-- **Better workspace**: Main canvas has more horizontal space
-- **Flexible viewing**: Adjust panel height based on layer count
-- **Always accessible**: Fixed position means no scrolling to find it
-- **Less clutter**: Moved out of toolbox sidebar
+- **Better organization**: Settings and Layers in one unified sidebar
+- **Flexible viewing**: Adjust Layers height based on complexity
+- **Settings scrollable**: Long property lists don't push Layers out of view
+- **Space efficient**: No separate floating panel
 
 #### How to Resize:
-1. Hover over the **top edge** of the Layers panel
-2. Cursor changes to **resize (↕)**
-3. Click and drag **up** to make taller, **down** to make shorter
-4. Release to set size
-5. Resize handle turns **blue** when active
+1. Look for the **horizontal divider** between Settings and Layers
+2. Hover over it - cursor changes to **resize (↕)**
+3. Click and drag **up** to make Layers taller (Settings smaller)
+4. Click and drag **down** to make Layers shorter (Settings taller)
+5. Release to set size
+6. Divider turns **blue** when active
 
 ### 3. 🎨 Improved Workspace Layout
 
@@ -83,11 +84,10 @@ The Layers panel has been **moved to the bottom-right corner** and is now **resi
 │   Toolbox   │      Canvas      │   Settings   │
 │             │                  │              │
 │ Components  │                  │              │
-│ (Icon Grid) │                  │              │
-│             ├──────┬───────────┤              │
-│             │      │  Layers ▲ │              │
-└─────────────┴──────┴───────────┴──────────────┘
-                      └── Resizable
+│ (Icon Grid) │                  ├──────────────┤
+│             │                  │   Layers ▲   │
+└─────────────┴──────────────────┴──────────────┘
+                                  └── Resizable
 ```
 
 **Key Improvements:**
@@ -142,12 +142,22 @@ const ResizableLayers: React.FC = () => {
 
 ### Positioning
 ```css
-/* Layers Panel */
-position: fixed;
-bottom: 0;
-right: 80 (320px - settings panel width);
+/* Settings Panel */
+display: flex;
+flex-direction: column;
 width: 320px;
-height: dynamic (150-600px);
+
+/* Settings Top Section */
+flex: 1;
+overflow-y: auto;
+
+/* Resize Divider */
+height: 1px;
+cursor: ns-resize;
+
+/* Layers Bottom Section */
+height: dynamic (150-500px);
+flex-direction: column;
 ```
 
 ## Usage Guide
@@ -192,11 +202,12 @@ The Layers panel shows your component hierarchy:
 3. **Reorder**: Drag layers up/down to change order (if enabled)
 4. **Visibility**: See component structure at a glance
 
-**Benefits of Bottom-Right Position:**
-- Doesn't interfere with component toolbox
-- More horizontal space for canvas
+**Benefits of Integrated Position:**
+- Unified sidebar with Settings
+- Settings scroll independently
 - Easy access while working
-- Settings panel remains on right
+- Resizable to fit your workflow
+- No floating panels
 
 ## Benefits Summary
 
@@ -287,8 +298,8 @@ Tested and working on:
 2. Create or edit a page
 3. Notice the **icon grid** in the toolbox
 4. Click the **menu button** to toggle text labels
-5. Look at **bottom-right** for the Layers panel
-6. **Drag the top edge** to resize it!
+5. Look at **bottom of Settings panel** (right sidebar) for Layers
+6. **Drag the divider** between Settings and Layers to resize!
 
 Enjoy the improved workspace! 🎉
 
