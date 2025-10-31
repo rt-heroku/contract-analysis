@@ -1306,6 +1306,350 @@ export async function seedSystemActions() {
         executorType: 'builtin',
         executorConfig: {},
       },
+      // LLM Chain Actions
+      {
+        name: 'llm_simple_chain',
+        displayName: 'Simple LLM Chain',
+        description: 'Basic LLM call with prompt and get response',
+        actionType: 'system',
+        category: 'llm',
+        icon: 'Brain',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            connectorId: { 
+              type: 'number', 
+              description: 'LLM Connector ID' 
+            },
+            model: { 
+              type: 'string', 
+              description: 'Model identifier (e.g., gpt-4-turbo, claude-3-opus)' 
+            },
+            systemPrompt: { 
+              type: 'string', 
+              description: 'System prompt to set context and behavior' 
+            },
+            userPrompt: { 
+              type: 'string', 
+              description: 'User prompt or template with {variables}' 
+            },
+            temperature: { 
+              type: 'number', 
+              default: 0.7, 
+              minimum: 0, 
+              maximum: 2,
+              description: 'Temperature (0 = deterministic, 2 = very creative)' 
+            },
+            maxTokens: { 
+              type: 'number', 
+              default: 1000, 
+              description: 'Maximum tokens in response' 
+            },
+            stream: { 
+              type: 'boolean', 
+              default: false, 
+              description: 'Stream response (for real-time output)' 
+            },
+          },
+          required: ['connectorId', 'model', 'userPrompt'],
+        },
+        inputSchema: {
+          type: 'object',
+          properties: {
+            variables: { 
+              type: 'object', 
+              description: 'Variables to replace in prompt template' 
+            },
+            userMessage: { 
+              type: 'string', 
+              description: 'Direct user message (alternative to template)' 
+            },
+          },
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            response: { type: 'string', description: 'LLM response text' },
+            model: { type: 'string', description: 'Model used' },
+            tokensUsed: { 
+              type: 'object',
+              properties: {
+                prompt: { type: 'number' },
+                completion: { type: 'number' },
+                total: { type: 'number' },
+              }
+            },
+            finishReason: { type: 'string', description: 'Why generation stopped' },
+            metadata: { type: 'object', description: 'Additional provider metadata' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'llm_prompt_template',
+        displayName: 'Prompt Template',
+        description: 'Build and format prompts with variables and templates',
+        actionType: 'system',
+        category: 'llm',
+        icon: 'MessageSquare',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            template: { 
+              type: 'string', 
+              description: 'Prompt template with {variable_name} placeholders' 
+            },
+            format: { 
+              type: 'string', 
+              enum: ['text', 'json', 'xml', 'markdown'],
+              default: 'text',
+              description: 'Output format guidance' 
+            },
+            examples: { 
+              type: 'array', 
+              description: 'Few-shot examples (input-output pairs)',
+              items: {
+                type: 'object',
+                properties: {
+                  input: { type: 'string' },
+                  output: { type: 'string' },
+                },
+              },
+            },
+          },
+          required: ['template'],
+        },
+        inputSchema: {
+          type: 'object',
+          properties: {
+            variables: { type: 'object', description: 'Variable values' },
+          },
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            formattedPrompt: { type: 'string' },
+            variablesUsed: { type: 'array', items: { type: 'string' } },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'llm_conversation',
+        displayName: 'LLM Conversation',
+        description: 'Multi-turn conversation with message history',
+        actionType: 'system',
+        category: 'llm',
+        icon: 'MessagesSquare',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            connectorId: { type: 'number', description: 'LLM Connector ID' },
+            model: { type: 'string', description: 'Model identifier' },
+            systemPrompt: { type: 'string', description: 'System prompt' },
+            temperature: { type: 'number', default: 0.7 },
+            maxTokens: { type: 'number', default: 1000 },
+            maxHistoryMessages: { 
+              type: 'number', 
+              default: 10, 
+              description: 'Max messages to keep in history' 
+            },
+          },
+          required: ['connectorId', 'model'],
+        },
+        inputSchema: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', description: 'User message' },
+            history: { 
+              type: 'array', 
+              description: 'Previous conversation history',
+              items: {
+                type: 'object',
+                properties: {
+                  role: { type: 'string', enum: ['user', 'assistant', 'system'] },
+                  content: { type: 'string' },
+                },
+              },
+            },
+            resetHistory: { type: 'boolean', default: false, description: 'Clear history' },
+          },
+          required: ['message'],
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            response: { type: 'string' },
+            history: { type: 'array', description: 'Updated conversation history' },
+            tokensUsed: { type: 'object' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'llm_json_output',
+        displayName: 'LLM JSON Output',
+        description: 'Get structured JSON output from LLM with schema validation',
+        actionType: 'system',
+        category: 'llm',
+        icon: 'Braces',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            connectorId: { type: 'number', description: 'LLM Connector ID' },
+            model: { type: 'string', description: 'Model identifier' },
+            systemPrompt: { type: 'string', description: 'System prompt' },
+            userPrompt: { type: 'string', description: 'User prompt' },
+            jsonSchema: { 
+              type: 'object', 
+              description: 'JSON schema for expected output structure' 
+            },
+            strictMode: { 
+              type: 'boolean', 
+              default: true, 
+              description: 'Enforce strict schema validation' 
+            },
+            maxRetries: { 
+              type: 'number', 
+              default: 3, 
+              description: 'Max retries if JSON parsing fails' 
+            },
+            temperature: { type: 'number', default: 0.3 }, // Lower temp for structured output
+          },
+          required: ['connectorId', 'model', 'userPrompt', 'jsonSchema'],
+        },
+        inputSchema: {
+          type: 'object',
+          properties: {
+            variables: { type: 'object', description: 'Prompt variables' },
+          },
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            data: { description: 'Parsed JSON data matching schema' },
+            valid: { type: 'boolean', description: 'Schema validation passed' },
+            attempts: { type: 'number', description: 'Number of attempts needed' },
+            tokensUsed: { type: 'object' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'llm_function_call',
+        displayName: 'LLM Function Calling',
+        description: 'Use LLM to select and call functions with parameters',
+        actionType: 'system',
+        category: 'llm',
+        icon: 'FunctionSquare',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            connectorId: { type: 'number', description: 'LLM Connector ID' },
+            model: { type: 'string', description: 'Model identifier (must support function calling)' },
+            systemPrompt: { type: 'string', description: 'System prompt' },
+            userPrompt: { type: 'string', description: 'User prompt' },
+            functions: { 
+              type: 'array', 
+              description: 'Available functions definitions',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  description: { type: 'string' },
+                  parameters: { type: 'object', description: 'JSON schema for parameters' },
+                },
+              },
+            },
+            autoExecute: { 
+              type: 'boolean', 
+              default: false, 
+              description: 'Auto-execute selected function' 
+            },
+          },
+          required: ['connectorId', 'model', 'userPrompt', 'functions'],
+        },
+        inputSchema: {
+          type: 'object',
+          properties: {
+            variables: { type: 'object' },
+          },
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            functionName: { type: 'string', description: 'Selected function' },
+            arguments: { type: 'object', description: 'Function arguments' },
+            reasoning: { type: 'string', description: 'Why this function was chosen' },
+            executed: { type: 'boolean', description: 'Was function auto-executed' },
+            result: { description: 'Function execution result (if autoExecute=true)' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
+      {
+        name: 'llm_embeddings',
+        displayName: 'Generate Embeddings',
+        description: 'Generate vector embeddings for text using LLM',
+        actionType: 'system',
+        category: 'llm',
+        icon: 'Network',
+        color: '#8b5cf6',
+        configSchema: {
+          type: 'object',
+          properties: {
+            connectorId: { type: 'number', description: 'LLM Connector ID' },
+            model: { 
+              type: 'string', 
+              description: 'Embedding model (e.g., text-embedding-3-large)' 
+            },
+            dimensions: { 
+              type: 'number', 
+              description: 'Output dimensions (if supported by model)' 
+            },
+          },
+          required: ['connectorId', 'model'],
+        },
+        inputSchema: {
+          type: 'object',
+          properties: {
+            text: { type: 'string', description: 'Text to embed (single)' },
+            texts: { 
+              type: 'array', 
+              items: { type: 'string' },
+              description: 'Multiple texts to embed (batch)' 
+            },
+          },
+        },
+        outputSchema: {
+          type: 'object',
+          properties: {
+            embeddings: { 
+              type: 'array', 
+              description: 'Vector embeddings',
+              items: {
+                type: 'array',
+                items: { type: 'number' },
+              },
+            },
+            dimensions: { type: 'number' },
+            model: { type: 'string' },
+            tokensUsed: { type: 'number' },
+          },
+        },
+        executorType: 'builtin',
+        executorConfig: {},
+      },
     ];
 
     // Create or update system actions

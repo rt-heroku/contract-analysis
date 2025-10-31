@@ -4,6 +4,7 @@ import { connectorService } from '../services/connector.service';
 import loggingService from '../services/logging.service';
 import { getClientIp, getUserAgent } from '../utils/helpers';
 import prisma from '../config/database';
+import { LLM_MODELS, LLM_PROVIDERS, getModelsByProvider } from '../config/llmModels';
 
 export const connectorController = {
   async getConnectors(req: AuthenticatedRequest, res: Response) {
@@ -204,6 +205,29 @@ export const connectorController = {
       res.json({ actions });
     } catch (error: any) {
       console.error('Error fetching connector actions:', error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  async getLLMModels(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { provider } = req.query;
+      
+      let models = LLM_MODELS;
+      if (provider && typeof provider === 'string') {
+        models = getModelsByProvider(provider);
+      }
+
+      res.json({ 
+        models,
+        providers: LLM_PROVIDERS,
+      });
+    } catch (error: any) {
+      console.error('Error fetching LLM models:', error);
       res.status(500).json({ error: error.message });
     }
   },

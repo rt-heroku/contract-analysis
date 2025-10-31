@@ -10,6 +10,9 @@ router.use(authenticate);
 // GET /api/connectors - Get all connectors
 router.get('/', connectorController.getConnectors);
 
+// GET /api/connectors/llm-models - Get available LLM models (must be before /:id)
+router.get('/llm-models', connectorController.getLLMModels);
+
 // GET /api/connectors/:id - Get connector by ID
 router.get('/:id', connectorController.getConnectorById);
 
