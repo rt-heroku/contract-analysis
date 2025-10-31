@@ -8,7 +8,7 @@ interface ContainerProps {
   className?: string;
 }
 
-export const Container: React.FC<ContainerProps> = ({
+export const Container: React.FC<ContainerProps> & { craft?: any } = ({
   children,
   padding = 4,
   background = 'transparent',

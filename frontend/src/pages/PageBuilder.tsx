@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Editor, Frame, Element, useEditor } from '@craftjs/core';
+import { Editor, Frame, Element } from '@craftjs/core';
 import { Layers } from '@craftjs/layers';
 import lz from 'lz-string';
 import { ComponentLibrary, Container } from '@/components/craft';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { Save, Eye, ArrowLeft } from 'lucide-react';
+import { Save, Eye } from 'lucide-react';
 import api from '@/lib/api';
 
 const TopBar: React.FC<{
@@ -78,7 +78,6 @@ export const PageBuilder: React.FC = () => {
   const [enabled, setEnabled] = useState(true);
   const [name, setName] = useState('New Page');
   const [slug, setSlug] = useState('new-page');
-  const [loading, setLoading] = useState(false);
   
   const [alertDialog, setAlertDialog] = useState<{
     isOpen: boolean;
@@ -100,7 +99,6 @@ export const PageBuilder: React.FC = () => {
 
   const loadPage = async (pageId: number) => {
     try {
-      setLoading(true);
       const response = await api.get(`/pages/${pageId}`);
       const page = response.data;
       
@@ -122,15 +120,11 @@ export const PageBuilder: React.FC = () => {
         message: error.response?.data?.error || 'Failed to load page',
         type: 'error',
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleSave = async () => {
     try {
-      setLoading(true);
-      
       // Get the serialized state from the editor
       const editorState = (window as any).craftjsState;
       if (!editorState) {
@@ -175,8 +169,6 @@ export const PageBuilder: React.FC = () => {
         message: error.response?.data?.error || 'Failed to save page',
         type: 'error',
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -185,9 +177,9 @@ export const PageBuilder: React.FC = () => {
       <Editor
         resolver={ComponentLibrary}
         enabled={enabled}
-        onRender={(render) => {
+        onNodesChange={(query) => {
           // Store editor state globally for save
-          (window as any).craftjsState = render;
+          (window as any).craftjsState = query;
         }}
       >
         <div className="h-screen flex flex-col">

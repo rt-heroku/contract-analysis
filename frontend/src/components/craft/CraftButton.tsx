@@ -8,7 +8,7 @@ interface CraftButtonProps {
   onClick?: () => void;
 }
 
-export const CraftButton: React.FC<CraftButtonProps> = ({
+export const CraftButton: React.FC<CraftButtonProps> & { craft?: any } = ({
   text = 'Button',
   variant = 'primary',
   size = 'md',

@@ -8,7 +8,7 @@ interface DataTableProps {
   title?: string;
 }
 
-export const DataTable: React.FC<DataTableProps> = ({ 
+export const DataTable: React.FC<DataTableProps> & { craft?: any } = ({ 
   dataPath = '', 
   columns = [], 
   title = '' 

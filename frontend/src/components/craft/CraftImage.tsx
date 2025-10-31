@@ -9,7 +9,7 @@ interface CraftImageProps {
   objectFit?: 'contain' | 'cover' | 'fill' | 'none';
 }
 
-export const CraftImage: React.FC<CraftImageProps> = ({
+export const CraftImage: React.FC<CraftImageProps> & { craft?: any } = ({
   src = 'https://via.placeholder.com/400x300',
   alt = 'Image',
   width = '100%',

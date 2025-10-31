@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNode } from '@craftjs/core';
 import ContentEditable from 'react-contenteditable';
 
-interface TextProps {
+interface CraftTextProps {
   text?: string;
   fontSize?: number;
   fontWeight?: string;
@@ -11,7 +11,7 @@ interface TextProps {
   margin?: number;
 }
 
-export const Text: React.FC<TextProps> = ({
+export const CraftText: React.FC<CraftTextProps> & { craft?: any } = ({
   text = 'Text',
   fontSize = 16,
   fontWeight = 'normal',
@@ -56,7 +56,7 @@ export const Text: React.FC<TextProps> = ({
   );
 };
 
-Text.craft = {
+CraftText.craft = {
   displayName: 'Text',
   props: {
     text: 'Text',

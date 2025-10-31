@@ -15,8 +15,6 @@ export const useProcessData = (dataPath?: string) => {
   const executionIdFromQuery = searchParams.get('executionId');
   
   const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // If no data path specified, return null
@@ -27,9 +25,6 @@ export const useProcessData = (dataPath?: string) => {
 
     const fetchData = async () => {
       try {
-        setLoading(true);
-        setError(null);
-
         let executionData: any;
         
         // Try to get execution ID from URL params or query string
@@ -69,10 +64,7 @@ export const useProcessData = (dataPath?: string) => {
         setData(value !== undefined ? value : null);
       } catch (err: any) {
         console.error('Failed to fetch process data:', err);
-        setError(err.message || 'Failed to load data');
         setData(null);
-      } finally {
-        setLoading(false);
       }
     };
 

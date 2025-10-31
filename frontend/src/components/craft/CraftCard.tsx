@@ -7,7 +7,7 @@ interface CraftCardProps {
   padding?: number;
 }
 
-export const CraftCard: React.FC<CraftCardProps> = ({
+export const CraftCard: React.FC<CraftCardProps> & { craft?: any } = ({
   title = 'Card Title',
   children,
   padding = 4,
