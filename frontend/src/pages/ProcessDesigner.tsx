@@ -982,6 +982,8 @@ const ProcessDesignerInner: React.FC = () => {
     console.log('📝 ProcessDesigner - handleEditNode called for node:', nodeId);
     const node = nodes.find((n) => n.id === nodeId);
     console.log('🔍 ProcessDesigner - Found node:', node);
+    console.log('  Node type:', node?.type);
+    console.log('  Node data:', node?.data);
     
     // Loop containers should use loop condition modal instead
     if (node && node.type === 'loopContainer') {
@@ -994,12 +996,16 @@ const ProcessDesignerInner: React.FC = () => {
     
     if (node) {
       console.log('✅ ProcessDesigner - Opening NodeEditModal for node type:', node.type);
+      console.log('  📍 BEFORE state update - editModalOpen:', editModalOpen);
+      console.log('  📍 BEFORE state update - selectedNode:', selectedNode);
       setSelectedNode(node);
       setEditModalOpen(true);
+      console.log('  ✅ State update called - modal should open now');
+      // Note: State updates are async, so the actual values won't change immediately here
     } else {
       console.log('❌ ProcessDesigner - Node not found');
     }
-  }, [nodes]);
+  }, [nodes, editModalOpen, selectedNode]);
 
   // Handle context menu
   const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {

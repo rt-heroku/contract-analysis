@@ -43,9 +43,16 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
   };
 
   const handleEditClick = (e: React.MouseEvent) => {
+    console.log('🖱️ ActionNode - Edit button clicked for:', data.label);
+    console.log('   onEdit function exists:', !!data.onEdit);
     e.stopPropagation();
+    e.preventDefault();
     if (data.onEdit) {
+      console.log('   Calling onEdit()...');
       data.onEdit();
+      console.log('   onEdit() called successfully');
+    } else {
+      console.log('   ❌ No onEdit function available!');
     }
   };
   
