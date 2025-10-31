@@ -96,7 +96,10 @@ export const Container: React.FC<ContainerProps> & { craft?: any } = ({
     >
       {children || (
         <div className="text-gray-400 dark:text-gray-500 text-center py-8 text-sm w-full">
-          Drop components here
+          <div className="font-medium mb-1">Drop components here</div>
+          <div className="text-xs opacity-75">
+            Alignment settings will affect child components
+          </div>
         </div>
       )}
     </div>
@@ -348,7 +351,7 @@ const ContainerSettings: React.FC = () => {
       {/* Alignment */}
       <div>
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Alignment</h4>
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
           {/* Flex Direction */}
           <div>
             <label className="block text-xs text-gray-600 dark:text-gray-400 mb-2">Flex Direction</label>
@@ -362,7 +365,7 @@ const ContainerSettings: React.FC = () => {
                   onChange={(e) => setProp((props: any) => (props.flexDirection = e.target.value))}
                   className="text-primary-600"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Row</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300">Row</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -373,7 +376,7 @@ const ContainerSettings: React.FC = () => {
                   onChange={(e) => setProp((props: any) => (props.flexDirection = e.target.value))}
                   className="text-primary-600"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Column</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300">Column</span>
               </label>
             </div>
           </div>
@@ -390,7 +393,7 @@ const ContainerSettings: React.FC = () => {
                   onChange={() => setProp((props: any) => (props.fillSpace = true))}
                   className="text-primary-600"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Yes</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300">Yes</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -400,7 +403,7 @@ const ContainerSettings: React.FC = () => {
                   onChange={() => setProp((props: any) => (props.fillSpace = false))}
                   className="text-primary-600"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">No</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300">No</span>
               </label>
             </div>
           </div>
@@ -418,7 +421,7 @@ const ContainerSettings: React.FC = () => {
                   onChange={(e) => setProp((props: any) => (props.alignItems = e.target.value))}
                   className="text-primary-600"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Flex start</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300">Start</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -429,7 +432,7 @@ const ContainerSettings: React.FC = () => {
                   onChange={(e) => setProp((props: any) => (props.alignItems = e.target.value))}
                   className="text-primary-600"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Center</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300">Center</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -440,7 +443,7 @@ const ContainerSettings: React.FC = () => {
                   onChange={(e) => setProp((props: any) => (props.alignItems = e.target.value))}
                   className="text-primary-600"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Flex end</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300">End</span>
               </label>
             </div>
           </div>
@@ -458,7 +461,7 @@ const ContainerSettings: React.FC = () => {
                   onChange={(e) => setProp((props: any) => (props.justifyContent = e.target.value))}
                   className="text-primary-600"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Flex start</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300">Start</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -469,7 +472,7 @@ const ContainerSettings: React.FC = () => {
                   onChange={(e) => setProp((props: any) => (props.justifyContent = e.target.value))}
                   className="text-primary-600"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Center</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300">Center</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -480,7 +483,7 @@ const ContainerSettings: React.FC = () => {
                   onChange={(e) => setProp((props: any) => (props.justifyContent = e.target.value))}
                   className="text-primary-600"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">Flex end</span>
+                <span className="text-xs text-gray-700 dark:text-gray-300">End</span>
               </label>
             </div>
           </div>
