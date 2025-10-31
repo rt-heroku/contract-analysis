@@ -107,7 +107,7 @@ export const FloatingActionsModal: React.FC<FloatingActionsModalProps> = ({
       a.name.toLowerCase().includes('set_variable') ||
       a.name.toLowerCase().includes('set_payload')
     ),
-    'AI Actions': filteredActions.filter(a => a.category === 'ai'),
+    'AI Actions': filteredActions.filter(a => a.category === 'ai' || a.category === 'llm'),
     'Execution': filteredActions.filter(a =>
       a.category === 'execution' ||
       a.name.toLowerCase().includes('script') ||
