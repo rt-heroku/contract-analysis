@@ -71,29 +71,8 @@ const ProcessDesignerInner: React.FC = () => {
   const [nodes, setNodes, onNodesChangeRaw] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   
-  // Custom onNodesChange that prevents deletion of Start and Global Error nodes
-  const onNodesChange = useCallback((changes: any[]) => {
-    // Filter out removal changes for protected node types
-    const filteredChanges = changes.filter(change => {
-      if (change.type === 'remove') {
-        const node = nodes.find(n => n.id === change.id);
-        if (node && (node.type === 'start' || node.type === 'globalError')) {
-          // Show warning once
-          setAlertDialog({
-            isOpen: true,
-            title: `Cannot Delete ${node.type === 'start' ? 'Start' : 'Global Error'}`,
-            message: `The ${node.type === 'start' ? 'Start node' : 'Global Error handler'} is required and cannot be deleted.`,
-            type: 'warning',
-          });
-          return false; // Filter out this change
-        }
-      }
-      return true; // Allow all other changes
-    });
-    
-    // Apply the filtered changes
-    onNodesChangeRaw(filteredChanges);
-  }, [nodes, onNodesChangeRaw]);
+  // Ref to hold current layout direction (needed for onNodesChange callback)
+  const layoutDirectionRef = useRef<'horizontal' | 'vertical'>('vertical');
   const [processName, setProcessName] = useState('Untitled Process');
   const [processDescription, setProcessDescription] = useState('');
   const [editingProcessName, setEditingProcessName] = useState(false);
@@ -191,6 +170,64 @@ const ProcessDesignerInner: React.FC = () => {
   
   // Layout direction state
   const [layoutDirection, setLayoutDirection] = useState<'horizontal' | 'vertical'>('vertical');
+  
+  // Sync layoutDirection ref
+  useEffect(() => {
+    layoutDirectionRef.current = layoutDirection;
+  }, [layoutDirection]);
+  
+  // Custom onNodesChange that prevents deletion of Start and Global Error nodes
+  // and saves position changes to the current layout
+  const onNodesChange = useCallback((changes: any[]) => {
+    // Filter out removal changes for protected node types
+    const filteredChanges = changes.filter(change => {
+      if (change.type === 'remove') {
+        const node = nodes.find(n => n.id === change.id);
+        if (node && (node.type === 'start' || node.type === 'globalError')) {
+          // Show warning once
+          setAlertDialog({
+            isOpen: true,
+            title: `Cannot Delete ${node.type === 'start' ? 'Start' : 'Global Error'}`,
+            message: `The ${node.type === 'start' ? 'Start node' : 'Global Error handler'} is required and cannot be deleted.`,
+            type: 'warning',
+          });
+          return false; // Filter out this change
+        }
+      }
+      return true; // Allow all other changes
+    });
+    
+    // Apply the filtered changes
+    onNodesChangeRaw(filteredChanges);
+    
+    // Save position changes to current layout property
+    const positionChanges = changes.filter(change => 
+      change.type === 'position' && change.position && change.dragging === false
+    );
+    
+    if (positionChanges.length > 0) {
+      const currentLayout = layoutDirectionRef.current;
+      setNodes((currentNodes) => 
+        currentNodes.map(node => {
+          const posChange = positionChanges.find(c => c.id === node.id);
+          if (posChange && posChange.position) {
+            // Save to current layout property
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                ...(currentLayout === 'vertical' 
+                  ? { verticalPosition: posChange.position }
+                  : { horizontalPosition: posChange.position }
+                ),
+              },
+            };
+          }
+          return node;
+        })
+      );
+    }
+  }, [nodes, onNodesChangeRaw]);
   
   // Variables panel state
   const [variablesPanelOpen, setVariablesPanelOpen] = useState(false);
@@ -467,62 +504,48 @@ const ProcessDesignerInner: React.FC = () => {
       : LAYOUT_CONFIG.START_POSITION.y + 300; // Position action nodes below Start with proper spacing
     
     // Update node positions with dagre calculated positions + layoutDirection
+    // and save them to the appropriate layout property
     const newNodes = nodes.map((node) => {
+      let newPosition = node.position;
+      
       // Fixed position for Start node
       if (node.type === 'start') {
-        console.log(`  - ${node.id}: START (fixed) at position=(${LAYOUT_CONFIG.START_POSITION.x}, ${LAYOUT_CONFIG.START_POSITION.y})`);
-        return {
-          ...node,
-          position: LAYOUT_CONFIG.START_POSITION,
-          data: {
-            ...node.data,
-            layoutDirection: useDirection,
-          },
-        };
+        newPosition = LAYOUT_CONFIG.START_POSITION;
+        console.log(`  - ${node.id}: START (fixed) at position=(${newPosition.x}, ${newPosition.y})`);
       }
-      
       // Fixed position for Global Error node
-      if (node.type === 'globalError') {
-        const globalErrorPos = useDirection === 'vertical'
+      else if (node.type === 'globalError') {
+        newPosition = useDirection === 'vertical'
           ? LAYOUT_CONFIG.GLOBAL_ERROR_VERTICAL
           : LAYOUT_CONFIG.GLOBAL_ERROR_HORIZONTAL;
-        console.log(`  - ${node.id}: GLOBAL ERROR (fixed) at position=(${globalErrorPos.x}, ${globalErrorPos.y})`);
-        return {
-          ...node,
-          position: globalErrorPos,
-          data: {
-            ...node.data,
-            layoutDirection: useDirection,
-          },
-        };
+        console.log(`  - ${node.id}: GLOBAL ERROR (fixed) at position=(${newPosition.x}, ${newPosition.y})`);
       }
-      
       // Dagre-calculated position for action nodes
-      const dagreNode = dagreGraph.node(node.id);
-      if (dagreNode) {
-        // Dagre returns center coordinates, adjust to top-left corner
-        const x = startOffsetX + dagreNode.x - (NODE_WIDTH / 2);
-        const y = startOffsetY + dagreNode.y - (NODE_HEIGHT / 2);
-        
-        console.log(`  - ${node.id}: DAGRE position=(${Math.round(x)}, ${Math.round(y)})`);
-        
-        return {
-          ...node,
-          position: { x: Math.round(x), y: Math.round(y) },
-          data: {
-            ...node.data,
-            layoutDirection: useDirection,
-          },
-        };
+      else {
+        const dagreNode = dagreGraph.node(node.id);
+        if (dagreNode) {
+          // Dagre returns center coordinates, adjust to top-left corner
+          const x = startOffsetX + dagreNode.x - (NODE_WIDTH / 2);
+          const y = startOffsetY + dagreNode.y - (NODE_HEIGHT / 2);
+          newPosition = { x: Math.round(x), y: Math.round(y) };
+          console.log(`  - ${node.id}: DAGRE position=(${newPosition.x}, ${newPosition.y})`);
+        } else {
+          console.warn(`  - ${node.id}: NO DAGRE NODE, keeping position`);
+        }
       }
       
-      // Fallback: keep existing position but update layoutDirection
-      console.warn(`  - ${node.id}: NO DAGRE NODE, keeping position`);
+      // Update node with new position, layoutDirection, and save to layout-specific property
       return {
         ...node,
+        position: newPosition,
         data: {
           ...node.data,
           layoutDirection: useDirection,
+          // Save calculated position to current layout property
+          ...(useDirection === 'vertical' 
+            ? { verticalPosition: newPosition }
+            : { horizontalPosition: newPosition }
+          ),
         },
       };
     });
@@ -576,15 +599,93 @@ const ProcessDesignerInner: React.FC = () => {
     const newDirection = layoutDirection === 'horizontal' ? 'vertical' : 'horizontal';
     console.log('  - Switching from', layoutDirection, 'to', newDirection);
     
-    // Update state
+    // SAVE current positions before switching
+    setNodes((currentNodes) => {
+      const savedNodes = currentNodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          // Save current position to the current layout property
+          ...(layoutDirection === 'vertical' 
+            ? { verticalPosition: node.position }
+            : { horizontalPosition: node.position }
+          ),
+        },
+      }));
+      
+      console.log('  - 💾 Saved', layoutDirection, 'positions');
+      
+      // Now try to RESTORE positions for the new layout
+      const restoredNodes = savedNodes.map(node => {
+        const savedPosition = newDirection === 'vertical' 
+          ? node.data.verticalPosition 
+          : node.data.horizontalPosition;
+        
+        if (savedPosition) {
+          console.log('  - 📍 Restoring saved position for', node.id);
+          return {
+            ...node,
+            position: savedPosition,
+            data: {
+              ...node.data,
+              layoutDirection: newDirection,
+            },
+          };
+        }
+        
+        // No saved position for this layout, keep current and will recalculate
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            layoutDirection: newDirection,
+          },
+        };
+      });
+      
+      // Check if all nodes have saved positions for new layout
+      const allHaveSavedPositions = restoredNodes.every(node => 
+        newDirection === 'vertical' 
+          ? node.data.verticalPosition 
+          : node.data.horizontalPosition
+      );
+      
+      if (allHaveSavedPositions) {
+        console.log('  - ✅ All nodes restored from saved positions');
+        // Force React Flow to update handle positions
+        setTimeout(() => {
+          restoredNodes.forEach(node => updateNodeInternals(node.id));
+        }, 0);
+        return restoredNodes;
+      } else {
+        console.log('  - ⚠️ Some nodes missing saved positions, will recalculate');
+        return restoredNodes;
+      }
+    });
+    
+    // Update layout direction state
     setLayoutDirection(newDirection);
     
-    // Immediately rearrange with new direction (no setTimeout needed - dagre is synchronous)
-    // The arrangeNodesLayout will update node data with new layoutDirection
-    arrangeNodesLayout(false, newDirection);
+    // Only recalculate if nodes don't have saved positions for new layout
+    setTimeout(() => {
+      setNodes((currentNodes) => {
+        const needsRecalc = currentNodes.some(node => 
+          !(newDirection === 'vertical' 
+            ? node.data.verticalPosition 
+            : node.data.horizontalPosition)
+        );
+        
+        if (needsRecalc) {
+          console.log('  - 🔄 Recalculating layout');
+          arrangeNodesLayout(false, newDirection);
+        }
+        
+        return currentNodes;
+      });
+    }, 50);
     
     console.log('  - ✅ Layout toggled');
-  }, [layoutDirection, arrangeNodesLayout]);
+  }, [layoutDirection, arrangeNodesLayout, updateNodeInternals]);
 
   // Helper to check if a node supports multiple connections (control flow actions)
   const isMultiBranchAction = useCallback((node: Node): boolean => {
