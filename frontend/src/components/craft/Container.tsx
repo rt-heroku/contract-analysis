@@ -739,6 +739,7 @@ const StoreSelector: React.FC<{
   const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchStores();
@@ -747,10 +748,15 @@ const StoreSelector: React.FC<{
   const fetchStores = async () => {
     try {
       setLoading(true);
+      setError('');
       const response = await api.get('/stores');
-      setStores(response.data);
-    } catch (error) {
+      // Ensure we always have an array
+      const storesData = Array.isArray(response.data) ? response.data : [];
+      setStores(storesData);
+    } catch (error: any) {
       console.error('Failed to fetch stores:', error);
+      setError('Failed to load stores');
+      setStores([]); // Fallback to empty array
     } finally {
       setLoading(false);
     }
@@ -760,14 +766,20 @@ const StoreSelector: React.FC<{
     if (!newStoreName.trim()) return;
 
     try {
-      const response = await api.post('/stores', { name: newStoreName });
+      setError('');
+      const response = await api.post('/stores', { 
+        name: newStoreName,
+        type: 'file_storage', // Simple file storage type
+        description: `File storage for ${newStoreName}`
+      });
       const newStore = response.data;
-      setStores([...stores, newStore]);
-      onChange(newStore.id);
+      setStores([...stores, { id: newStore.id || newStore._id, name: newStore.name }]);
+      onChange(newStore.id || newStore._id);
       setNewStoreName('');
       setShowCreateModal(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create store:', error);
+      setError(error.response?.data?.error || 'Failed to create store');
     }
   };
 
@@ -776,6 +788,11 @@ const StoreSelector: React.FC<{
       <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
         Target Store
       </label>
+      {error && !showCreateModal && (
+        <div className="mb-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-600 dark:text-red-400">
+          {error}
+        </div>
+      )}
       <div className="flex gap-2">
         <select
           value={selectedStoreId}
@@ -783,7 +800,9 @@ const StoreSelector: React.FC<{
           className="flex-1 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded"
           disabled={loading}
         >
-          <option value="">Select a store...</option>
+          <option value="">
+            {loading ? 'Loading stores...' : stores.length === 0 ? 'No stores available' : 'Select a store...'}
+          </option>
           {stores.map((store) => (
             <option key={store.id} value={store.id}>
               {store.name}
@@ -799,40 +818,63 @@ const StoreSelector: React.FC<{
         </button>
       </div>
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-        Files will be uploaded to this store
+        {stores.length === 0 ? 'Create a store to enable file uploads' : 'Files will be uploaded to this store'}
       </p>
 
       {/* Create Store Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 max-w-sm w-full mx-4">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowCreateModal(false);
+              setNewStoreName('');
+              setError('');
+            }
+          }}
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 max-w-sm w-full mx-4 shadow-xl">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
               Create New Store
             </h3>
+            {error && (
+              <div className="mb-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-600 dark:text-red-400">
+                {error}
+              </div>
+            )}
             <input
               type="text"
               value={newStoreName}
               onChange={(e) => setNewStoreName(e.target.value)}
-              placeholder="Store name"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newStoreName.trim()) {
+                  handleCreateStore();
+                }
+              }}
+              placeholder="Store name (e.g., Customer Documents)"
               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded mb-3"
               autoFocus
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              A simple file storage will be created for uploading files.
+            </p>
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => {
                   setShowCreateModal(false);
                   setNewStoreName('');
+                  setError('');
                 }}
-                className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateStore}
                 disabled={!newStoreName.trim()}
-                className="px-3 py-1.5 text-xs text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 rounded"
+                className="px-3 py-1.5 text-xs text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded transition-colors"
               >
-                Create
+                Create Store
               </button>
             </div>
           </div>

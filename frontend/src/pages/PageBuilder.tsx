@@ -22,7 +22,14 @@ import {
   Box,
   Menu,
   AlignLeft,
-  ChevronDown
+  ChevronDown,
+  FileText,
+  FileEdit,
+  FormInput as FormInputIcon,
+  ListFilter,
+  AlertCircle,
+  BarChart3,
+  Layers as TabsIcon
 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -82,6 +89,13 @@ const Toolbox: React.FC = () => {
     'Column': AlignLeft,
     'Modal': AppWindow,
     'Collapsible': ChevronDown,
+    'DocumentPreview': FileText,
+    'MarkdownEditor': FileEdit,
+    'FormInput': FormInputIcon,
+    'Select': ListFilter,
+    'Alert': AlertCircle,
+    'ProgressBar': BarChart3,
+    'Tabs': TabsIcon,
   };
 
   return (
