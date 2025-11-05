@@ -29,7 +29,13 @@ import {
   ListFilter,
   AlertCircle,
   BarChart3,
-  Layers as TabsIcon
+  Layers as TabsIcon,
+  AlignJustify,
+  CheckSquare,
+  Circle,
+  Search,
+  ToggleLeft,
+  SlidersHorizontal
 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -96,6 +102,12 @@ const Toolbox: React.FC = () => {
     'Alert': AlertCircle,
     'ProgressBar': BarChart3,
     'Tabs': TabsIcon,
+    'Textarea': AlignJustify,
+    'Checkbox': CheckSquare,
+    'RadioGroup': Circle,
+    'SearchDropdown': Search,
+    'Toggle': ToggleLeft,
+    'Slider': SlidersHorizontal,
   };
 
   return (
