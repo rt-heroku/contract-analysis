@@ -99,12 +99,13 @@ class DocumentService {
       }
 
       // Extract executionId from MuleSoft response (id, execution_id, or executionId)
+      // If not found, use jobId as fallback since it uniquely identifies the document
       const executionId =
         contractResult.id != null
           ? String(contractResult.id)
-          : contractResult.execution_id || contractResult.executionId || null;
+          : contractResult.execution_id || contractResult.executionId || jobId;
       if (executionId) {
-        logger.info(`Extracted executionId: ${executionId} for jobId: ${jobId}`);
+        logger.info(`Extracted executionId: ${executionId} for jobId: ${jobId}${executionId === jobId ? ' (using jobId as fallback)' : ''}`);
       } else {
         logger.warn(`No executionId found in MuleSoft response for jobId: ${jobId}`);
       }
@@ -280,10 +281,14 @@ class DocumentService {
         throw error;
       }
 
-      // Extract executionId from MuleSoft response
-      const executionId = contractResult.execution_id || contractResult.executionId || null;
+      // Extract executionId from MuleSoft response (id, execution_id, or executionId)
+      // If not found, use jobId as fallback since it uniquely identifies the document
+      const executionId =
+        contractResult.id != null
+          ? String(contractResult.id)
+          : contractResult.execution_id || contractResult.executionId || jobId;
       if (executionId) {
-        logger.info(`Extracted executionId: ${executionId} for jobId: ${jobId}`);
+        logger.info(`Extracted executionId: ${executionId} for jobId: ${jobId}${executionId === jobId ? ' (using jobId as fallback)' : ''}`);
       } else {
         logger.warn(`No executionId found in MuleSoft response for jobId: ${jobId}`);
       }
