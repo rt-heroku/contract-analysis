@@ -73,20 +73,21 @@ export const AnalysisSetup: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [flowsRes, promptsRes, analysisRes] = await Promise.all([
-          api.get('/flows'),
-          api.get('/prompts'),
-          api.get(`/analysis/${analysisRecordId}`)
-        ]);
-        
-        setFlows(flowsRes.data.flows || []);
-        setPrompts(promptsRes.data.prompts || []);
-        
-        // Get jobId from analysis record
-        const recordJobId = analysisRes.data.analysisRecord?.jobId;
-        if (recordJobId) {
-          setJobId(recordJobId);
-          console.log('📋 Using jobId from analysis record:', recordJobId);
+      const [flowsRes, promptsRes, analysisRes] = await Promise.all([
+        api.get('/flows'),
+        api.get('/prompts'),
+        api.get(`/analysis/${analysisRecordId}`)
+      ]);
+      
+      setFlows(flowsRes.data.flows || []);
+      setPrompts(promptsRes.data.prompts || []);
+      
+      // Get jobId from analysis record
+      // Backend returns { analysis }, not { analysisRecord }
+      const recordJobId = analysisRes.data.analysis?.jobId;
+      if (recordJobId) {
+        setJobId(recordJobId);
+        console.log('📋 Using jobId from analysis record:', recordJobId);
           
           // Check for existing data uploads with this jobId
           try {
