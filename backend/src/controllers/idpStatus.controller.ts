@@ -106,7 +106,21 @@ export const idpStatusController = {
         saveCredentials 
       } = req.body;
 
+      console.log('[requestReview] Request body:', {
+        executionId,
+        jobId,
+        idpExecutionId,
+        hasUsername: !!anypointUsername,
+        hasPassword: !!anypointPassword,
+        saveCredentials
+      });
+
       if (!executionId || !jobId || !idpExecutionId) {
+        console.error('[requestReview] Missing required fields:', {
+          hasExecutionId: !!executionId,
+          hasJobId: !!jobId,
+          hasIdpExecutionId: !!idpExecutionId
+        });
         return res.status(400).json({ 
           error: 'executionId, jobId, and idpExecutionId are required' 
         });
@@ -117,7 +131,15 @@ export const idpStatusController = {
         where: { id: parseInt(idpExecutionId) },
       });
 
+      console.log('[requestReview] IDP Execution lookup:', {
+        idpExecutionId,
+        found: !!idpExecution,
+        hasStoredUsername: !!idpExecution?.anypointUsername,
+        hasStoredPassword: !!idpExecution?.anypointPassword
+      });
+
       if (!idpExecution) {
+        console.error('[requestReview] IDP execution not found for ID:', idpExecutionId);
         return res.status(404).json({ error: 'IDP execution not found' });
       }
 
