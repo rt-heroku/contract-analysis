@@ -100,12 +100,29 @@ class DocumentService {
 
       // Extract executionId from MuleSoft response (id, execution_id, or executionId)
       // If not found, use jobId as fallback since it uniquely identifies the document
+      logger.info(`MuleSoft response fields for jobId ${jobId}:`, {
+        hasId: contractResult.id != null,
+        idValue: contractResult.id,
+        hasExecutionId: !!contractResult.execution_id,
+        hasExecutionIdCamelCase: !!contractResult.executionId,
+        documentName: contractResult.documentName,
+        status: contractResult.status
+      });
+      
       const executionId =
         contractResult.id != null
           ? String(contractResult.id)
           : contractResult.execution_id || contractResult.executionId || jobId;
+      
       if (executionId) {
-        logger.info(`Extracted executionId: ${executionId} for jobId: ${jobId}${executionId === jobId ? ' (using jobId as fallback)' : ''}`);
+        const source = contractResult.id != null 
+          ? 'MuleSoft response.id' 
+          : contractResult.execution_id 
+            ? 'MuleSoft response.execution_id'
+            : contractResult.executionId
+              ? 'MuleSoft response.executionId'
+              : 'jobId fallback';
+        logger.info(`✓ Extracted executionId: ${executionId} from ${source} for jobId: ${jobId}`);
       } else {
         logger.warn(`No executionId found in MuleSoft response for jobId: ${jobId}`);
       }
@@ -283,12 +300,29 @@ class DocumentService {
 
       // Extract executionId from MuleSoft response (id, execution_id, or executionId)
       // If not found, use jobId as fallback since it uniquely identifies the document
+      logger.info(`MuleSoft response fields for jobId ${jobId}:`, {
+        hasId: contractResult.id != null,
+        idValue: contractResult.id,
+        hasExecutionId: !!contractResult.execution_id,
+        hasExecutionIdCamelCase: !!contractResult.executionId,
+        documentName: contractResult.documentName,
+        status: contractResult.status
+      });
+      
       const executionId =
         contractResult.id != null
           ? String(contractResult.id)
           : contractResult.execution_id || contractResult.executionId || jobId;
+      
       if (executionId) {
-        logger.info(`Extracted executionId: ${executionId} for jobId: ${jobId}${executionId === jobId ? ' (using jobId as fallback)' : ''}`);
+        const source = contractResult.id != null 
+          ? 'MuleSoft response.id' 
+          : contractResult.execution_id 
+            ? 'MuleSoft response.execution_id'
+            : contractResult.executionId
+              ? 'MuleSoft response.executionId'
+              : 'jobId fallback';
+        logger.info(`✓ Extracted executionId: ${executionId} from ${source} for jobId: ${jobId}`);
       } else {
         logger.warn(`No executionId found in MuleSoft response for jobId: ${jobId}`);
       }
