@@ -62,7 +62,7 @@ export const idpExecutionController = {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const { name, description, protocol, host, basePath, orgId, actionId, actionVersion, authClientId, authClientSecret } = req.body;
+      const { name, description, protocol, host, basePath, orgId, actionId, actionVersion, authClientId, authClientSecret, anypointUsername, anypointPassword } = req.body;
 
       if (!name || !protocol || !host || !basePath || !orgId || !actionId || !actionVersion || !authClientId || !authClientSecret) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -79,6 +79,8 @@ export const idpExecutionController = {
         actionVersion,
         authClientId,
         authClientSecret,
+        anypointUsername,
+        anypointPassword,
       });
 
       await loggingService.logActivity({
@@ -95,6 +97,8 @@ export const idpExecutionController = {
         ...execution,
         authClientId: encryption.decrypt(execution.authClientId),
         authClientSecret: encryption.decrypt(execution.authClientSecret),
+        anypointUsername: execution.anypointUsername ? encryption.decrypt(execution.anypointUsername) : null,
+        anypointPassword: execution.anypointPassword ? encryption.decrypt(execution.anypointPassword) : null,
       };
 
       res.status(201).json({ execution: result });

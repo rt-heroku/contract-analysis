@@ -16,6 +16,8 @@ export const idpExecutionService = {
     actionVersion: string;
     authClientId: string;
     authClientSecret: string;
+    anypointUsername?: string;
+    anypointPassword?: string;
   }) {
     return await prisma.idpExecution.create({
       data: {
@@ -30,6 +32,8 @@ export const idpExecutionService = {
         actionVersion: data.actionVersion,
         authClientId: encryption.encrypt(data.authClientId),
         authClientSecret: encryption.encrypt(data.authClientSecret),
+        anypointUsername: data.anypointUsername ? encryption.encrypt(data.anypointUsername) : null,
+        anypointPassword: data.anypointPassword ? encryption.encrypt(data.anypointPassword) : null,
       },
     });
   },
@@ -51,6 +55,8 @@ export const idpExecutionService = {
       ...exec,
       authClientId: encryption.decrypt(exec.authClientId),
       authClientSecret: encryption.decrypt(exec.authClientSecret),
+      anypointUsername: exec.anypointUsername ? encryption.decrypt(exec.anypointUsername) : null,
+      anypointPassword: exec.anypointPassword ? encryption.decrypt(exec.anypointPassword) : null,
     }));
   },
 
@@ -129,6 +135,8 @@ export const idpExecutionService = {
         ...execution,
         authClientId: encryption.maskSecret(encryption.decrypt(execution.authClientId)),
         authClientSecret: '***',
+        anypointUsername: null,
+        anypointPassword: null,
       };
     }
 
@@ -137,6 +145,8 @@ export const idpExecutionService = {
       ...execution,
       authClientId: encryption.decrypt(execution.authClientId),
       authClientSecret: encryption.decrypt(execution.authClientSecret),
+      anypointUsername: execution.anypointUsername ? encryption.decrypt(execution.anypointUsername) : null,
+      anypointPassword: execution.anypointPassword ? encryption.decrypt(execution.anypointPassword) : null,
     };
   },
 
@@ -161,6 +171,12 @@ export const idpExecutionService = {
     if (data.authClientSecret) {
       updateData.authClientSecret = encryption.encrypt(data.authClientSecret);
     }
+    if (data.anypointUsername !== undefined) {
+      updateData.anypointUsername = data.anypointUsername ? encryption.encrypt(data.anypointUsername) : null;
+    }
+    if (data.anypointPassword !== undefined) {
+      updateData.anypointPassword = data.anypointPassword ? encryption.encrypt(data.anypointPassword) : null;
+    }
 
     const updated = await prisma.idpExecution.update({
       where: { id },
@@ -172,6 +188,8 @@ export const idpExecutionService = {
       ...updated,
       authClientId: encryption.decrypt(updated.authClientId),
       authClientSecret: encryption.decrypt(updated.authClientSecret),
+      anypointUsername: updated.anypointUsername ? encryption.decrypt(updated.anypointUsername) : null,
+      anypointPassword: updated.anypointPassword ? encryption.decrypt(updated.anypointPassword) : null,
     };
   },
 
@@ -294,6 +312,8 @@ export const idpExecutionService = {
       ...execution,
       authClientId: encryption.decrypt(execution.authClientId),
       authClientSecret: encryption.decrypt(execution.authClientSecret),
+      anypointUsername: execution.anypointUsername ? encryption.decrypt(execution.anypointUsername) : null,
+      anypointPassword: execution.anypointPassword ? encryption.decrypt(execution.anypointPassword) : null,
     };
   },
 };

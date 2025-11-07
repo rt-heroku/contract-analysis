@@ -91,6 +91,8 @@ export const IdpExecutions: React.FC = () => {
     actionVersion: '',
     authClientId: '',
     authClientSecret: '',
+    anypointUsername: '',
+    anypointPassword: '',
   });
 
   const [parsing, setParsing] = useState(false);
@@ -190,6 +192,8 @@ export const IdpExecutions: React.FC = () => {
         actionVersion: formData.actionVersion,
         authClientId: formData.authClientId,
         authClientSecret: formData.authClientSecret,
+        anypointUsername: formData.anypointUsername || undefined,
+        anypointPassword: formData.anypointPassword || undefined,
       };
 
       if (editingExecution) {
@@ -242,6 +246,8 @@ export const IdpExecutions: React.FC = () => {
         actionVersion: fullExecution.actionVersion,
         authClientId: fullExecution.authClientId,
         authClientSecret: fullExecution.authClientSecret,
+        anypointUsername: fullExecution.anypointUsername || '',
+        anypointPassword: fullExecution.anypointPassword || '',
       });
       setShowForm(true);
     } catch (error: any) {
@@ -310,6 +316,8 @@ export const IdpExecutions: React.FC = () => {
       actionVersion: '',
       authClientId: '',
       authClientSecret: '',
+      anypointUsername: '',
+      anypointPassword: '',
     });
   };
 
@@ -697,7 +705,59 @@ export const IdpExecutions: React.FC = () => {
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Credentials are encrypted and stored securely
+                  Connected Apps Client credentials for OAuth token generation
+                </p>
+              </div>
+
+              {/* Anypoint Platform Credentials */}
+              <div className="border-t border-gray-200 pt-4"></div>
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <Key className="w-4 h-4" />
+                Anypoint Platform User Credentials (Optional)
+              </h3>
+              <p className="text-xs text-gray-500 -mt-2">
+                Save your Anypoint username and password here to avoid entering them every time you review a document.
+              </p>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Anypoint Username
+                </label>
+                <input
+                  type="text"
+                  value={formData.anypointUsername}
+                  onChange={(e) => setFormData(prev => ({ ...prev, anypointUsername: e.target.value }))}
+                  placeholder="your.email@company.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Anypoint Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showSecrets['form-anypoint-password'] ? 'text' : 'password'}
+                    value={formData.anypointPassword}
+                    onChange={(e) => setFormData(prev => ({ ...prev, anypointPassword: e.target.value }))}
+                    placeholder="Your Anypoint Platform password"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleSecretVisibility('form-anypoint-password')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showSecrets['form-anypoint-password'] ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  These credentials are encrypted and used only for manual review approvals
                 </p>
               </div>
 
