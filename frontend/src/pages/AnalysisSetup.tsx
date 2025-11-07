@@ -238,21 +238,8 @@ export const AnalysisSetup: React.FC = () => {
       return;
     }
 
-    // Check mandatory variables
-    if (selectedPrompt) {
-      const mandatoryVars = selectedPrompt.variables?.filter(v => v.isRequired) || [];
-      const missingVars = mandatoryVars.filter(v => !variableValues[v.variableName]);
-      
-      if (missingVars.length > 0) {
-        setAlertDialog({
-          isOpen: true,
-          title: 'Missing Variables',
-          message: `Please provide values for: ${missingVars.map(v => v.displayName).join(', ')}`,
-          type: 'warning',
-        });
-        return;
-      }
-    }
+    // Variables are optional - they will be populated from files/JSON if not provided
+    // No validation needed for missing variables
 
     try {
       setAnalyzing(true);
@@ -461,16 +448,20 @@ export const AnalysisSetup: React.FC = () => {
               <div className="space-y-3 mt-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                   <Database className="w-4 h-4" />
-                  <span>Variables</span>
+                  <span>Variables (Optional)</span>
+                </div>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-3">
+                  <p className="text-xs text-blue-900">
+                    <span className="font-medium">ℹ️ Note:</span> Variables are optional. If left empty, they will be automatically populated from your uploaded files (contract PDF and data Excel/CSV).
+                  </p>
                 </div>
                 {selectedPrompt.variables.map(variable => (
                   <div key={variable.id}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {variable.displayName}
-                      {variable.isRequired && <span className="text-red-600 ml-1">*</span>}
                       {variable.isFlowVariable && (
                         <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
-                          From Flow
+                          Auto-populated from files
                         </span>
                       )}
                     </label>
@@ -481,9 +472,9 @@ export const AnalysisSetup: React.FC = () => {
                         ...variableValues,
                         [variable.variableName]: e.target.value,
                       })}
-                      placeholder={variable.defaultValue || `Enter ${variable.displayName}`}
+                      placeholder={variable.defaultValue || `Optional - Leave empty to use file content`}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      disabled={analyzing || (variable.isFlowVariable && !variable.isRequired)}
+                      disabled={analyzing}
                     />
                   </div>
                 ))}
