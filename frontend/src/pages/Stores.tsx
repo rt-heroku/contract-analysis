@@ -42,29 +42,21 @@ export const Stores: React.FC = () => {
     connectorId: 0,
     name: '',
     storeType: 'database',
-    dataType: 'jsonb',
+    dataType: 'structured',
     isDefault: false,
     config: {
-      // Database
-      host: '',
-      port: 5432,
-      database: '',
-      username: '',
-      password: '',
-      
-      // S3
-      region: '',
-      bucket: '',
-      accessKeyId: '',
-      secretAccessKey: '',
-      
-      // Redis
-      url: '',
-      
-      // File
-      basePath: '',
+      // Store-specific metadata (not connection details)
+      tableName: '',
+      schemaName: '',
+      viewName: '',
+      procedureName: '',
+      bucketPrefix: '',
+      folderPath: '',
+      description: '',
     },
   });
+
+  const [sampleData, setSampleData] = useState('');
 
   const [alertDialog, setAlertDialog] = useState({
     isOpen: false,
@@ -129,8 +121,17 @@ export const Stores: React.FC = () => {
     e.preventDefault();
     
     try {
+      // Add sample data to config before submitting
+      const payload = {
+        ...formData,
+        config: {
+          ...formData.config,
+          sampleData: sampleData || undefined,
+        },
+      };
+
       if (editingStore) {
-        await api.put(`/stores/${editingStore.id}`, formData);
+        await api.put(`/stores/${editingStore.id}`, payload);
         setAlertDialog({
           isOpen: true,
           title: 'Success',
@@ -138,7 +139,7 @@ export const Stores: React.FC = () => {
           type: 'success',
         });
       } else {
-        await api.post('/stores', formData);
+        await api.post('/stores', payload);
         setAlertDialog({
           isOpen: true,
           title: 'Success',
@@ -171,6 +172,7 @@ export const Stores: React.FC = () => {
       isDefault: store.isDefault,
       config: store.config,
     });
+    setSampleData(store.config?.sampleData || '');
     setShowModal(true);
   };
 
@@ -255,22 +257,19 @@ export const Stores: React.FC = () => {
       connectorId: 0,
       name: '',
       storeType: 'database',
-      dataType: 'jsonb',
+      dataType: 'structured',
       isDefault: false,
       config: {
-        host: '',
-        port: 5432,
-        database: '',
-        username: '',
-        password: '',
-        region: '',
-        bucket: '',
-        accessKeyId: '',
-        secretAccessKey: '',
-        url: '',
-        basePath: '',
+        tableName: '',
+        schemaName: '',
+        viewName: '',
+        procedureName: '',
+        bucketPrefix: '',
+        folderPath: '',
+        description: '',
       },
     });
+    setSampleData('');
   };
 
   if (loading) {
@@ -343,25 +342,34 @@ export const Stores: React.FC = () => {
               </div>
 
               <div className="space-y-2 mb-4 text-sm text-gray-600 dark:text-gray-400">
-                {store.storeType === 'database' && store.config.host && (
-                  <div>
-                    <span className="font-medium">Host:</span> {store.config.host}:{store.config.port}
-                  </div>
+                {/* Database Store Metadata */}
+                {store.storeType === 'database' && (
+                  <>
+                    {store.config.tableName && (
+                      <div><span className="font-medium">Table:</span> {store.config.tableName}</div>
+                    )}
+                    {store.config.schemaName && (
+                      <div><span className="font-medium">Schema:</span> {store.config.schemaName}</div>
+                    )}
+                    {store.config.viewName && (
+                      <div><span className="font-medium">View:</span> {store.config.viewName}</div>
+                    )}
+                    {store.config.procedureName && (
+                      <div><span className="font-medium">Procedure:</span> {store.config.procedureName}</div>
+                    )}
+                  </>
                 )}
-                {store.storeType === 's3' && store.config.bucket && (
-                  <div>
-                    <span className="font-medium">Bucket:</span> {store.config.bucket}
-                  </div>
+                {/* S3 Store Metadata */}
+                {store.storeType === 's3' && store.config.bucketPrefix && (
+                  <div><span className="font-medium">Path:</span> {store.config.bucketPrefix}</div>
                 )}
-                {store.storeType === 'redis' && store.config.url && (
-                  <div>
-                    <span className="font-medium">URL:</span> {store.config.url.split('@')[1] || 'Redis'}
-                  </div>
+                {/* File Store Metadata */}
+                {store.storeType === 'local_file' && store.config.folderPath && (
+                  <div><span className="font-medium">Folder:</span> {store.config.folderPath}</div>
                 )}
-                {store.storeType === 'local_file' && store.config.basePath && (
-                  <div>
-                    <span className="font-medium">Path:</span> {store.config.basePath}
-                  </div>
+                {/* Description */}
+                {store.config.description && (
+                  <div className="text-xs italic pt-2">{store.config.description}</div>
                 )}
                 <div className="flex justify-between">
                   <span className="font-medium">Created by:</span>
@@ -469,45 +477,41 @@ export const Stores: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Store Type *
-                    </label>
-                    <select
-                      value={formData.storeType}
-                      onChange={(e) => setFormData({ ...formData, storeType: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="database">Database (PostgreSQL)</option>
-                      <option value="s3">Amazon S3</option>
-                      <option value="ftp">FTP/SFTP</option>
-                      <option value="local_file">Local File System</option>
-                      <option value="redis">Redis</option>
-                    </select>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Auto-set based on connector type
-                    </p>
-                  </div>
+                {/* Store Type - Auto-assigned from Connector */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Store Type *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.storeType.toUpperCase()}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Automatically set from connector type
+                  </p>
+                </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Data Type *
-                    </label>
-                    <select
-                      required
-                      value={formData.dataType}
-                      onChange={(e) => setFormData({ ...formData, dataType: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="jsonb">JSONB (Structured Data)</option>
-                      <option value="text">Text (Unstructured)</option>
-                      <option value="blob">Blob (Binary/Files)</option>
-                    </select>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      How data is stored
-                    </p>
-                  </div>
+                {/* Data Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Data Type *
+                  </label>
+                  <select
+                    required
+                    value={formData.dataType}
+                    onChange={(e) => setFormData({ ...formData, dataType: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="structured">Structured (Tables/Relations)</option>
+                    <option value="jsonb">JSONB (JSON Documents)</option>
+                    <option value="text">Text (Unstructured)</option>
+                    <option value="blob">Blob (Binary/Files)</option>
+                  </select>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    How data is organized
+                  </p>
                 </div>
 
                 <div className="flex items-center">
@@ -523,176 +527,177 @@ export const Stores: React.FC = () => {
                   </label>
                 </div>
 
-                {/* Database Configuration */}
-                {formData.storeType === 'database' && (
-                  <>
+                {/* Store Metadata - Connection details are in the Connector */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                    Store Metadata
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                    Define what this store accesses (e.g., table name, bucket prefix, folder path)
+                  </p>
+
+                  {/* Database Store Metadata */}
+                  {formData.storeType === 'database' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Table Name
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.config.tableName || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            config: { ...formData.config, tableName: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
+                          placeholder="customers"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Schema Name
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.config.schemaName || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            config: { ...formData.config, schemaName: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
+                          placeholder="public"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          View Name
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.config.viewName || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            config: { ...formData.config, viewName: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
+                          placeholder="customer_view"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Procedure Name
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.config.procedureName || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            config: { ...formData.config, procedureName: e.target.value }
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
+                          placeholder="get_customer_data"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* S3 Store Metadata */}
+                  {formData.storeType === 's3' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Host *</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Bucket Prefix / Folder Path
+                      </label>
                       <input
                         type="text"
-                        required
-                        value={formData.config.host}
+                        value={formData.config.bucketPrefix || ''}
                         onChange={(e) => setFormData({
                           ...formData,
-                          config: { ...formData.config, host: e.target.value }
+                          config: { ...formData.config, bucketPrefix: e.target.value }
                         })}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
-                        placeholder="localhost"
+                        placeholder="uploads/documents/"
                       />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Path within the bucket (e.g., "2024/invoices/")
+                      </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Port *</label>
-                        <input
-                          type="number"
-                          required
-                          value={formData.config.port}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            config: { ...formData.config, port: parseInt(e.target.value) }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Database *</label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.config.database}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            config: { ...formData.config, database: e.target.value }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
-                        <input
-                          type="text"
-                          value={formData.config.username}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            config: { ...formData.config, username: e.target.value }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                        <input
-                          type="password"
-                          value={formData.config.password}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            config: { ...formData.config, password: e.target.value }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
+                  )}
 
-                {/* S3 Configuration */}
-                {formData.storeType === 's3' && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Region *</label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.config.region}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            config: { ...formData.config, region: e.target.value }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
-                          placeholder="us-east-1"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bucket *</label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.config.bucket}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            config: { ...formData.config, bucket: e.target.value }
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
-                        />
-                      </div>
-                    </div>
+                  {/* File System Store Metadata */}
+                  {formData.storeType === 'local_file' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Access Key ID *</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Folder Path
+                      </label>
                       <input
                         type="text"
-                        required
-                        value={formData.config.accessKeyId}
+                        value={formData.config.folderPath || ''}
                         onChange={(e) => setFormData({
                           ...formData,
-                          config: { ...formData.config, accessKeyId: e.target.value }
+                          config: { ...formData.config, folderPath: e.target.value }
                         })}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
+                        placeholder="documents/contracts"
                       />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Relative path within the base path configured in connector
+                      </p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Secret Access Key *</label>
-                      <input
-                        type="password"
-                        required
-                        value={formData.config.secretAccessKey}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          config: { ...formData.config, secretAccessKey: e.target.value }
-                        })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
-                      />
-                    </div>
-                  </>
-                )}
+                  )}
 
-                {/* Redis Configuration */}
-                {formData.storeType === 'redis' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Redis URL *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.config.url}
+                  {/* Description (all store types) */}
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      value={formData.config.description || ''}
                       onChange={(e) => setFormData({
                         ...formData,
-                        config: { ...formData.config, url: e.target.value }
+                        config: { ...formData.config, description: e.target.value }
                       })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      placeholder="redis://localhost:6379"
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md"
+                      placeholder="Describe what this store contains..."
                     />
                   </div>
-                )}
+                </div>
 
-                {/* File System Configuration */}
-                {formData.storeType === 'local_file' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Base Path *</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.config.basePath}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        config: { ...formData.config, basePath: e.target.value }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      placeholder="/var/data/uploads"
-                    />
-                  </div>
-                )}
+                {/* Sample Data / Example */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Sample Data / Example
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                    Paste example data (JSON, XML, SQL, CSV, etc.) to document the data structure
+                  </p>
+                  <textarea
+                    value={sampleData}
+                    onChange={(e) => setSampleData(e.target.value)}
+                    rows={8}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md font-mono text-sm"
+                    placeholder={`Example for ${formData.storeType === 'database' ? 'database' : formData.storeType}:
+
+${formData.storeType === 'database' ? `{
+  "id": 1,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "created_at": "2024-01-15T10:30:00Z"
+}
+
+Or SQL:
+SELECT * FROM customers WHERE status = 'active';` : formData.storeType === 's3' ? `{
+  "files": [
+    {"name": "invoice_001.pdf", "size": 245678},
+    {"name": "contract_123.pdf", "size": 567890}
+  ]
+}` : `Paste your example data here...`}`}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    💡 Tip: This helps document the expected data format for developers
+                  </p>
+                </div>
 
                 <div className="flex justify-end space-x-3 pt-4">
                   <Button
