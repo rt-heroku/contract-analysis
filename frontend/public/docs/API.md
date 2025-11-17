@@ -218,10 +218,10 @@ Search users (for sharing features).
 ## Document Processing Endpoints
 
 ### POST /uploads
-Upload files (PDF contract and/or Excel/CSV data).
+Upload files (contract documents and/or Excel/CSV data).
 
 **Request:** `multipart/form-data`
-- Field: `contract` (PDF file)
+- Field: `contract` (PDF, PNG, JPG, or TIFF file)
 - Field: `data` (Excel/CSV file)
 - Field: `jobId` (string, unique identifier)
 

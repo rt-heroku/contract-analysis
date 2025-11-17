@@ -170,14 +170,14 @@ export const Documents: React.FC = () => {
           <label className="inline-block cursor-pointer">
             <input
               type="file"
-              accept=".pdf"
+              accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
               onChange={(e) => handleUpload(e, 'contract')}
               className="hidden"
               disabled={uploadingFile}
             />
             <span className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white shadow-sm ${uploadingFile ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}>
               <Upload className="w-4 h-4 mr-2" />
-              Upload PDF
+              Upload Contract
             </span>
           </label>
           <label className="inline-block cursor-pointer">

@@ -479,7 +479,7 @@ router.post('/:id/trigger', authenticate, processController.triggerProcess);
 
 **Event:** `file.uploaded`
 
-**Filter:** Only PDFs in "contracts" folder
+**Filter:** Contract files (PDF, PNG, JPG, TIFF) in "contracts" folder
 
 ---
 

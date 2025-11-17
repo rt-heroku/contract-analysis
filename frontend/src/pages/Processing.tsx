@@ -471,7 +471,12 @@ export const Processing: React.FC = () => {
 
   const contractDropzone = useDropzone({
     onDrop: onContractDrop,
-    accept: { 'application/pdf': ['.pdf'] },
+    accept: { 
+      'application/pdf': ['.pdf'],
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/tiff': ['.tiff', '.tif']
+    },
     maxFiles: 1,
     multiple: false,
   });
@@ -492,7 +497,7 @@ export const Processing: React.FC = () => {
     const hasContract = contractFile || existingContractUpload;
 
     if (!hasContract) {
-      setError('Please upload a contract PDF');
+      setError('Please upload a contract file (PDF, PNG, JPG, or TIFF)');
       return;
     }
     
@@ -561,7 +566,7 @@ export const Processing: React.FC = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Document Extraction</h1>
         <p className="text-gray-600 mt-1">
-          Upload your contract PDF to extract data with MuleSoft IDP
+          Upload your contract document (PDF, PNG, JPG, or TIFF) to extract data with MuleSoft IDP
         </p>
       </div>
 
@@ -572,7 +577,7 @@ export const Processing: React.FC = () => {
       )}
 
       {/* Contract Upload */}
-      <Card title="Step 1: Upload Contract PDF">
+      <Card title="Step 1: Upload Contract Document">
         <div className="space-y-4">
           {existingContractUpload && !contractFile ? (
             <div className="border-2 border-blue-300 bg-blue-50 rounded-lg p-4">
@@ -633,10 +638,10 @@ export const Processing: React.FC = () => {
                 <>
                   <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-700 font-medium">
-                    Drop your contract PDF here, or click to browse
+                    Drop your contract document here, or click to browse
                   </p>
                   <p className="text-sm text-gray-500 mt-2">
-                    Supports PDF files up to 10MB
+                    Supports PDF, PNG, JPG, TIFF files up to 10MB
                   </p>
                 </>
               )}
@@ -1098,12 +1103,12 @@ export const Processing: React.FC = () => {
               {documents.filter(doc => {
                 const matchesSearch = doc.originalFilename.toLowerCase().includes(librarySearch.toLowerCase());
                 const matchesType = 
-                  (librarySelectionType === 'contract' && doc.fileType.includes('pdf')) ||
+                  (librarySelectionType === 'contract' && (doc.fileType.includes('pdf') || doc.fileType.includes('image'))) ||
                   (librarySelectionType === 'data' && (doc.fileType.includes('spreadsheet') || doc.fileType.includes('csv') || doc.fileType.includes('excel')));
                 return matchesSearch && matchesType;
               }).length === 0 && (
                 <div className="p-8 text-center text-gray-500">
-                  <p>No {librarySelectionType === 'contract' ? 'PDF' : 'data'} files found.</p>
+                  <p>No {librarySelectionType === 'contract' ? 'contract' : 'data'} files found.</p>
                 </div>
               )}
             </div>
