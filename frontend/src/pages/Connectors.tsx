@@ -58,9 +58,11 @@ export const Connectors: React.FC = () => {
   
   // Connector Detail View
   const [viewingConnector, setViewingConnector] = useState<Connector | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'specification' | 'actions'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'specification' | 'actions' | 'stores'>('details');
   const [connectorActions, setConnectorActions] = useState<ConnectorAction[]>([]);
   const [loadingActions, setLoadingActions] = useState(false);
+  const [connectorStores, setConnectorStores] = useState<any[]>([]);
+  const [loadingStores, setLoadingStores] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -107,6 +109,12 @@ export const Connectors: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (viewingConnector && activeTab === 'stores') {
+      loadConnectorStores(viewingConnector.id);
+    }
+  }, [viewingConnector, activeTab]);
+
+  useEffect(() => {
     if (viewingConnector && activeTab === 'actions') {
       loadConnectorActions(viewingConnector.id);
     }
@@ -139,6 +147,19 @@ export const Connectors: React.FC = () => {
       setConnectorActions([]);
     } finally {
       setLoadingActions(false);
+    }
+  };
+
+  const loadConnectorStores = async (connectorId: number) => {
+    try {
+      setLoadingStores(true);
+      const response = await api.get(`/stores?connectorId=${connectorId}`);
+      setConnectorStores(response.data.stores || []);
+    } catch (error: any) {
+      console.error('Error loading connector stores:', error);
+      setConnectorStores([]);
+    } finally {
+      setLoadingStores(false);
     }
   };
 
@@ -598,6 +619,111 @@ export const Connectors: React.FC = () => {
     );
   };
 
+  const renderStoresTab = () => {
+    if (!viewingConnector) return null;
+
+    if (loadingStores) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-gray-600 dark:text-gray-400">Loading stores...</p>
+        </div>
+      );
+    }
+
+    if (connectorStores.length === 0) {
+      return (
+        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+          <Database className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-600 dark:text-gray-400 mb-4">No stores configured for this connector</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            Stores represent specific data access points within this connector (e.g., tables, buckets, folders)
+          </p>
+          <Button
+            onClick={() => {
+              // Navigate to stores page with pre-selected connector
+              window.location.href = `/stores?connectorId=${viewingConnector.id}`;
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Store
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Stores ({connectorStores.length})
+          </h3>
+          <Button
+            onClick={() => {
+              window.location.href = `/stores?connectorId=${viewingConnector.id}`;
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            size="sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create Store
+          </Button>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {connectorStores.map((store: any) => (
+            <div
+              key={store.id}
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{store.name}</h4>
+                  <div className="flex gap-2 flex-wrap mt-2">
+                    <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
+                      {store.storeType.toUpperCase()}
+                    </span>
+                    <span className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-1 rounded">
+                      {store.dataType.toUpperCase()}
+                    </span>
+                    {store.isDefault && (
+                      <span className="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded">
+                        DEFAULT
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded ${
+                  store.isActive 
+                    ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' 
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                }`}>
+                  {store.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                {store.storeType === 'database' && store.config.host && (
+                  <div><span className="font-medium">Host:</span> {store.config.host}:{store.config.port}</div>
+                )}
+                {store.storeType === 's3' && store.config.bucket && (
+                  <div><span className="font-medium">Bucket:</span> {store.config.bucket}</div>
+                )}
+                {store.storeType === 'redis' && store.config.url && (
+                  <div><span className="font-medium">URL:</span> {store.config.url.split('@')[1] || 'Redis'}</div>
+                )}
+                {store.storeType === 'local_file' && store.config.basePath && (
+                  <div><span className="font-medium">Path:</span> {store.config.basePath}</div>
+                )}
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Created: {new Date(store.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -661,6 +787,24 @@ export const Connectors: React.FC = () => {
                   </span>
                 )}
               </button>
+              {/* Stores Tab - for all non-REST connectors */}
+              {viewingConnector.connectorType !== 'rest' && (
+                <button
+                  onClick={() => setActiveTab('stores')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'stores'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Stores
+                  {connectorStores.length > 0 && (
+                    <span className="ml-2 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs">
+                      {connectorStores.length}
+                    </span>
+                  )}
+                </button>
+              )}
             </nav>
           </div>
 
@@ -668,6 +812,7 @@ export const Connectors: React.FC = () => {
           {activeTab === 'details' && renderDetailsTab()}
           {activeTab === 'specification' && renderSpecificationTab()}
           {activeTab === 'actions' && renderActionsTab()}
+          {activeTab === 'stores' && renderStoresTab()}
         </div>
 
         <AlertDialog

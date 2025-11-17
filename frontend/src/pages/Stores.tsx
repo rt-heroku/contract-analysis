@@ -7,10 +7,18 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Plus, Edit, Trash2, TestTube, Star, StarOff } from 'lucide-react';
 import api from '@/lib/api';
 
-interface Store {
+interface Connector {
   id: number;
   name: string;
+  connectorType: string;
+}
+
+interface Store {
+  id: number;
+  connectorId: number;
+  name: string;
   storeType: string;
+  dataType: string;
   isDefault: boolean;
   isActive: boolean;
   config: any;
@@ -19,17 +27,22 @@ interface Store {
     firstName: string;
     lastName: string;
   };
+  connector: Connector;
 }
 
 export const Stores: React.FC = () => {
   const [stores, setStores] = useState<Store[]>([]);
+  const [connectors, setConnectors] = useState<Connector[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingConnectors, setLoadingConnectors] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingStore, setEditingStore] = useState<Store | null>(null);
   
   const [formData, setFormData] = useState({
+    connectorId: 0,
     name: '',
     storeType: 'database',
+    dataType: 'jsonb',
     isDefault: false,
     config: {
       // Database
@@ -74,7 +87,26 @@ export const Stores: React.FC = () => {
 
   useEffect(() => {
     loadStores();
+    loadConnectors();
   }, []);
+
+  const loadConnectors = async () => {
+    try {
+      setLoadingConnectors(true);
+      const response = await api.get('/connectors');
+      setConnectors(response.data.connectors || []);
+    } catch (error: any) {
+      console.error('Failed to load connectors:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Warning',
+        message: 'Failed to load connectors. You may need to create a connector first.',
+        type: 'warning',
+      });
+    } finally {
+      setLoadingConnectors(false);
+    }
+  };
 
   const loadStores = async () => {
     try {
@@ -132,8 +164,10 @@ export const Stores: React.FC = () => {
   const handleEdit = (store: Store) => {
     setEditingStore(store);
     setFormData({
+      connectorId: store.connectorId,
       name: store.name,
       storeType: store.storeType,
+      dataType: store.dataType,
       isDefault: store.isDefault,
       config: store.config,
     });
@@ -218,8 +252,10 @@ export const Stores: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
+      connectorId: 0,
       name: '',
       storeType: 'database',
+      dataType: 'jsonb',
       isDefault: false,
       config: {
         host: '',
@@ -291,9 +327,15 @@ export const Stores: React.FC = () => {
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{store.name}</h3>
                     {store.isDefault && <Star className="w-5 h-5 text-yellow-500 fill-current" />}
                   </div>
-                  <div className="mt-1">
+                  <div className="mt-1 flex gap-2 flex-wrap">
                     <Badge variant="default">{store.storeType.toUpperCase()}</Badge>
+                    <Badge variant="info">{store.dataType.toUpperCase()}</Badge>
                   </div>
+                  {store.connector && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      📡 Connector: <span className="font-medium">{store.connector.name}</span>
+                    </p>
+                  )}
                 </div>
                 <Badge variant={store.isActive ? 'success' : 'default'}>
                   {store.isActive ? 'Active' : 'Inactive'}
@@ -374,6 +416,45 @@ export const Stores: React.FC = () => {
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Connector Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Connector *
+                  </label>
+                  <select
+                    required
+                    value={formData.connectorId}
+                    onChange={(e) => {
+                      const selectedConnectorId = parseInt(e.target.value);
+                      const selectedConnector = connectors.find(c => c.id === selectedConnectorId);
+                      setFormData({ 
+                        ...formData, 
+                        connectorId: selectedConnectorId,
+                        storeType: selectedConnector?.connectorType || formData.storeType
+                      });
+                    }}
+                    disabled={editingStore !== null || loadingConnectors}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 dark:disabled:bg-gray-600 disabled:cursor-not-allowed"
+                  >
+                    <option value={0}>Select a Connector</option>
+                    {connectors.map(connector => (
+                      <option key={connector.id} value={connector.id}>
+                        {connector.name} ({connector.connectorType})
+                      </option>
+                    ))}
+                  </select>
+                  {connectors.length === 0 && !loadingConnectors && (
+                    <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                      ⚠️ No connectors available. Please create a connector first.
+                    </p>
+                  )}
+                  {editingStore && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      Connector cannot be changed when editing a store.
+                    </p>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Store Name *
@@ -388,21 +469,45 @@ export const Stores: React.FC = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Store Type *
-                  </label>
-                  <select
-                    value={formData.storeType}
-                    onChange={(e) => setFormData({ ...formData, storeType: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="database">Database (PostgreSQL)</option>
-                    <option value="s3">Amazon S3</option>
-                    <option value="ftp">FTP/SFTP</option>
-                    <option value="local_file">Local File System</option>
-                    <option value="redis">Redis</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Store Type *
+                    </label>
+                    <select
+                      value={formData.storeType}
+                      onChange={(e) => setFormData({ ...formData, storeType: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="database">Database (PostgreSQL)</option>
+                      <option value="s3">Amazon S3</option>
+                      <option value="ftp">FTP/SFTP</option>
+                      <option value="local_file">Local File System</option>
+                      <option value="redis">Redis</option>
+                    </select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Auto-set based on connector type
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Data Type *
+                    </label>
+                    <select
+                      required
+                      value={formData.dataType}
+                      onChange={(e) => setFormData({ ...formData, dataType: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="jsonb">JSONB (Structured Data)</option>
+                      <option value="text">Text (Unstructured)</option>
+                      <option value="blob">Blob (Binary/Files)</option>
+                    </select>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      How data is stored
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex items-center">
