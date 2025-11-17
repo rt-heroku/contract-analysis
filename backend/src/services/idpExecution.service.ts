@@ -39,7 +39,7 @@ export const idpExecutionService = {
   },
 
   /**
-   * Get user's IDP executions
+   * Get user's IDP executions (masked for list view)
    */
   async getUserExecutions(userId: number) {
     const executions = await prisma.idpExecution.findMany({
@@ -50,13 +50,13 @@ export const idpExecutionService = {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Decrypt credentials for owner
+    // Mask credentials for list view (even for owner)
     return executions.map(exec => ({
       ...exec,
-      authClientId: encryption.decrypt(exec.authClientId),
-      authClientSecret: encryption.decrypt(exec.authClientSecret),
-      anypointUsername: exec.anypointUsername ? encryption.decrypt(exec.anypointUsername) : null,
-      anypointPassword: exec.anypointPassword ? encryption.decrypt(exec.anypointPassword) : null,
+      authClientId: encryption.maskSecret(encryption.decrypt(exec.authClientId)),
+      authClientSecret: '********',
+      anypointUsername: exec.anypointUsername ? '********' : null,
+      anypointPassword: exec.anypointPassword ? '********' : null,
     }));
   },
 
