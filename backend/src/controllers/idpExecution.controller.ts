@@ -7,7 +7,7 @@ import { getClientIp, getUserAgent } from '../utils/helpers';
 
 export const idpExecutionController = {
   /**
-   * Get all user's IDP executions + shared ones
+   * Get all user's IDP executions + shared ones + all others (if admin)
    */
   async getAll(req: AuthenticatedRequest, res: Response) {
     try {
@@ -15,15 +15,30 @@ export const idpExecutionController = {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const [myExecutions, sharedExecutions] = await Promise.all([
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
+
+      const promises: Promise<any>[] = [
         idpExecutionService.getUserExecutions(req.user.id),
         idpExecutionService.getSharedExecutions(req.user.id),
-      ]);
+      ];
 
-      res.json({
-        myExecutions,
-        sharedExecutions,
-      });
+      // Add all other executions for admins
+      if (isAdmin) {
+        promises.push(idpExecutionService.getAllOtherExecutions(req.user.id));
+      }
+
+      const results = await Promise.all(promises);
+
+      const response: any = {
+        myExecutions: results[0],
+        sharedExecutions: results[1],
+      };
+
+      if (isAdmin) {
+        response.allOtherExecutions = results[2];
+      }
+
+      res.json(response);
     } catch (error: any) {
       console.error('Error fetching IDP executions:', error);
       res.status(500).json({ error: error.message });
@@ -144,7 +159,8 @@ export const idpExecutionController = {
       }
 
       const id = parseInt(req.params.id);
-      const execution = await idpExecutionService.update(id, req.user.id, req.body);
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
+      const execution = await idpExecutionService.update(id, req.user.id, req.body, isAdmin);
 
       await loggingService.logActivity({
         userId: req.user.id,

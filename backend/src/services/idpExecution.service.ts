@@ -93,7 +93,9 @@ export const idpExecutionService = {
     return sharedExecutions.map(exec => ({
       ...exec,
       authClientId: encryption.maskSecret(encryption.decrypt(exec.authClientId)),
-      authClientSecret: '***',
+      authClientSecret: '********',
+      anypointUsername: null,
+      anypointPassword: null,
     }));
   },
 
@@ -134,7 +136,7 @@ export const idpExecutionService = {
       return {
         ...execution,
         authClientId: encryption.maskSecret(encryption.decrypt(execution.authClientId)),
-        authClientSecret: '***',
+        authClientSecret: '********',
         anypointUsername: null,
         anypointPassword: null,
       };
@@ -153,29 +155,59 @@ export const idpExecutionService = {
   /**
    * Update IDP execution
    */
-  async update(id: number, userId: number, data: any) {
-    // Verify ownership
+  async update(id: number, userId: number, data: any, isAdmin: boolean = false) {
+    // Verify ownership or admin access
     const existing = await prisma.idpExecution.findUnique({
       where: { id },
     });
 
-    if (!existing || existing.userId !== userId) {
+    if (!existing) {
+      throw new Error('IDP Execution not found');
+    }
+
+    // Allow update if owner OR admin
+    if (existing.userId !== userId && !isAdmin) {
       throw new Error('Not authorized');
     }
 
-    // Encrypt credentials if provided
+    // Encrypt credentials if provided (skip empty strings to keep existing values)
     const updateData: any = { ...data };
-    if (data.authClientId) {
+    
+    // Remove credential fields if empty (to keep existing values)
+    if (data.authClientId && data.authClientId.trim() !== '') {
       updateData.authClientId = encryption.encrypt(data.authClientId);
+    } else {
+      delete updateData.authClientId;
     }
-    if (data.authClientSecret) {
+    
+    if (data.authClientSecret && data.authClientSecret.trim() !== '') {
       updateData.authClientSecret = encryption.encrypt(data.authClientSecret);
+    } else {
+      delete updateData.authClientSecret;
     }
+    
     if (data.anypointUsername !== undefined) {
-      updateData.anypointUsername = data.anypointUsername ? encryption.encrypt(data.anypointUsername) : null;
+      if (data.anypointUsername && data.anypointUsername.trim() !== '') {
+        updateData.anypointUsername = encryption.encrypt(data.anypointUsername);
+      } else if (data.anypointUsername === '') {
+        // Empty string means keep existing
+        delete updateData.anypointUsername;
+      } else {
+        // null means clear it
+        updateData.anypointUsername = null;
+      }
     }
+    
     if (data.anypointPassword !== undefined) {
-      updateData.anypointPassword = data.anypointPassword ? encryption.encrypt(data.anypointPassword) : null;
+      if (data.anypointPassword && data.anypointPassword.trim() !== '') {
+        updateData.anypointPassword = encryption.encrypt(data.anypointPassword);
+      } else if (data.anypointPassword === '') {
+        // Empty string means keep existing
+        delete updateData.anypointPassword;
+      } else {
+        // null means clear it
+        updateData.anypointPassword = null;
+      }
     }
 
     const updated = await prisma.idpExecution.update({
@@ -183,14 +215,27 @@ export const idpExecutionService = {
       data: updateData,
     });
 
-    // Return with decrypted credentials
-    return {
-      ...updated,
-      authClientId: encryption.decrypt(updated.authClientId),
-      authClientSecret: encryption.decrypt(updated.authClientSecret),
-      anypointUsername: updated.anypointUsername ? encryption.decrypt(updated.anypointUsername) : null,
-      anypointPassword: updated.anypointPassword ? encryption.decrypt(updated.anypointPassword) : null,
-    };
+    // Return with decrypted credentials if owner, masked if admin editing someone else's
+    const isOwner = existing.userId === userId;
+    
+    if (isOwner) {
+      return {
+        ...updated,
+        authClientId: encryption.decrypt(updated.authClientId),
+        authClientSecret: encryption.decrypt(updated.authClientSecret),
+        anypointUsername: updated.anypointUsername ? encryption.decrypt(updated.anypointUsername) : null,
+        anypointPassword: updated.anypointPassword ? encryption.decrypt(updated.anypointPassword) : null,
+      };
+    } else {
+      // Admin editing someone else's execution - return masked
+      return {
+        ...updated,
+        authClientId: encryption.maskSecret(encryption.decrypt(updated.authClientId)),
+        authClientSecret: '********',
+        anypointUsername: null,
+        anypointPassword: null,
+      };
+    }
   },
 
   /**
@@ -252,6 +297,46 @@ export const idpExecutionService = {
       where: { id },
       data: { sharedWith: newSharedWith },
     });
+  },
+
+  /**
+   * Get all other executions (admin only)
+   */
+  async getAllOtherExecutions(userId: number) {
+    // Get all active executions that user doesn't own and aren't shared with them
+    const allExecutions = await prisma.idpExecution.findMany({
+      where: {
+        isActive: true,
+        userId: { not: userId },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+
+    // Filter out executions that are shared with the user
+    const otherExecutions = allExecutions.filter(exec => {
+      const sharedWith = Array.isArray(exec.sharedWith) 
+        ? exec.sharedWith 
+        : (exec.sharedWith as any)?.length ? JSON.parse(JSON.stringify(exec.sharedWith)) : [];
+      return !sharedWith.includes(userId);
+    });
+
+    // Mask sensitive data
+    return otherExecutions.map(exec => ({
+      ...exec,
+      authClientId: encryption.maskSecret(encryption.decrypt(exec.authClientId)),
+      authClientSecret: '********',
+      anypointUsername: null,
+      anypointPassword: null,
+    }));
   },
 
   /**
