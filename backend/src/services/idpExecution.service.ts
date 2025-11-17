@@ -83,9 +83,18 @@ export const idpExecutionService = {
 
     // Filter for executions shared with this user
     const sharedExecutions = allExecutions.filter(exec => {
-      const sharedWith = Array.isArray(exec.sharedWith) 
-        ? exec.sharedWith 
-        : (exec.sharedWith as any)?.length ? JSON.parse(JSON.stringify(exec.sharedWith)) : [];
+      // Handle Json type from Prisma - normalize to array
+      let sharedWith: number[] = [];
+      
+      if (exec.sharedWith) {
+        if (Array.isArray(exec.sharedWith)) {
+          sharedWith = exec.sharedWith as number[];
+        } else if (typeof exec.sharedWith === 'object') {
+          // Prisma Json might be an object, convert to array
+          sharedWith = Object.values(exec.sharedWith as any).filter((v: any) => typeof v === 'number');
+        }
+      }
+      
       return sharedWith.includes(userId) && exec.userId !== userId;
     });
 
@@ -121,10 +130,15 @@ export const idpExecutionService = {
       return null;
     }
 
-    // Check access
-    const sharedWith = Array.isArray(execution.sharedWith) 
-      ? execution.sharedWith 
-      : (execution.sharedWith as any)?.length ? JSON.parse(JSON.stringify(execution.sharedWith)) : [];
+    // Check access - normalize sharedWith to array
+    let sharedWith: number[] = [];
+    if (execution.sharedWith) {
+      if (Array.isArray(execution.sharedWith)) {
+        sharedWith = execution.sharedWith as number[];
+      } else if (typeof execution.sharedWith === 'object') {
+        sharedWith = Object.values(execution.sharedWith as any).filter((v: any) => typeof v === 'number');
+      }
+    }
     const hasAccess = execution.userId === userId || sharedWith.includes(userId);
     
     if (!hasAccess) {
@@ -323,9 +337,18 @@ export const idpExecutionService = {
 
     // Filter out executions that are shared with the user
     const otherExecutions = allExecutions.filter(exec => {
-      const sharedWith = Array.isArray(exec.sharedWith) 
-        ? exec.sharedWith 
-        : (exec.sharedWith as any)?.length ? JSON.parse(JSON.stringify(exec.sharedWith)) : [];
+      // Handle Json type from Prisma - normalize to array
+      let sharedWith: number[] = [];
+      
+      if (exec.sharedWith) {
+        if (Array.isArray(exec.sharedWith)) {
+          sharedWith = exec.sharedWith as number[];
+        } else if (typeof exec.sharedWith === 'object') {
+          // Prisma Json might be an object, convert to array
+          sharedWith = Object.values(exec.sharedWith as any).filter((v: any) => typeof v === 'number');
+        }
+      }
+      
       return !sharedWith.includes(userId);
     });
 
@@ -384,8 +407,15 @@ export const idpExecutionService = {
       throw new Error('IDP Execution not found');
     }
 
-    // Check if user has access (owner or shared with)
-    const sharedWith = (execution.sharedWith as number[]) || [];
+    // Check if user has access (owner or shared with) - normalize sharedWith to array
+    let sharedWith: number[] = [];
+    if (execution.sharedWith) {
+      if (Array.isArray(execution.sharedWith)) {
+        sharedWith = execution.sharedWith as number[];
+      } else if (typeof execution.sharedWith === 'object') {
+        sharedWith = Object.values(execution.sharedWith as any).filter((v: any) => typeof v === 'number');
+      }
+    }
     const hasAccess = execution.userId === userId || sharedWith.includes(userId);
     
     if (!hasAccess) {
