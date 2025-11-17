@@ -193,7 +193,8 @@ export const idpExecutionController = {
       }
 
       const id = parseInt(req.params.id);
-      await idpExecutionService.delete(id, req.user.id);
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
+      await idpExecutionService.delete(id, req.user.id, isAdmin);
 
       await loggingService.logActivity({
         userId: req.user.id,
@@ -232,7 +233,8 @@ export const idpExecutionController = {
         return res.status(400).json({ error: 'User IDs array is required' });
       }
 
-      await idpExecutionService.share(id, req.user.id, userIds);
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
+      await idpExecutionService.share(id, req.user.id, userIds, isAdmin);
 
       await loggingService.logActivity({
         userId: req.user.id,
@@ -266,8 +268,9 @@ export const idpExecutionController = {
 
       const id = parseInt(req.params.id);
       const userIdToRemove = parseInt(req.params.userId);
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
 
-      await idpExecutionService.unshare(id, req.user.id, userIdToRemove);
+      await idpExecutionService.unshare(id, req.user.id, userIdToRemove, isAdmin);
 
       await loggingService.logActivity({
         userId: req.user.id,

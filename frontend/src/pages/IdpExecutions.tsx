@@ -338,8 +338,15 @@ export const IdpExecutions: React.FC = () => {
   const ExecutionCard = ({ execution, isShared, isOther }: { execution: IdpExecution; isShared: boolean; isOther?: boolean }) => {
     const isOwner = execution.userId === user?.id;
     const isAdmin = user?.roles?.includes('admin') || user?.roles?.includes('Admin');
+    
+    // Admins can edit, share, and delete any execution
+    // Non-admins can only edit their own
     const canEdit = isOwner || (isAdmin && (isShared || isOther));
-    const isReadOnly = isShared && !isAdmin;
+    const canShare = isOwner || (isAdmin && (isShared || isOther));
+    const canDelete = isOwner || (isAdmin && (isShared || isOther));
+    
+    // Non-admins: readonly for everything not owned by them
+    const isReadOnly = (isShared || isOther) && !isAdmin;
 
     return (
       <Card className="hover:shadow-md transition-shadow">
@@ -429,8 +436,9 @@ export const IdpExecutions: React.FC = () => {
           </div>
 
           {/* Action buttons */}
-          {canEdit && (
+          {(canEdit || canShare || canDelete) && (
             <div className="flex flex-col gap-2 ml-4">
+              {/* Owner: Full access */}
               {isOwner && (
                 <>
                   <Button
@@ -459,16 +467,38 @@ export const IdpExecutions: React.FC = () => {
                   </Button>
                 </>
               )}
-              {!isOwner && isAdmin && (
-                <Button
-                  onClick={() => handleEdit(execution)}
-                  variant="outline"
-                  className="flex items-center gap-1"
-                  title="Admins can modify but cannot see secrets"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  Edit
-                </Button>
+              
+              {/* Admin (not owner): Can edit, share, and delete shared/other executions */}
+              {!isOwner && isAdmin && (isShared || isOther) && (
+                <>
+                  <Button
+                    onClick={() => handleEdit(execution)}
+                    variant="outline"
+                    className="flex items-center gap-1"
+                    title="Admins can modify but cannot see secrets"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    Edit
+                  </Button>
+                  <Button
+                    onClick={() => handleShare(execution.id)}
+                    variant="outline"
+                    className="flex items-center gap-1"
+                    title="Share this execution with other users"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Share
+                  </Button>
+                  <Button
+                    onClick={() => handleDelete(execution)}
+                    variant="outline"
+                    className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    title="Delete this execution"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </Button>
+                </>
               )}
             </div>
           )}

@@ -255,13 +255,18 @@ export const idpExecutionService = {
   /**
    * Delete (soft delete)
    */
-  async delete(id: number, userId: number) {
-    // Verify ownership
+  async delete(id: number, userId: number, isAdmin: boolean = false) {
+    // Verify ownership or admin access
     const existing = await prisma.idpExecution.findUnique({
       where: { id },
     });
 
-    if (!existing || existing.userId !== userId) {
+    if (!existing) {
+      throw new Error('IDP Execution not found');
+    }
+
+    // Allow deletion if owner OR admin
+    if (existing.userId !== userId && !isAdmin) {
       throw new Error('Not authorized');
     }
 
@@ -274,16 +279,30 @@ export const idpExecutionService = {
   /**
    * Share with users
    */
-  async share(id: number, ownerId: number, userIds: number[]) {
+  async share(id: number, userId: number, userIds: number[], isAdmin: boolean = false) {
     const execution = await prisma.idpExecution.findUnique({
       where: { id },
     });
 
-    if (!execution || execution.userId !== ownerId) {
+    if (!execution) {
+      throw new Error('IDP Execution not found');
+    }
+
+    // Allow sharing if owner OR admin
+    if (execution.userId !== userId && !isAdmin) {
       throw new Error('Not authorized');
     }
 
-    const currentSharedWith = (execution.sharedWith as number[]) || [];
+    // Normalize current sharedWith to array
+    let currentSharedWith: number[] = [];
+    if (execution.sharedWith) {
+      if (Array.isArray(execution.sharedWith)) {
+        currentSharedWith = execution.sharedWith as number[];
+      } else if (typeof execution.sharedWith === 'object') {
+        currentSharedWith = Object.values(execution.sharedWith as any).filter((v: any) => typeof v === 'number');
+      }
+    }
+    
     const newSharedWith = Array.from(new Set([...currentSharedWith, ...userIds]));
 
     return await prisma.idpExecution.update({
@@ -295,16 +314,30 @@ export const idpExecutionService = {
   /**
    * Unshare
    */
-  async unshare(id: number, ownerId: number, userIdToRemove: number) {
+  async unshare(id: number, userId: number, userIdToRemove: number, isAdmin: boolean = false) {
     const execution = await prisma.idpExecution.findUnique({
       where: { id },
     });
 
-    if (!execution || execution.userId !== ownerId) {
+    if (!execution) {
+      throw new Error('IDP Execution not found');
+    }
+
+    // Allow unsharing if owner OR admin
+    if (execution.userId !== userId && !isAdmin) {
       throw new Error('Not authorized');
     }
 
-    const currentSharedWith = (execution.sharedWith as number[]) || [];
+    // Normalize current sharedWith to array
+    let currentSharedWith: number[] = [];
+    if (execution.sharedWith) {
+      if (Array.isArray(execution.sharedWith)) {
+        currentSharedWith = execution.sharedWith as number[];
+      } else if (typeof execution.sharedWith === 'object') {
+        currentSharedWith = Object.values(execution.sharedWith as any).filter((v: any) => typeof v === 'number');
+      }
+    }
+    
     const newSharedWith = currentSharedWith.filter((uid: number) => uid !== userIdToRemove);
 
     return await prisma.idpExecution.update({
