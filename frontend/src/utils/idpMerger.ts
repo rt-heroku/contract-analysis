@@ -12,11 +12,6 @@ interface Page {
   tables: Record<string, any[]>;
 }
 
-interface MergedIDPResponse {
-  fields: Record<string, any>;
-  tables: Record<string, any[]>;
-}
-
 /**
  * Check if two arrays have the same set of keys (for table comparison)
  */
