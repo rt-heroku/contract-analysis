@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import MDEditor from '@uiw/react-md-editor';
 import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
@@ -7,6 +6,7 @@ import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { MarkdownMonacoEditor } from '@/components/common/MonacoEditor';
 import { Plus, Edit, Trash2, Eye, EyeOff, Search, Save, X, Download, Upload as UploadIcon, Star, Copy } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 
@@ -759,12 +759,13 @@ export const Prompts: React.FC = () => {
           <label className="block text-xs font-medium text-gray-700 mb-2">
             Prompt Content * (Markdown) - 💡 Drag variables above into editor
           </label>
-          <div data-color-mode="light" className="flex-1 min-h-0 border border-gray-200 rounded-lg overflow-hidden">
-            <MDEditor
+          <div className="flex-1 min-h-0 border border-gray-200 rounded-lg overflow-hidden">
+            <MarkdownMonacoEditor
               value={formData.content}
               onChange={handleContentChange}
               height="100%"
-              preview="edit"
+              theme="light"
+              wordWrap="on"
             />
           </div>
         </div>

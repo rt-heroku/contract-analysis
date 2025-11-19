@@ -4,6 +4,7 @@ import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { IconUpload } from '@/components/common/IconUpload';
+import { CodeMonacoEditor } from '@/components/common/MonacoEditor';
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -647,26 +648,18 @@ export const ActionCreator: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     JavaScript Code *
                   </label>
-                  <textarea
-                    required
-                    value={formData.scriptConfig.code}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      scriptConfig: { ...formData.scriptConfig, code: e.target.value }
-                    })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
-                    rows={12}
-                    placeholder={`// Access input data via 'input' variable
-// Access context via 'context' variable
-// Return your result
-
-const result = {
-  message: input.text.toUpperCase(),
-  timestamp: new Date().toISOString()
-};
-
-return result;`}
-                  />
+                  <div className="border border-gray-300 rounded-md overflow-hidden">
+                    <CodeMonacoEditor
+                      value={formData.scriptConfig.code}
+                      onChange={(value) => setFormData({
+                        ...formData,
+                        scriptConfig: { ...formData.scriptConfig, code: value || '' }
+                      })}
+                      language="javascript"
+                      height="300px"
+                      theme="light"
+                    />
+                  </div>
                   <p className="text-xs text-gray-500 mt-1">
                     Runs in a sandboxed environment. Available: input, context, console, JSON, Math, Date
                   </p>

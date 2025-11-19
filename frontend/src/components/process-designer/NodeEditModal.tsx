@@ -3,6 +3,7 @@ import { Button } from '@/components/common/Button';
 import { X, Plus, Trash2, ArrowRight, Edit } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common/Tabs';
 import { ConditionalEditor, ConditionalGroup } from './ConditionalEditor';
+import { JSONMonacoEditor, CodeMonacoEditor } from '@/components/common/MonacoEditor';
 
 interface NodeEditModalProps {
   isOpen: boolean;
@@ -219,13 +220,15 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
 
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Request Body</label>
-        <textarea
-          value={formData.body || ''}
-          onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
-          rows={6}
-          placeholder='{"key": "{{input.value}}"}'
-        />
+        <div className="border border-gray-300 rounded-md overflow-hidden">
+          <JSONMonacoEditor
+            value={formData.body || ''}
+            onChange={(value) => setFormData({ ...formData, body: value || '' })}
+            height="200px"
+            theme="light"
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Supports variables: {"{{input.value}}"}</p>
       </div>
     </div>
   );
@@ -234,13 +237,16 @@ export const NodeEditModal = ({ isOpen, node, allActions: _allActions, nodes, ed
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">JavaScript Code</label>
-        <textarea
-          value={formData.code || ''}
-          onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
-          rows={12}
-          placeholder={`// Available: input, context, console\nconst result = input.value * 2;\nreturn { output: result };`}
-        />
+        <div className="border border-gray-300 rounded-md overflow-hidden">
+          <CodeMonacoEditor
+            value={formData.code || ''}
+            onChange={(value) => setFormData({ ...formData, code: value || '' })}
+            language="javascript"
+            height="300px"
+            theme="light"
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Available: input, context, console</p>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timeout (ms)</label>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import { Button } from '@/components/common/Button';
+import { MarkdownMonacoEditor } from '@/components/common/MonacoEditor';
 
 export interface ProcessProperties {
   // General
@@ -734,13 +735,14 @@ export const ProcessPropertiesModal: React.FC<ProcessPropertiesModalProps> = ({
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Process Documentation
         </label>
-        <textarea
-          value={formData.documentation || ''}
-          onChange={(e) => updateField('documentation', e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-          rows={10}
-          placeholder="Document your process here (Markdown supported)..."
-        />
+        <div className="border border-gray-300 rounded-lg overflow-hidden">
+          <MarkdownMonacoEditor
+            value={formData.documentation || ''}
+            onChange={(value) => updateField('documentation', value || '')}
+            height="400px"
+            theme="light"
+          />
+        </div>
         <p className="text-xs text-gray-500 mt-1">Supports Markdown formatting</p>
       </div>
 
@@ -749,13 +751,15 @@ export const ProcessPropertiesModal: React.FC<ProcessPropertiesModalProps> = ({
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Changelog
         </label>
-        <textarea
-          value={formData.changelog || ''}
-          onChange={(e) => updateField('changelog', e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-          rows={6}
-          placeholder="Version history and changes..."
-        />
+        <div className="border border-gray-300 rounded-lg overflow-hidden">
+          <MarkdownMonacoEditor
+            value={formData.changelog || ''}
+            onChange={(value) => updateField('changelog', value || '')}
+            height="200px"
+            theme="light"
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Version history and changes</p>
       </div>
 
       {/* Reference URLs */}

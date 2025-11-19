@@ -3,6 +3,7 @@ import { useNode } from '@craftjs/core';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Eye, Edit } from 'lucide-react';
+import { MarkdownMonacoEditor } from '@/components/common/MonacoEditor';
 
 interface MarkdownEditorProps {
   content?: string;
@@ -99,11 +100,12 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> & { craft?: any } = (
         {/* Editor */}
         {(viewMode === 'edit' || viewMode === 'split') && (
           <div className={viewMode === 'split' ? 'flex-1' : 'w-full'}>
-            <textarea
+            <MarkdownMonacoEditor
               value={localContent}
-              onChange={(e) => handleChange(e.target.value)}
-              className="w-full h-full p-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono text-sm resize-none focus:outline-none"
-              placeholder="Write markdown here..."
+              onChange={(value) => handleChange(value || '')}
+              height="100%"
+              theme="light"
+              wordWrap="on"
             />
           </div>
         )}
