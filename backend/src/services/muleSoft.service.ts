@@ -209,10 +209,10 @@ class MuleSoftService {
     // Build variables array
     const variablesArray: Array<{ name: string; value: any }> = [];
     
-    // Add contract as a variable if provided
+    // Add IDP data as a variable if provided
     if (contractResult) {
       variablesArray.push({
-        name: 'contract',
+        name: 'idpData',
         value: contractResult,
       });
     }
@@ -220,8 +220,8 @@ class MuleSoftService {
     // Add additional variables if provided
     if (variables) {
       Object.entries(variables).forEach(([name, value]) => {
-        // Don't duplicate contract if already added
-        if (name !== 'contract' || !contractResult) {
+        // Don't duplicate idpData if already added
+        if (name !== 'idpData' || !contractResult) {
           variablesArray.push({ name, value });
         }
       });
