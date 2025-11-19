@@ -3,6 +3,7 @@ import { Card } from '@/components/common/Card';
 import {
   AlertCircle, Package, List
 } from 'lucide-react';
+import { mergeMultiPageIDPResponse, isPaginatedIDPResponse } from '@/utils/idpMerger';
 
 interface GenericIDPRendererProps {
   data: any;
@@ -111,54 +112,63 @@ export const GenericIDPRenderer: React.FC<GenericIDPRendererProps> = ({ data }) 
     );
   }
 
-  // Check for the new paginated format
-  const isPaginated = Array.isArray(data.pages) && data.pages.length > 0;
+  // Check for paginated format and merge if needed
+  const isPaginated = isPaginatedIDPResponse(data);
+  const mergedData = isPaginated ? mergeMultiPageIDPResponse(data) : data;
+  
+  // Extract fields and tables from merged data
+  const fields = mergedData.fields || {};
+  const tables = mergedData.tables || {};
+  const hasOriginalPages = mergedData.originalPages && mergedData.originalPages.length > 1;
 
   return (
     <div className="space-y-4">
-      {isPaginated ? (
-        // Paginated format
-        data.pages.map((pageData: any, pageIndex: number) => (
-          <div key={pageIndex} className="space-y-4">
+      {/* Show info if data was merged from multiple pages */}
+      {hasOriginalPages && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            ℹ️ This document has {mergedData.originalPages.length} pages. Data has been intelligently merged.
+          </p>
+        </div>
+      )}
 
-            {/* Fields Section */}
-            {pageData.fields && Object.keys(pageData.fields).length > 0 && (
-              <Card>
-                <div className="p-6">
-                  <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <List className="w-5 h-5 text-primary-600" />
-                    {pageData.page ? `Page ${pageData.page} - ` : ''}Extracted Fields
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {Object.entries(pageData.fields).map(([key, value]) => (
-                      <div key={key}>
-                        <p className="text-sm text-gray-600 mb-1">{formatKey(key)}</p>
-                        <div>{renderValue(value, key)}</div>
-                      </div>
-                    ))}
-                  </div>
+      {/* Fields Section */}
+      {Object.keys(fields).length > 0 && (
+        <Card>
+          <div className="p-6">
+            <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <List className="w-5 h-5 text-primary-600" />
+              Extracted Fields
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Object.entries(fields).map(([key, value]) => (
+                <div key={key}>
+                  <p className="text-sm text-gray-600 mb-1">{formatKey(key)}</p>
+                  <div>{renderValue(value, key)}</div>
                 </div>
-              </Card>
-            )}
-
-            {/* Tables Section */}
-            {pageData.tables && Object.keys(pageData.tables).length > 0 && (
-              Object.entries(pageData.tables).map(([tableName, tableData]: [string, any], tableIndex: number) => (
-                <Card key={tableIndex}>
-                  <div className="p-6">
-                    <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <Package className="w-5 h-5 text-primary-600" />
-                      {formatKey(tableName)}
-                    </h4>
-                    {renderValue(tableData, tableName)}
-                  </div>
-                </Card>
-              ))
-            )}
+              ))}
+            </div>
           </div>
+        </Card>
+      )}
+
+      {/* Tables Section */}
+      {Object.keys(tables).length > 0 &&
+        Object.entries(tables).map(([tableName, tableData]: [string, any], tableIndex: number) => (
+          <Card key={tableIndex}>
+            <div className="p-6">
+              <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Package className="w-5 h-5 text-primary-600" />
+                {formatKey(tableName)}
+              </h4>
+              {renderValue(tableData, tableName)}
+            </div>
+          </Card>
         ))
-      ) : (
-        // Fallback for old flat format
+      }
+
+      {/* Fallback for old flat format (no fields or tables) */}
+      {!isPaginated && Object.keys(fields).length === 0 && Object.keys(tables).length === 0 && (
         <Card>
           <div className="p-6">
             <h4 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -168,7 +178,7 @@ export const GenericIDPRenderer: React.FC<GenericIDPRendererProps> = ({ data }) 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Object.entries(data).map(([key, value]) => {
                 // Exclude already handled fields
-                if (['id', 'documentName', 'status', 'documentSummary', 'pages'].includes(key)) {
+                if (['id', 'documentName', 'status', 'documentSummary', 'pages', 'originalPages'].includes(key)) {
                   return null;
                 }
                 return (
@@ -182,7 +192,6 @@ export const GenericIDPRenderer: React.FC<GenericIDPRendererProps> = ({ data }) 
           </div>
         </Card>
       )}
-
     </div>
   );
 };

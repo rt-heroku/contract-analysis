@@ -4,6 +4,7 @@ import {
   FileText, Package, MapPin, Building, CreditCard,
   Truck, User
 } from 'lucide-react';
+import { mergeMultiPageIDPResponse } from '@/utils/idpMerger';
 
 interface PurchaseOrderRendererProps {
   data: any;
@@ -25,11 +26,11 @@ export const PurchaseOrderRenderer: React.FC<PurchaseOrderRendererProps> = ({ da
     return <p className="text-gray-600">No purchase order data available.</p>;
   }
 
-  // Get the first page (usually has all the main data)
-  const firstPage = data.pages[0];
-  const fields = firstPage?.fields || {};
+  // Merge multi-page data intelligently
+  const mergedData = mergeMultiPageIDPResponse(data);
+  const fields = mergedData.fields || {};
   const parties = fields.parties || {};
-  const tables = firstPage?.tables || {};
+  const tables = mergedData.tables || {};
 
   return (
     <div className="space-y-4">
@@ -208,67 +209,68 @@ export const PurchaseOrderRenderer: React.FC<PurchaseOrderRendererProps> = ({ da
         </div>
       )}
 
-      {/* Line Items Table */}
-      {tables.table1 && Array.isArray(tables.table1) && tables.table1.length > 0 && (
-        <Card>
-          <div className="p-6">
-            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Package className="w-5 h-5 text-primary-600" />
-              Line Items ({tables.table1.length})
-            </h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Line
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Product Code
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Quantity
-                    </th>
-                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Unit Price
-                    </th>
-                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {tables.table1.map((item: any, index: number) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-3 py-3 text-sm text-gray-700">
-                        {item.lineNumber || index + 1}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-gray-700 font-mono">
-                        {item.productCode || 'N/A'}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-gray-700 whitespace-pre-wrap">
-                        {item.description || 'N/A'}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-gray-700 text-right">
-                        {item.quantity || 0}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-gray-700 text-right">
-                        {formatCurrency(item.unitPrice)}
-                      </td>
-                      <td className="px-3 py-3 text-sm text-gray-900 text-right font-medium">
-                        {formatCurrency(item.price)}
-                      </td>
+      {/* Line Items Tables - Render all tables */}
+      {Object.entries(tables).map(([tableName, tableData]: [string, any]) => {
+        if (!Array.isArray(tableData) || tableData.length === 0) return null;
+        
+        // Get all unique column keys from the table data
+        const columnKeys = Array.from(
+          new Set(tableData.flatMap(row => Object.keys(row)))
+        );
+        
+        // Format table name for display
+        const tableTitle = tableName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        
+        return (
+          <Card key={tableName}>
+            <div className="p-6">
+              <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Package className="w-5 h-5 text-primary-600" />
+                {tableTitle} ({tableData.length} items)
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Line
+                      </th>
+                      {columnKeys.map(key => (
+                        <th key={key} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {tableData.map((item: any, index: number) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-3 py-3 text-sm text-gray-700">
+                          {item.lineNumber || index + 1}
+                        </td>
+                        {columnKeys.map(key => (
+                          <td 
+                            key={key} 
+                            className={`px-3 py-3 text-sm text-gray-700 ${
+                              key === 'description' ? 'whitespace-pre-wrap' : ''
+                            } ${
+                              ['quantity', 'unitPrice', 'price', 'total'].includes(key) ? 'text-right font-medium' : ''
+                            }`}
+                          >
+                            {key === 'unitPrice' || key === 'price' || key === 'total'
+                              ? formatCurrency(item[key])
+                              : item[key] || 'N/A'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        </Card>
-      )}
+          </Card>
+        );
+      })}
 
     </div>
   );
