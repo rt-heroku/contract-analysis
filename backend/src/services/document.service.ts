@@ -408,7 +408,8 @@ class DocumentService {
     analysisRecordId: number,
     dataUploadId?: number,
     prompt?: { id: number; name: string },
-    variables?: Record<string, any>
+    variables?: Record<string, any>,
+    flow?: { name: string; url: string; method: string }
   ): Promise<ProcessingResult> {
     try {
       // Get the analysis record
@@ -447,7 +448,8 @@ class DocumentService {
         analysisRecord.contractAnalysis.mulesoftResponse,
         dataUploadId,
         prompt,
-        variables
+        variables,
+        flow
       ).catch((error) => {
         logger.error('Analysis failed:', error);
       });
@@ -476,12 +478,17 @@ class DocumentService {
     contractResult: any,
     dataUploadId?: number,
     prompt?: { id: number; name: string },
-    variables?: Record<string, any>
+    variables?: Record<string, any>,
+    flow?: { name: string; url: string; method: string }
   ): Promise<void> {
     try {
       // Step 2: Analyze data with contract context
       logger.info(`[Step 2/2] Running final analysis for jobId: ${jobId}`);
-      logger.info(`Passing contract result to /analyze endpoint`);
+      if (flow) {
+        logger.info(`Using flow: ${flow.name} (URL: ${flow.url})`);
+      } else {
+        logger.info(`Using default /analyze endpoint`);
+      }
       if (prompt) {
         logger.info(`Using prompt: ${prompt.name} (ID: ${prompt.id})`);
       }
@@ -494,7 +501,8 @@ class DocumentService {
           contractAnalysisId,
           contractResult,
           prompt,
-          variables
+          variables,
+          flow
         );
         logger.info(`[Step 2/2] Analysis successful for jobId: ${jobId}`);
       } catch (error: any) {

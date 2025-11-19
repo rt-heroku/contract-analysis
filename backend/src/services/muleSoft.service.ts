@@ -180,10 +180,18 @@ class MuleSoftService {
     analysisId?: number,
     contractResult?: MuleSoftContractResponse,
     prompt?: { id: number; name: string },
-    variables?: Record<string, any>
+    variables?: Record<string, any>,
+    flow?: { name: string; url: string; method: string }
   ): Promise<MuleSoftDataResponse> {
     const config = await getMuleSoftConfig();
-    const endpoint = config.endpoints.analyzeData;
+    // Use flow URL if provided, otherwise use default endpoint
+    const endpoint = flow?.url || config.endpoints.analyzeData;
+    
+    if (flow) {
+      logger.info(`Using custom flow endpoint: ${endpoint} (Flow: ${flow.name})`);
+    } else {
+      logger.info(`Using default endpoint: ${endpoint}`);
+    }
 
     // Build request body in new format
     const requestBody: any = {
