@@ -55,6 +55,8 @@ model User {
   stores           Store[]            @relation("StoreCreator")
   dynamicPagesCreated DynamicPage[]   @relation("DynamicPageCreator")
   dynamicPagesModified DynamicPage[]  @relation("DynamicPageModifier")
+  dbQueries        DbQuery[]          @relation("UserQueries")
+  dbConnections    DbConnection[]     @relation("UserDbConnections")
 
   @@map("users")
 }
@@ -618,6 +620,8 @@ model Connector {
   connectorActions ConnectorAction[]
   actions          Action[]          @relation("ConnectorActions")
   stores           Store[]
+  dbQueries        DbQuery[]         @relation("ConnectorQueries")
+  dbConnections    DbConnection[]    @relation("ConnectorConnections")
 
   @@index([createdBy])
   @@index([connectorType])
@@ -723,5 +727,54 @@ model DynamicPage {
   @@index([createdBy])
   @@index([category])
   @@map("dynamic_pages")
+}
+
+// ==================== DATABASE EXPLORER MODELS ====================
+
+model DbQuery {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  connectorId  Int      @map("connector_id")
+  queryText    String   @map("query_text") @db.Text
+  queryName    String?  @map("query_name") @db.VarChar(200)
+  description  String?  @db.Text
+  isFavorite   Boolean  @default(false) @map("is_favorite")
+  executionTime Int?    @map("execution_time") // in milliseconds
+  rowsAffected Int?     @map("rows_affected")
+  status       String?  @db.VarChar(50) // 'success', 'error'
+  errorMessage String?  @map("error_message") @db.Text
+  tags         String[] @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user      User      @relation("UserQueries", fields: [userId], references: [id], onDelete: Cascade)
+  connector Connector @relation("ConnectorQueries", fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([connectorId])
+  @@index([isFavorite])
+  @@index([createdAt(sort: Desc)])
+  @@map("db_queries")
+}
+
+model DbConnection {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  connectorId    Int      @map("connector_id")
+  sessionId      String   @unique @map("session_id") @db.VarChar(100)
+  isActive       Boolean  @default(true) @map("is_active")
+  lastActivityAt DateTime @default(now()) @map("last_activity_at")
+  metadata       Json? // Connection pool info, etc.
+  createdAt      DateTime @default(now()) @map("created_at")
+  expiresAt      DateTime @map("expires_at")
+
+  user      User      @relation("UserDbConnections", fields: [userId], references: [id], onDelete: Cascade)
+  connector Connector @relation("ConnectorConnections", fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([connectorId])
+  @@index([sessionId])
+  @@index([isActive])
+  @@map("db_connections")
 }
 

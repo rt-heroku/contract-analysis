@@ -1,0 +1,393 @@
+import React, { useState, useEffect } from 'react';
+import { ChevronRight, ChevronDown, Database, Table, Eye, FileCode, Zap, List, Hash, Key, Loader } from 'lucide-react';
+import { cn } from '@/utils/helpers';
+import api from '@/lib/api';
+
+interface DbTreeProps {
+  connectorId: number;
+  onSelectObject: (object: DbObject) => void;
+  className?: string;
+}
+
+export interface DbObject {
+  type: 'schema' | 'table' | 'view' | 'function' | 'sequence' | 'trigger' | 'index' | 'materialized_view';
+  name: string;
+  schemaName?: string;
+  tableName?: string;
+  metadata?: any;
+}
+
+interface TreeNode {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  type: string;
+  children?: TreeNode[];
+  isExpanded?: boolean;
+  isLoading?: boolean;
+  metadata?: any;
+}
+
+export const DbTree: React.FC<DbTreeProps> = ({ connectorId, onSelectObject, className }) => {
+  const [tree, setTree] = useState<TreeNode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadSchemas();
+  }, [connectorId]);
+
+  const loadSchemas = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/db-explorer/${connectorId}/schemas`);
+      const schemas = response.data.schemas || [];
+
+      const schemaNodes: TreeNode[] = schemas.map((schema: string) => ({
+        id: `schema-${schema}`,
+        label: schema,
+        icon: Database,
+        type: 'schema',
+        isExpanded: false,
+        metadata: { schemaName: schema },
+        children: [
+          {
+            id: `schema-${schema}-tables`,
+            label: 'Tables',
+            icon: Table,
+            type: 'folder',
+            isExpanded: false,
+            metadata: { schemaName: schema, folderType: 'tables' },
+          },
+          {
+            id: `schema-${schema}-views`,
+            label: 'Views',
+            icon: Eye,
+            type: 'folder',
+            isExpanded: false,
+            metadata: { schemaName: schema, folderType: 'views' },
+          },
+          {
+            id: `schema-${schema}-functions`,
+            label: 'Functions',
+            icon: FileCode,
+            type: 'folder',
+            isExpanded: false,
+            metadata: { schemaName: schema, folderType: 'functions' },
+          },
+          {
+            id: `schema-${schema}-sequences`,
+            label: 'Sequences',
+            icon: Hash,
+            type: 'folder',
+            isExpanded: false,
+            metadata: { schemaName: schema, folderType: 'sequences' },
+          },
+          {
+            id: `schema-${schema}-materialized-views`,
+            label: 'Materialized Views',
+            icon: Zap,
+            type: 'folder',
+            isExpanded: false,
+            metadata: { schemaName: schema, folderType: 'materialized_views' },
+          },
+        ],
+      }));
+
+      setTree(schemaNodes);
+    } catch (error) {
+      console.error('Failed to load schemas:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFolderContents = async (node: TreeNode) => {
+    const { schemaName, folderType } = node.metadata;
+
+    try {
+      if (folderType === 'tables') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/tables`);
+        const tables = response.data.tables || [];
+        return tables.map((table: any) => ({
+          id: `table-${schemaName}-${table.tableName}`,
+          label: `${table.tableName} ${table.rowCount !== undefined ? `(${table.rowCount})` : ''}`,
+          icon: Table,
+          type: 'table',
+          metadata: {
+            schemaName,
+            tableName: table.tableName,
+            tableType: table.tableType,
+            rowCount: table.rowCount,
+          },
+          children: [
+            {
+              id: `table-${schemaName}-${table.tableName}-columns`,
+              label: 'Columns',
+              icon: List,
+              type: 'columns-folder',
+              metadata: { schemaName, tableName: table.tableName },
+            },
+            {
+              id: `table-${schemaName}-${table.tableName}-indexes`,
+              label: 'Indexes',
+              icon: Key,
+              type: 'indexes-folder',
+              metadata: { schemaName, tableName: table.tableName },
+            },
+          ],
+        }));
+      } else if (folderType === 'views') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/tables`);
+        const views = (response.data.tables || []).filter((t: any) => t.tableType === 'VIEW');
+        return views.map((view: any) => ({
+          id: `view-${schemaName}-${view.tableName}`,
+          label: view.tableName,
+          icon: Eye,
+          type: 'view',
+          metadata: {
+            schemaName,
+            tableName: view.tableName,
+            tableType: 'VIEW',
+          },
+        }));
+      } else if (folderType === 'functions') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/functions`);
+        const functions = response.data.functions || [];
+        return functions.map((func: any) => ({
+          id: `function-${schemaName}-${func.functionName}`,
+          label: `${func.functionName}(${func.arguments || ''})`,
+          icon: FileCode,
+          type: 'function',
+          metadata: {
+            schemaName,
+            functionName: func.functionName,
+            ...func,
+          },
+        }));
+      } else if (folderType === 'sequences') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/sequences`);
+        const sequences = response.data.sequences || [];
+        return sequences.map((seq: any) => ({
+          id: `sequence-${schemaName}-${seq.sequenceName}`,
+          label: seq.sequenceName,
+          icon: Hash,
+          type: 'sequence',
+          metadata: {
+            schemaName,
+            sequenceName: seq.sequenceName,
+            ...seq,
+          },
+        }));
+      } else if (folderType === 'materialized_views') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/materialized-views`);
+        const views = response.data.views || [];
+        return views.map((view: any) => ({
+          id: `mat-view-${schemaName}-${view.tableName}`,
+          label: view.tableName,
+          icon: Zap,
+          type: 'materialized_view',
+          metadata: {
+            schemaName,
+            tableName: view.tableName,
+            tableType: 'MATERIALIZED VIEW',
+          },
+        }));
+      }
+    } catch (error) {
+      console.error(`Failed to load ${folderType}:`, error);
+      return [];
+    }
+
+    return [];
+  };
+
+  const toggleNode = async (nodeId: string) => {
+    const updateTree = (nodes: TreeNode[], currentPath: number[]): TreeNode[] => {
+      if (currentPath.length === 0) {
+        return nodes;
+      }
+
+      const [currentIndex, ...restPath] = currentPath;
+      
+      return nodes.map((node, index) => {
+        if (index === currentIndex) {
+          if (restPath.length === 0) {
+            // This is the node to toggle
+            const newExpanded = !node.isExpanded;
+            
+            if (newExpanded && node.children && node.type === 'folder' && !node.children.some(c => c.type !== 'folder')) {
+              // Load folder contents
+              return {
+                ...node,
+                isExpanded: newExpanded,
+                isLoading: true,
+              };
+            }
+            
+            return {
+              ...node,
+              isExpanded: newExpanded,
+            };
+          } else {
+            // Recurse deeper
+            return {
+              ...node,
+              children: node.children ? updateTree(node.children, restPath) : [],
+            };
+          }
+        }
+        return node;
+      });
+    };
+
+    // Find the path to the node
+    const findPath = (nodes: TreeNode[], targetId: string, currentPath: number[] = []): number[] | null => {
+      for (let i = 0; i < nodes.length; i++) {
+        if (nodes[i].id === targetId) {
+          return [...currentPath, i];
+        }
+        if (nodes[i].children) {
+          const childPath = findPath(nodes[i].children!, targetId, [...currentPath, i]);
+          if (childPath) {
+            return childPath;
+          }
+        }
+      }
+      return null;
+    };
+
+    const nodePath = findPath(tree, nodeId);
+    if (!nodePath) return;
+
+    // Get the node
+    let targetNode: TreeNode | undefined;
+    let current: TreeNode[] = tree;
+    for (const idx of nodePath) {
+      targetNode = current[idx];
+      if (targetNode.children) {
+        current = targetNode.children;
+      }
+    }
+
+    // Load folder contents if needed
+    if (targetNode && targetNode.type === 'folder' && !targetNode.isExpanded) {
+      const contents = await loadFolderContents(targetNode);
+      
+      // Update tree with loaded contents
+      const updateWithContents = (nodes: TreeNode[], currentPath: number[]): TreeNode[] => {
+        if (currentPath.length === 0) return nodes;
+        
+        const [currentIndex, ...restPath] = currentPath;
+        
+        return nodes.map((node, index) => {
+          if (index === currentIndex) {
+            if (restPath.length === 0) {
+              return {
+                ...node,
+                isExpanded: true,
+                isLoading: false,
+                children: contents,
+              };
+            } else {
+              return {
+                ...node,
+                children: node.children ? updateWithContents(node.children, restPath) : [],
+              };
+            }
+          }
+          return node;
+        });
+      };
+
+      setTree(updateWithContents(tree, nodePath));
+    } else {
+      setTree(updateTree(tree, nodePath));
+    }
+  };
+
+  const handleNodeClick = (node: TreeNode) => {
+    setSelectedId(node.id);
+    
+    // Emit select event
+    if (node.type !== 'folder' && node.type !== 'schema') {
+      const dbObject: DbObject = {
+        type: node.type as any,
+        name: node.label,
+        schemaName: node.metadata?.schemaName,
+        tableName: node.metadata?.tableName,
+        metadata: node.metadata,
+      };
+      onSelectObject(dbObject);
+    }
+  };
+
+  const renderNode = (node: TreeNode, level: number = 0) => {
+    const Icon = node.icon;
+    const hasChildren = node.children && node.children.length > 0;
+    const canExpand = hasChildren || node.type === 'folder';
+
+    return (
+      <div key={node.id}>
+        <div
+          className={cn(
+            'flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 rounded',
+            selectedId === node.id && 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400',
+            'transition-colors'
+          )}
+          style={{ paddingLeft: `${level * 16 + 8}px` }}
+          onClick={() => {
+            if (canExpand) {
+              toggleNode(node.id);
+            }
+            handleNodeClick(node);
+          }}
+        >
+          {canExpand && (
+            <span className="flex-shrink-0">
+              {node.isLoading ? (
+                <Loader className="w-4 h-4 animate-spin" />
+              ) : node.isExpanded ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
+              )}
+            </span>
+          )}
+          {!canExpand && <span className="w-4 flex-shrink-0" />}
+          <Icon className="w-4 h-4 flex-shrink-0 text-gray-500 dark:text-gray-400" />
+          <span className="truncate flex-1">{node.label}</span>
+        </div>
+        
+        {node.isExpanded && node.children && (
+          <div>
+            {node.children.map(child => renderNode(child, level + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className={cn('flex items-center justify-center p-8', className)}>
+        <Loader className="w-6 h-6 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn('overflow-auto', className)}>
+      {tree.length === 0 ? (
+        <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+          No schemas found
+        </div>
+      ) : (
+        <div className="py-2">
+          {tree.map(node => renderNode(node))}
+        </div>
+      )}
+    </div>
+  );
+};
+

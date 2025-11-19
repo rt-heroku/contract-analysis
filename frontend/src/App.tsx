@@ -38,6 +38,7 @@ import { FirstTimeSetup } from './pages/FirstTimeSetup';
 import { Pages } from './pages/Pages';
 import { PageBuilder } from './pages/PageBuilder';
 import { PageRenderer } from './pages/PageRenderer';
+import { DatabaseExplorer } from './pages/DatabaseExplorer';
 
 const App = () => {
   return (
@@ -88,6 +89,9 @@ const App = () => {
             <Route path="/admin/roles" element={<MainLayout><RoleManagement /></MainLayout>} />
             <Route path="/admin/menu" element={<MainLayout><MenuManagement /></MainLayout>} />
             <Route path="/admin/logs" element={<MainLayout><Logs /></MainLayout>} />
+            
+            {/* Database Explorer */}
+            <Route path="/db" element={<DatabaseExplorer />} />
 
             {/* Default Route */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

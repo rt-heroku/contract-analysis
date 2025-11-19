@@ -23,6 +23,7 @@ import executionRoutes from './execution.routes';
 import connectorRoutes from './connector.routes';
 import storeRoutes from './store.routes';
 import pagesRoutes from './pages.routes';
+import dbExplorerRoutes from './dbExplorer.routes';
 
 const router = Router();
 
@@ -50,6 +51,7 @@ router.use('/executions', executionRoutes);
 router.use('/connectors', connectorRoutes);
 router.use('/stores', storeRoutes);
 router.use('/pages', pagesRoutes);
+router.use('/db-explorer', dbExplorerRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {
