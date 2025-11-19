@@ -227,26 +227,18 @@ export const AnalysisSetup: React.FC = () => {
   };
 
   const handleAnalyze = async () => {
-    // Validation
-    if (!dataUploadId) {
-      setAlertDialog({
-        isOpen: true,
-        title: 'Missing Data',
-        message: 'Please upload an Excel or CSV data file',
-        type: 'warning',
-      });
-      return;
-    }
-
-    // Variables are optional - they will be populated from files/JSON if not provided
-    // No validation needed for missing variables
+    // Data file is now optional - some flows/prompts may not require it
+    // Variables are also optional - they will be populated from files/JSON if not provided
 
     try {
       setAnalyzing(true);
 
-      const payload: any = {
-        dataUploadId,
-      };
+      const payload: any = {};
+
+      // Only include dataUploadId if file was uploaded
+      if (dataUploadId) {
+        payload.dataUploadId = dataUploadId;
+      }
 
       if (selectedFlow) {
         payload.flow = {
@@ -295,12 +287,19 @@ export const AnalysisSetup: React.FC = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Analysis Setup</h1>
         <p className="text-gray-600 mt-1">
-          Upload data file and configure analysis parameters
+          Configure analysis parameters (data file is optional)
+        </p>
+      </div>
+
+      {/* Informational Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-900">
+          <span className="font-semibold">ℹ️ Note:</span> Data file upload is optional. Some flows and prompts work with only the extracted contract data and don't require additional data files.
         </p>
       </div>
 
       {/* Step 1: Upload Data File */}
-      <Card title="Step 1: Upload Data File (Excel/CSV)">
+      <Card title="Step 1: Upload Data File (Optional)">
         {existingDataUpload && !dataFile ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -345,6 +344,9 @@ export const AnalysisSetup: React.FC = () => {
                 </p>
                 <p className="text-sm text-gray-500">
                   Supports: Excel (.xls, .xlsx) and CSV (.csv)
+                </p>
+                <p className="text-xs text-blue-600 mt-2">
+                  Optional - Some flows and prompts may not require a data file
                 </p>
               </>
             )}
@@ -488,7 +490,7 @@ export const AnalysisSetup: React.FC = () => {
       <div className="flex gap-4">
         <Button
           onClick={handleAnalyze}
-          disabled={!dataUploadId || analyzing}
+          disabled={analyzing}
           isLoading={analyzing}
           size="lg"
           className="bg-primary-600 hover:bg-primary-700"
