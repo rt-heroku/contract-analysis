@@ -157,6 +157,12 @@ export const DatabaseERD: React.FC<DatabaseERDProps> = ({
       const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/erd`);
       const { tables, relationships } = response.data;
 
+      console.log('ERD Data:', { 
+        tablesCount: tables.length, 
+        relationshipsCount: relationships.length,
+        relationships 
+      });
+
       if (tables.length === 0) {
         setError('No tables found in this schema');
         return;
@@ -221,6 +227,12 @@ export const DatabaseERD: React.FC<DatabaseERDProps> = ({
         tableNodes,
         relationshipEdges
       );
+
+      console.log('Layouted ERD:', { 
+        nodesCount: layoutedNodes.length, 
+        edgesCount: layoutedEdges.length,
+        edges: layoutedEdges.map(e => ({ id: e.id, source: e.source, target: e.target, label: e.label }))
+      });
 
       setNodes(layoutedNodes);
       setEdges(layoutedEdges);
