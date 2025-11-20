@@ -402,7 +402,7 @@ class DatabaseExplorerService {
       indexType: row.index_type,
       isUnique: row.is_unique,
       isPrimary: row.is_primary,
-      columns: row.columns,
+      columns: Array.isArray(row.columns) ? row.columns : (row.columns ? [row.columns] : []),
       definition: row.definition,
     }));
   }
@@ -629,7 +629,11 @@ class DatabaseExplorerService {
     // Add indexes
     for (const index of indexes) {
       if (!index.isPrimary) {
-        ddl += `\n\nCREATE ${index.isUnique ? 'UNIQUE ' : ''}INDEX "${index.indexName}" ON "${schemaName}"."${tableName}" (${index.columns.map(c => `"${c}"`).join(', ')});`;
+        // Ensure columns is an array
+        const columns = Array.isArray(index.columns) ? index.columns : [index.columns].filter(Boolean);
+        if (columns.length > 0) {
+          ddl += `\n\nCREATE ${index.isUnique ? 'UNIQUE ' : ''}INDEX "${index.indexName}" ON "${schemaName}"."${tableName}" (${columns.map(c => `"${c}"`).join(', ')});`;
+        }
       }
     }
 
