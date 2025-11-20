@@ -39,6 +39,146 @@ function parsePostgresUrl(url: string): DatabaseConfig | null {
 }
 
 /**
+ * Create standard connector actions for a database connector
+ */
+async function createConnectorActions(connectorId: number): Promise<void> {
+  const actions = [
+    {
+      operation: 'query',
+      operationId: 'execute_query',
+      displayName: 'Execute Query',
+      description: 'Execute a SELECT query and return results',
+      method: null,
+      path: null,
+      parameters: {
+        query: { type: 'string', required: true, description: 'SQL SELECT query to execute' },
+      },
+      requestBody: null,
+      responses: { '200': { description: 'Query results' } },
+    },
+    {
+      operation: 'execute_sql',
+      operationId: 'execute_sql',
+      displayName: 'Execute SQL',
+      description: 'Execute any SQL statement',
+      method: null,
+      path: null,
+      parameters: {
+        query: { type: 'string', required: true, description: 'SQL statement to execute' },
+      },
+      requestBody: null,
+      responses: { '200': { description: 'Execution result' } },
+    },
+    {
+      operation: 'query_paginated',
+      operationId: 'query_paginated',
+      displayName: 'Query All (Paginated)',
+      description: 'Execute a SELECT query with pagination',
+      method: null,
+      path: null,
+      parameters: {
+        query: { type: 'string', required: true, description: 'SQL SELECT query' },
+        page: { type: 'number', required: false, description: 'Page number (default: 1)' },
+        pageSize: { type: 'number', required: false, description: 'Page size (default: 50)' },
+      },
+      requestBody: null,
+      responses: { '200': { description: 'Paginated query results' } },
+    },
+    {
+      operation: 'insert',
+      operationId: 'insert_record',
+      displayName: 'Insert Record',
+      description: 'Insert a new record into a table',
+      method: null,
+      path: null,
+      parameters: {
+        table: { type: 'string', required: true, description: 'Table name' },
+        data: { type: 'object', required: true, description: 'Record data' },
+      },
+      requestBody: null,
+      responses: { '200': { description: 'Insert result' } },
+    },
+    {
+      operation: 'update',
+      operationId: 'update_record',
+      displayName: 'Update Record',
+      description: 'Update existing record(s)',
+      method: null,
+      path: null,
+      parameters: {
+        table: { type: 'string', required: true, description: 'Table name' },
+        data: { type: 'object', required: true, description: 'Data to update' },
+        where: { type: 'object', required: true, description: 'WHERE conditions' },
+      },
+      requestBody: null,
+      responses: { '200': { description: 'Update result' } },
+    },
+    {
+      operation: 'delete',
+      operationId: 'delete_record',
+      displayName: 'Delete Record',
+      description: 'Delete record(s) from table',
+      method: null,
+      path: null,
+      parameters: {
+        table: { type: 'string', required: true, description: 'Table name' },
+        where: { type: 'object', required: true, description: 'WHERE conditions' },
+      },
+      requestBody: null,
+      responses: { '200': { description: 'Delete result' } },
+    },
+    {
+      operation: 'transaction',
+      operationId: 'execute_transaction',
+      displayName: 'Transaction',
+      description: 'Execute multiple queries in a transaction',
+      method: null,
+      path: null,
+      parameters: {
+        queries: { type: 'array', required: true, description: 'Array of SQL statements' },
+      },
+      requestBody: null,
+      responses: { '200': { description: 'Transaction result' } },
+    },
+  ];
+
+  for (const action of actions) {
+    try {
+      // Check if action already exists
+      const existing = await prisma.connectorAction.findFirst({
+        where: {
+          connectorId,
+          operation: action.operation,
+        },
+      });
+
+      if (existing) {
+        continue;
+      }
+
+      // Create action
+      await prisma.connectorAction.create({
+        data: {
+          connectorId,
+          operation: action.operation,
+          operationId: action.operationId,
+          displayName: action.displayName,
+          description: action.description,
+          method: action.method,
+          path: action.path,
+          parameters: action.parameters,
+          requestBody: action.requestBody,
+          responses: action.responses,
+          isActive: true,
+        },
+      });
+    } catch (error) {
+      logger.error(`Failed to create action ${action.operation} for connector ${connectorId}:`, error);
+    }
+  }
+}
+
+/**
  * Auto-detect and create database connectors from environment variables
  * Creates connectors for:
  * - DATABASE_URL (named "Database")
@@ -101,11 +241,13 @@ export async function autoDetectDatabases(userId: number): Promise<void> {
 
         if (existing) {
           logger.info(`Database connector "${dbConfig.name}" already exists`);
+          // Ensure actions exist for existing connectors
+          await createConnectorActions(existing.id);
           continue;
         }
 
         // Create new connector
-        await prisma.connector.create({
+        const connector = await prisma.connector.create({
           data: {
             name: dbConfig.name,
             connectorType: 'database',
@@ -126,6 +268,10 @@ export async function autoDetectDatabases(userId: number): Promise<void> {
         });
 
         logger.info(`Auto-created database connector: ${dbConfig.name}`);
+
+        // Create standard connector actions
+        await createConnectorActions(connector.id);
+        logger.info(`Auto-created connector actions for: ${dbConfig.name}`);
       } catch (error) {
         logger.error(`Failed to create connector for ${dbConfig.name}:`, error);
       }

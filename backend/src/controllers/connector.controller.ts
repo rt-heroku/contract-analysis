@@ -87,6 +87,20 @@ export const connectorController = {
       }
 
       const connectorId = parseInt(req.params.id);
+      
+      // Check if connector is auto-created (read-only)
+      const existing = await prisma.connector.findUnique({
+        where: { id: connectorId },
+        select: { isAutoCreated: true, name: true },
+      });
+
+      if (existing?.isAutoCreated) {
+        return res.status(403).json({ 
+          error: 'Cannot modify auto-created connector',
+          message: `The connector "${existing.name}" was automatically created and is read-only.`,
+        });
+      }
+
       const connector = await connectorService.updateConnector(connectorId, req.user.id, req.body);
 
       await loggingService.logActivity({
@@ -111,6 +125,20 @@ export const connectorController = {
       }
 
       const connectorId = parseInt(req.params.id);
+      
+      // Check if connector is auto-created (read-only)
+      const existing = await prisma.connector.findUnique({
+        where: { id: connectorId },
+        select: { isAutoCreated: true, name: true },
+      });
+
+      if (existing?.isAutoCreated) {
+        return res.status(403).json({ 
+          error: 'Cannot delete auto-created connector',
+          message: `The connector "${existing.name}" was automatically created and cannot be deleted.`,
+        });
+      }
+
       await connectorService.deleteConnector(connectorId, req.user.id);
 
       await loggingService.logActivity({

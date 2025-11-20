@@ -8,7 +8,7 @@ interface ConnectionConfig {
   database: string;
   user: string;
   password: string;
-  ssl?: boolean;
+  ssl?: boolean | { rejectUnauthorized: boolean };
   connectionTimeoutMillis?: number;
   idleTimeoutMillis?: number;
   max?: number; // Max pool size
@@ -134,13 +134,13 @@ class DatabaseExplorerService {
     const config = connector.config as any;
 
     // Create new pool
-    const poolConfig: ConnectionConfig = {
+    const poolConfig: any = {
       host: config.host,
       port: config.port || 5432,
       database: config.database,
       user: config.user,
       password: config.password,
-      ssl: config.ssl || false,
+      ssl: config.ssl ? { rejectUnauthorized: false } : false, // Accept self-signed certs
       connectionTimeoutMillis: 5000,
       idleTimeoutMillis: 30000,
       max: 10, // Max 10 connections per pool
@@ -648,7 +648,12 @@ class DatabaseExplorerService {
    * Test database connection
    */
   async testConnection(config: ConnectionConfig): Promise<{ success: boolean; message: string; version?: string }> {
-    const pool = new Pool(config);
+    // Handle SSL configuration for self-signed certificates
+    const poolConfig: any = {
+      ...config,
+      ssl: config.ssl ? { rejectUnauthorized: false } : false,
+    };
+    const pool = new Pool(poolConfig);
 
     try {
       const client = await pool.connect();
