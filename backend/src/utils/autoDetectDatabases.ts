@@ -417,7 +417,7 @@ function normalizeInferenceUrl(url: string): { baseUrl: string; endpoint: string
   // Remove trailing slashes
   url = url.replace(/\/+$/, '');
   
-  // If URL already includes the endpoint, extract it
+  // If URL already includes the full endpoint, extract it
   if (url.includes('/chat/completions')) {
     const parts = url.split('/chat/completions');
     return {
@@ -426,10 +426,19 @@ function normalizeInferenceUrl(url: string): { baseUrl: string; endpoint: string
     };
   }
   
-  // Default endpoint for OpenAI-compatible APIs
+  // Check if URL already ends with /v1
+  if (url.endsWith('/v1')) {
+    return {
+      baseUrl: url,
+      endpoint: '/chat/completions',
+    };
+  }
+  
+  // URL doesn't have /v1, so include it in the endpoint
+  // e.g., https://us.inference.heroku.com → endpoint: /v1/chat/completions
   return {
     baseUrl: url,
-    endpoint: '/chat/completions',
+    endpoint: '/v1/chat/completions',
   };
 }
 
