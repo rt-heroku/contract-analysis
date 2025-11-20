@@ -145,6 +145,112 @@ export const DatabaseExplorer: React.FC = () => {
     }
   };
 
+  const handleTableAction = async (action: string, tableName: string, schemaName: string) => {
+    if (!selectedConnector) return;
+
+    switch (action) {
+      case 'view-data':
+        // Generate and execute SELECT query
+        const selectQuery = `SELECT * FROM "${schemaName}"."${tableName}" LIMIT 100;`;
+        const activeTab = queryTabs.find(tab => tab.id === activeTabId);
+        if (activeTab) {
+          setQueryTabs(tabs =>
+            tabs.map(tab =>
+              tab.id === activeTabId
+                ? { ...tab, query: selectQuery }
+                : tab
+            )
+          );
+          await executeQuery(selectQuery, false);
+        }
+        break;
+
+      case 'export':
+        setAlertDialog({
+          isOpen: true,
+          title: 'Export Table',
+          message: `Export functionality for ${tableName} will be available soon.`,
+          type: 'info',
+        });
+        break;
+
+      case 'truncate':
+        // Show confirmation dialog (will be implemented in Part B)
+        setAlertDialog({
+          isOpen: true,
+          title: 'Truncate Table',
+          message: `Are you sure you want to truncate table "${schemaName}"."${tableName}"? This will delete all rows.`,
+          type: 'warning',
+        });
+        break;
+
+      case 'drop':
+        // Show confirmation dialog (will be implemented in Part B)
+        setAlertDialog({
+          isOpen: true,
+          title: 'Drop Table',
+          message: `Are you sure you want to drop table "${schemaName}"."${tableName}"? This action cannot be undone.`,
+          type: 'warning',
+        });
+        break;
+    }
+  };
+
+  const handleViewAction = async (action: string, viewName: string, schemaName: string) => {
+    if (!selectedConnector) return;
+
+    switch (action) {
+      case 'view-definition':
+        // Select the view object to show its definition
+        setSelectedObject({
+          type: 'view',
+          name: viewName,
+          schemaName: schemaName,
+        });
+        setShowObjectDetails(true);
+        break;
+
+      case 'drop':
+        setAlertDialog({
+          isOpen: true,
+          title: 'Drop View',
+          message: `Are you sure you want to drop view "${schemaName}"."${viewName}"?`,
+          type: 'warning',
+        });
+        break;
+    }
+  };
+
+  const handleSchemaAction = async (action: string, schemaName: string) => {
+    if (!selectedConnector) return;
+
+    switch (action) {
+      case 'create-table':
+        setAlertDialog({
+          isOpen: true,
+          title: 'Create Table',
+          message: `Create table functionality in schema "${schemaName}" will be implemented in Part B.`,
+          type: 'info',
+        });
+        break;
+    }
+  };
+
+  const handleColumnAction = async (action: string, columnName: string, tableName: string, schemaName: string) => {
+    if (!selectedConnector) return;
+
+    switch (action) {
+      case 'create-index':
+        setAlertDialog({
+          isOpen: true,
+          title: 'Create Index',
+          message: `Create index on column "${columnName}" in table "${schemaName}"."${tableName}" will be available soon.`,
+          type: 'info',
+        });
+        break;
+    }
+  };
+
   const handleExplainQuery = async (query: string) => {
     if (!selectedConnector) return;
 
@@ -342,6 +448,10 @@ export const DatabaseExplorer: React.FC = () => {
             <DbTree
               connectorId={selectedConnector.id}
               onSelectObject={handleSelectObject}
+              onTableAction={handleTableAction}
+              onViewAction={handleViewAction}
+              onSchemaAction={handleSchemaAction}
+              onColumnAction={handleColumnAction}
             />
           )}
         </div>

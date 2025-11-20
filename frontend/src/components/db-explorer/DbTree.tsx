@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, Database, Table, Eye, FileCode, Zap, List, Hash, Key, Loader } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import api from '@/lib/api';
+import { ContextMenu, getTableContextMenuItems, getColumnContextMenuItems, getSchemaContextMenuItems, getViewContextMenuItems } from './ContextMenu';
 
 interface DbTreeProps {
   connectorId: number;
   onSelectObject: (object: DbObject) => void;
+  onTableAction?: (action: string, tableName: string, schemaName: string) => void;
+  onViewAction?: (action: string, viewName: string, schemaName: string) => void;
+  onSchemaAction?: (action: string, schemaName: string) => void;
+  onColumnAction?: (action: string, columnName: string, tableName: string, schemaName: string) => void;
   className?: string;
 }
 
@@ -28,10 +33,19 @@ interface TreeNode {
   metadata?: any;
 }
 
-export const DbTree: React.FC<DbTreeProps> = ({ connectorId, onSelectObject, className }) => {
+export const DbTree: React.FC<DbTreeProps> = ({ 
+  connectorId, 
+  onSelectObject, 
+  onTableAction,
+  onViewAction,
+  onSchemaAction,
+  onColumnAction,
+  className 
+}) => {
   const [tree, setTree] = useState<TreeNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: any[] } | null>(null);
 
   useEffect(() => {
     loadSchemas();
@@ -322,6 +336,69 @@ export const DbTree: React.FC<DbTreeProps> = ({ connectorId, onSelectObject, cla
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent, node: TreeNode) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const schemaName = node.metadata?.schemaName || '';
+
+    let menuItems: any[] = [];
+
+    // Schema context menu
+    if (node.type === 'schema') {
+      menuItems = getSchemaContextMenuItems(
+        node.label,
+        () => onSchemaAction?.('create-table', node.label),
+        () => loadSchemas()
+      );
+    }
+    // Table context menu
+    else if (node.type === 'table') {
+      menuItems = getTableContextMenuItems(
+        node.label,
+        schemaName,
+        () => onTableAction?.('view-data', node.label, schemaName),
+        () => {
+          navigator.clipboard.writeText(node.label);
+        },
+        () => onTableAction?.('export', node.label, schemaName),
+        () => onTableAction?.('truncate', node.label, schemaName),
+        () => onTableAction?.('drop', node.label, schemaName),
+        () => toggleNode(node.id)
+      );
+    }
+    // View context menu
+    else if (node.type === 'view' || node.type === 'materialized_view') {
+      menuItems = getViewContextMenuItems(
+        node.label,
+        () => onViewAction?.('view-definition', node.label, schemaName),
+        () => {
+          navigator.clipboard.writeText(node.label);
+        },
+        () => onViewAction?.('drop', node.label, schemaName)
+      );
+    }
+    // Column context menu (if we add column nodes in the future)
+    else if (node.type === 'column') {
+      const tableName = node.metadata?.tableName || '';
+      menuItems = getColumnContextMenuItems(
+        node.label,
+        () => {
+          navigator.clipboard.writeText(node.label);
+        },
+        () => onColumnAction?.('create-index', node.label, tableName, schemaName)
+      );
+    }
+
+    if (menuItems.length > 0) {
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        items: menuItems,
+      });
+    }
+  };
+
   const renderNode = (node: TreeNode, level: number = 0) => {
     const Icon = node.icon;
     const hasChildren = node.children && node.children.length > 0;
@@ -342,6 +419,7 @@ export const DbTree: React.FC<DbTreeProps> = ({ connectorId, onSelectObject, cla
             }
             handleNodeClick(node);
           }}
+          onContextMenu={(e) => handleContextMenu(e, node)}
         >
           {canExpand && (
             <span className="flex-shrink-0">
@@ -377,17 +455,28 @@ export const DbTree: React.FC<DbTreeProps> = ({ connectorId, onSelectObject, cla
   }
 
   return (
-    <div className={cn('overflow-auto', className)}>
-      {tree.length === 0 ? (
-        <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
-          No schemas found
-        </div>
-      ) : (
-        <div className="py-2">
-          {tree.map(node => renderNode(node))}
-        </div>
+    <>
+      <div className={cn('overflow-auto', className)}>
+        {tree.length === 0 ? (
+          <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+            No schemas found
+          </div>
+        ) : (
+          <div className="py-2">
+            {tree.map(node => renderNode(node))}
+          </div>
+        )}
+      </div>
+      
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
+        />
       )}
-    </div>
+    </>
   );
 };
 
