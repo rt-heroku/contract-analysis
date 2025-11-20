@@ -167,8 +167,8 @@ async function createConnectorActions(connectorId: number): Promise<void> {
           method: action.method,
           path: action.path,
           parameters: action.parameters,
-          requestBody: action.requestBody,
-          responses: action.responses,
+          requestBody: action.requestBody ?? undefined, // Convert null to undefined for Prisma
+          responses: action.responses ?? undefined, // Convert null to undefined for Prisma
           isActive: true,
         },
       });
