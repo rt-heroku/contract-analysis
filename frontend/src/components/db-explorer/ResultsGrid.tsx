@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowUp, ArrowDown, Download, Copy, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowUp, ArrowDown, Download, Copy, ChevronLeft, ChevronRight, Edit, Trash, Plus } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { cn } from '@/utils/helpers';
 
@@ -10,6 +10,11 @@ interface ResultsGridProps {
   maxHeight?: string;
   paginate?: boolean;
   pageSize?: number;
+  onEdit?: (row: any, rowIndex: number) => void;
+  onDelete?: (row: any, rowIndex: number) => void;
+  onBulkDelete?: (rows: any[]) => void;
+  onAdd?: () => void;
+  showActions?: boolean;
 }
 
 export const ResultsGrid: React.FC<ResultsGridProps> = ({
@@ -19,11 +24,17 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
   maxHeight = '600px',
   paginate = true,
   pageSize = 50,
+  onEdit,
+  onDelete,
+  onBulkDelete,
+  onAdd,
+  showActions = false,
 }) => {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [copiedCell, setCopiedCell] = useState<string | null>(null);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
 
   // Sort data
   const sortedData = useMemo(() => {
@@ -140,6 +151,33 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const toggleRowSelection = (rowIndex: number) => {
+    const newSelection = new Set(selectedRows);
+    if (newSelection.has(rowIndex)) {
+      newSelection.delete(rowIndex);
+    } else {
+      newSelection.add(rowIndex);
+    }
+    setSelectedRows(newSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRows.size === paginatedData.length) {
+      setSelectedRows(new Set());
+    } else {
+      const allIndices = paginatedData.map((_, idx) => idx);
+      setSelectedRows(new Set(allIndices));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (onBulkDelete && selectedRows.size > 0) {
+      const rowsToDelete = Array.from(selectedRows).map(idx => paginatedData[idx]);
+      onBulkDelete(rowsToDelete);
+      setSelectedRows(new Set());
+    }
+  };
+
   if (data.length === 0) {
     return (
       <div className={cn('flex items-center justify-center p-8 border border-gray-200 dark:border-gray-700 rounded-lg', className)}>
@@ -152,11 +190,40 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
     <div className={cn('flex flex-col bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700', className)}>
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          Showing {paginatedData.length} of {sortedData.length} rows
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Showing {paginatedData.length} of {sortedData.length} rows
+          </div>
+          {selectedRows.size > 0 && (
+            <div className="text-sm font-medium text-primary-600 dark:text-primary-400">
+              {selectedRows.size} selected
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-2">
+          {showActions && onAdd && (
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={onAdd}
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Row
+            </Button>
+          )}
+          {selectedRows.size > 0 && onBulkDelete && (
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={handleBulkDelete}
+              className="gap-2"
+            >
+              <Trash className="w-4 h-4" />
+              Delete Selected ({selectedRows.size})
+            </Button>
+          )}
           <Button
             size="sm"
             variant="ghost"
@@ -183,6 +250,16 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
         <table className="w-full border-collapse">
           <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900 z-10">
             <tr>
+              {showActions && (
+                <th className="px-4 py-2 w-12 border-b border-gray-200 dark:border-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={selectedRows.size === paginatedData.length && paginatedData.length > 0}
+                    onChange={toggleSelectAll}
+                    className="rounded"
+                  />
+                </th>
+              )}
               {columns.map((column) => (
                 <th
                   key={column}
@@ -201,14 +278,32 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
                   </div>
                 </th>
               ))}
+              {showActions && (
+                <th className="px-4 py-2 w-32 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                  Actions
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
             {paginatedData.map((row, rowIndex) => (
               <tr
                 key={rowIndex}
-                className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                className={cn(
+                  'border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors',
+                  selectedRows.has(rowIndex) && 'bg-primary-50 dark:bg-primary-900/20'
+                )}
               >
+                {showActions && (
+                  <td className="px-4 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.has(rowIndex)}
+                      onChange={() => toggleRowSelection(rowIndex)}
+                      className="rounded"
+                    />
+                  </td>
+                )}
                 {columns.map((column) => {
                   const value = row[column];
                   const cellKey = `${rowIndex}-${column}`;
@@ -240,6 +335,30 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
                     </td>
                   );
                 })}
+                {showActions && (
+                  <td className="px-4 py-2">
+                    <div className="flex items-center justify-center gap-2">
+                      {onEdit && (
+                        <button
+                          onClick={() => onEdit(row, rowIndex)}
+                          className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                          title="Edit row"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          onClick={() => onDelete(row, rowIndex)}
+                          className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                          title="Delete row"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

@@ -11,6 +11,7 @@ import { ObjectDetailsPanel } from '@/components/db-explorer/ObjectDetailsPanel'
 import { QueryHistoryPanel } from '@/components/db-explorer/QueryHistoryPanel';
 import { CreateTableDialog } from '@/components/db-explorer/CreateTableDialog';
 import { ConfirmationDialog } from '@/components/db-explorer/ConfirmationDialog';
+import { EditRowDialog } from '@/components/db-explorer/EditRowDialog';
 import api from '@/lib/api';
 import { cn } from '@/utils/helpers';
 
@@ -61,6 +62,26 @@ export const DatabaseExplorer: React.FC = () => {
     isOpen: boolean;
     schemaName: string;
   }>({ isOpen: false, schemaName: '' });
+
+  const [editRowDialog, setEditRowDialog] = useState<{
+    isOpen: boolean;
+    mode: 'add' | 'edit';
+    tableName: string;
+    schemaName: string;
+    columns: any[];
+    rowData?: any;
+  }>({
+    isOpen: false,
+    mode: 'add',
+    tableName: '',
+    schemaName: '',
+    columns: [],
+  });
+
+  const [currentTableContext, setCurrentTableContext] = useState<{
+    tableName: string;
+    schemaName: string;
+  } | null>(null);
 
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -174,6 +195,9 @@ export const DatabaseExplorer: React.FC = () => {
 
     switch (action) {
       case 'view-data':
+        // Set current table context for data editing
+        setCurrentTableContext({ tableName, schemaName });
+        
         // Generate and execute SELECT query
         const selectQuery = `SELECT * FROM "${schemaName}"."${tableName}" LIMIT 100;`;
         const activeTab = queryTabs.find(tab => tab.id === activeTabId);
@@ -367,6 +391,210 @@ export const DatabaseExplorer: React.FC = () => {
           type: 'info',
         });
         break;
+    }
+  };
+
+  // Data editing handlers
+  const handleAddRow = async () => {
+    if (!selectedConnector || !currentTableContext) return;
+
+    try {
+      // Fetch table columns
+      const response = await api.get(`/db-explorer/${selectedConnector.id}/schemas/${currentTableContext.schemaName}/tables/${currentTableContext.tableName}/columns`);
+      const columns = response.data;
+
+      setEditRowDialog({
+        isOpen: true,
+        mode: 'add',
+        tableName: currentTableContext.tableName,
+        schemaName: currentTableContext.schemaName,
+        columns,
+      });
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to load table columns',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleEditRow = async (row: any) => {
+    if (!selectedConnector || !currentTableContext) return;
+
+    try {
+      // Fetch table columns
+      const response = await api.get(`/db-explorer/${selectedConnector.id}/schemas/${currentTableContext.schemaName}/tables/${currentTableContext.tableName}/columns`);
+      const columns = response.data;
+
+      setEditRowDialog({
+        isOpen: true,
+        mode: 'edit',
+        tableName: currentTableContext.tableName,
+        schemaName: currentTableContext.schemaName,
+        columns,
+        rowData: row,
+      });
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to load table columns',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleDeleteRow = async (row: any) => {
+    if (!selectedConnector || !currentTableContext) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Row',
+      message: 'Are you sure you want to delete this row? This action cannot be undone.',
+      danger: true,
+      onConfirm: () => executeDeleteRow(row),
+    });
+  };
+
+  const executeDeleteRow = async (row: any) => {
+    if (!selectedConnector || !currentTableContext) return;
+
+    try {
+      setDialogLoading(true);
+      await api.post(`/db-explorer/${selectedConnector.id}/data/delete`, {
+        schemaName: currentTableContext.schemaName,
+        tableName: currentTableContext.tableName,
+        where: row,
+      });
+
+      setConfirmDialog({ ...confirmDialog, isOpen: false });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: 'Row deleted successfully',
+        type: 'success',
+      });
+
+      // Refresh data
+      const activeTab = queryTabs.find(tab => tab.id === activeTabId);
+      if (activeTab?.query) {
+        await executeQuery(activeTab.query, false);
+      }
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to delete row',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async (rows: any[]) => {
+    if (!selectedConnector || !currentTableContext) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Multiple Rows',
+      message: `Are you sure you want to delete ${rows.length} row(s)? This action cannot be undone.`,
+      danger: true,
+      onConfirm: () => executeBulkDelete(rows),
+    });
+  };
+
+  const executeBulkDelete = async (rows: any[]) => {
+    if (!selectedConnector || !currentTableContext) return;
+
+    try {
+      setDialogLoading(true);
+      await api.post(`/db-explorer/${selectedConnector.id}/data/bulk-delete`, {
+        schemaName: currentTableContext.schemaName,
+        tableName: currentTableContext.tableName,
+        whereConditions: rows,
+      });
+
+      setConfirmDialog({ ...confirmDialog, isOpen: false });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `${rows.length} row(s) deleted successfully`,
+        type: 'success',
+      });
+
+      // Refresh data
+      const activeTab = queryTabs.find(tab => tab.id === activeTabId);
+      if (activeTab?.query) {
+        await executeQuery(activeTab.query, false);
+      }
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to delete rows',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
+    }
+  };
+
+  const handleSaveRow = async (data: Record<string, any>) => {
+    if (!selectedConnector || !editRowDialog.schemaName || !editRowDialog.tableName) return;
+
+    try {
+      setDialogLoading(true);
+
+      if (editRowDialog.mode === 'add') {
+        // Insert new row
+        await api.post(`/db-explorer/${selectedConnector.id}/data/insert`, {
+          schemaName: editRowDialog.schemaName,
+          tableName: editRowDialog.tableName,
+          data,
+        });
+
+        setAlertDialog({
+          isOpen: true,
+          title: 'Success',
+          message: 'Row added successfully',
+          type: 'success',
+        });
+      } else {
+        // Update existing row
+        await api.post(`/db-explorer/${selectedConnector.id}/data/update`, {
+          schemaName: editRowDialog.schemaName,
+          tableName: editRowDialog.tableName,
+          data,
+          where: editRowDialog.rowData, // Use original data as WHERE clause
+        });
+
+        setAlertDialog({
+          isOpen: true,
+          title: 'Success',
+          message: 'Row updated successfully',
+          type: 'success',
+        });
+      }
+
+      setEditRowDialog({ ...editRowDialog, isOpen: false });
+
+      // Refresh data
+      const activeTab = queryTabs.find(tab => tab.id === activeTabId);
+      if (activeTab?.query) {
+        await executeQuery(activeTab.query, false);
+      }
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || `Failed to ${editRowDialog.mode === 'add' ? 'add' : 'update'} row`,
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
     }
   };
 
@@ -642,6 +870,11 @@ export const DatabaseExplorer: React.FC = () => {
               <ResultsGrid
                 data={activeTab.result.rows}
                 columns={Object.keys(activeTab.result.rows[0] || {})}
+                showActions={!!currentTableContext}
+                onEdit={currentTableContext ? handleEditRow : undefined}
+                onDelete={currentTableContext ? handleDeleteRow : undefined}
+                onAdd={currentTableContext ? handleAddRow : undefined}
+                onBulkDelete={currentTableContext ? handleBulkDelete : undefined}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
@@ -710,6 +943,19 @@ export const DatabaseExplorer: React.FC = () => {
         onClose={() => setCreateTableDialog({ isOpen: false, schemaName: '' })}
         onSubmit={handleCreateTable}
         schemaName={createTableDialog.schemaName}
+        isLoading={dialogLoading}
+      />
+
+      {/* Edit/Add Row Dialog */}
+      <EditRowDialog
+        isOpen={editRowDialog.isOpen}
+        onClose={() => setEditRowDialog({ ...editRowDialog, isOpen: false })}
+        onSubmit={handleSaveRow}
+        columns={editRowDialog.columns}
+        initialData={editRowDialog.rowData}
+        tableName={editRowDialog.tableName}
+        schemaName={editRowDialog.schemaName}
+        mode={editRowDialog.mode}
         isLoading={dialogLoading}
       />
 
