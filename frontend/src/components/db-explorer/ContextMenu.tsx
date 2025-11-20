@@ -122,6 +122,7 @@ export const getTableContextMenuItems = (
   onViewData: () => void,
   onCopyName: () => void,
   onExport: () => void,
+  onAlter: () => void,
   onTruncate: () => void,
   onDrop: () => void,
   onRefresh: () => void
@@ -142,6 +143,11 @@ export const getTableContextMenuItems = (
     onClick: onExport,
   },
   { divider: true } as ContextMenuItem,
+  {
+    label: 'Alter Table',
+    icon: <FileText className="w-4 h-4" />,
+    onClick: onAlter,
+  },
   {
     label: 'Refresh',
     icon: <RefreshCw className="w-4 h-4" />,

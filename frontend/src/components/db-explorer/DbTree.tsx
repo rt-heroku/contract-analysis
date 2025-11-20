@@ -362,6 +362,7 @@ export const DbTree: React.FC<DbTreeProps> = ({
           navigator.clipboard.writeText(node.label);
         },
         () => onTableAction?.('export', node.label, schemaName),
+        () => onTableAction?.('alter', node.label, schemaName),
         () => onTableAction?.('truncate', node.label, schemaName),
         () => onTableAction?.('drop', node.label, schemaName),
         () => toggleNode(node.id)

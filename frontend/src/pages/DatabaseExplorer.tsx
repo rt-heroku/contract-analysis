@@ -12,6 +12,7 @@ import { QueryHistoryPanel } from '@/components/db-explorer/QueryHistoryPanel';
 import { CreateTableDialog } from '@/components/db-explorer/CreateTableDialog';
 import { ConfirmationDialog } from '@/components/db-explorer/ConfirmationDialog';
 import { EditRowDialog } from '@/components/db-explorer/EditRowDialog';
+import { AlterTableDialog } from '@/components/db-explorer/AlterTableDialog';
 import api from '@/lib/api';
 import { cn } from '@/utils/helpers';
 
@@ -73,6 +74,18 @@ export const DatabaseExplorer: React.FC = () => {
   }>({
     isOpen: false,
     mode: 'add',
+    tableName: '',
+    schemaName: '',
+    columns: [],
+  });
+
+  const [alterTableDialog, setAlterTableDialog] = useState<{
+    isOpen: boolean;
+    tableName: string;
+    schemaName: string;
+    columns: any[];
+  }>({
+    isOpen: false,
     tableName: '',
     schemaName: '',
     columns: [],
@@ -220,6 +233,10 @@ export const DatabaseExplorer: React.FC = () => {
           message: `Export functionality for ${tableName} will be available soon.`,
           type: 'info',
         });
+        break;
+
+      case 'alter':
+        await handleAlterTable(tableName, schemaName);
         break;
 
       case 'truncate':
@@ -372,6 +389,97 @@ export const DatabaseExplorer: React.FC = () => {
         isOpen: true,
         title: 'Error',
         message: error.response?.data?.error || 'Failed to create table',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
+    }
+  };
+
+  const handleAlterTable = async (tableName: string, schemaName: string) => {
+    if (!selectedConnector) return;
+
+    try {
+      // Fetch table columns
+      const response = await api.get(`/db-explorer/${selectedConnector.id}/schemas/${schemaName}/tables/${tableName}/columns`);
+      const columns = response.data;
+
+      setAlterTableDialog({
+        isOpen: true,
+        tableName,
+        schemaName,
+        columns,
+      });
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to load table columns',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleAddColumn = async (column: any) => {
+    if (!selectedConnector || !alterTableDialog.schemaName || !alterTableDialog.tableName) return;
+
+    try {
+      setDialogLoading(true);
+      await api.post(`/db-explorer/${selectedConnector.id}/tables/add-column`, {
+        schemaName: alterTableDialog.schemaName,
+        tableName: alterTableDialog.tableName,
+        column,
+      });
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Column "${column.name}" added successfully`,
+        type: 'success',
+      });
+
+      // Close dialog and refresh
+      setAlterTableDialog({ ...alterTableDialog, isOpen: false });
+      loadConnectors();
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to add column',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
+    }
+  };
+
+  const handleDropColumn = async (columnName: string) => {
+    if (!selectedConnector || !alterTableDialog.schemaName || !alterTableDialog.tableName) return;
+
+    try {
+      setDialogLoading(true);
+      await api.post(`/db-explorer/${selectedConnector.id}/tables/drop-column`, {
+        schemaName: alterTableDialog.schemaName,
+        tableName: alterTableDialog.tableName,
+        columnName,
+        cascade: false,
+      });
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Column "${columnName}" dropped successfully`,
+        type: 'success',
+      });
+
+      // Close dialog and refresh
+      setAlterTableDialog({ ...alterTableDialog, isOpen: false });
+      loadConnectors();
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to drop column',
         type: 'error',
       });
     } finally {
@@ -956,6 +1064,18 @@ export const DatabaseExplorer: React.FC = () => {
         tableName={editRowDialog.tableName}
         schemaName={editRowDialog.schemaName}
         mode={editRowDialog.mode}
+        isLoading={dialogLoading}
+      />
+
+      {/* Alter Table Dialog */}
+      <AlterTableDialog
+        isOpen={alterTableDialog.isOpen}
+        onClose={() => setAlterTableDialog({ ...alterTableDialog, isOpen: false })}
+        onAddColumn={handleAddColumn}
+        onDropColumn={handleDropColumn}
+        tableName={alterTableDialog.tableName}
+        schemaName={alterTableDialog.schemaName}
+        existingColumns={alterTableDialog.columns}
         isLoading={dialogLoading}
       />
 
