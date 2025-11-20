@@ -612,6 +612,7 @@ model Connector {
   iconUrl       String?  @map("icon_url") @db.VarChar(500) // Custom icon URL (uploaded image)
   isActive      Boolean  @default(true) @map("is_active")
   isAutoCreated Boolean  @default(false) @map("is_auto_created") // Auto-detected from env vars
+  category      String?  @db.VarChar(50) // 'System', 'User', 'External'
   createdBy     Int      @map("created_by")
   sharedWith    Json     @default("[]") @map("shared_with")
   createdAt     DateTime @default(now()) @map("created_at")

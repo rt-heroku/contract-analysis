@@ -16,6 +16,7 @@ interface InferenceConfig {
   apiKey: string;
   modelId: string;
   baseUrl: string;
+  endpoint?: string;
 }
 
 /**
@@ -234,7 +235,7 @@ export async function autoDetectDatabases(userId: number): Promise<void> {
       return;
     }
 
-    // Create connectors for detected databases
+    // Create or update connectors for detected databases
     for (const dbConfig of databases) {
       try {
         // Check if connector already exists
@@ -246,8 +247,41 @@ export async function autoDetectDatabases(userId: number): Promise<void> {
           },
         });
 
+        const expectedConfig = {
+          host: dbConfig.host,
+          port: dbConfig.port,
+          database: dbConfig.database,
+          user: dbConfig.user,
+          password: dbConfig.password,
+          username: dbConfig.user, // Add username alias for display
+          ssl: dbConfig.ssl,
+        };
+
         if (existing) {
-          logger.info(`Database connector "${dbConfig.name}" already exists`);
+          // Verify configuration matches environment variables
+          const existingConfig = existing.config as any;
+          const configChanged = 
+            existingConfig.host !== expectedConfig.host ||
+            existingConfig.port !== expectedConfig.port ||
+            existingConfig.database !== expectedConfig.database ||
+            existingConfig.user !== expectedConfig.user ||
+            existingConfig.password !== expectedConfig.password ||
+            existingConfig.ssl !== expectedConfig.ssl;
+
+          if (configChanged) {
+            // Update connector with new configuration from env vars
+            await prisma.connector.update({
+              where: { id: existing.id },
+              data: {
+                config: expectedConfig,
+                category: 'System',
+              },
+            });
+            logger.info(`Updated database connector "${dbConfig.name}" with new configuration from env vars`);
+          } else {
+            logger.info(`Database connector "${dbConfig.name}" already exists with correct configuration`);
+          }
+          
           // Ensure actions exist for existing connectors
           await createConnectorActions(existing.id);
           continue;
@@ -259,16 +293,10 @@ export async function autoDetectDatabases(userId: number): Promise<void> {
             name: dbConfig.name,
             connectorType: 'database',
             version: '1.0.0',
-            config: {
-              host: dbConfig.host,
-              port: dbConfig.port,
-              database: dbConfig.database,
-              user: dbConfig.user,
-              password: dbConfig.password,
-              ssl: dbConfig.ssl,
-            },
+            config: expectedConfig,
             isActive: true,
             isAutoCreated: true,
+            category: 'System',
             createdBy: userId,
             sharedWith: [],
           },
@@ -280,7 +308,7 @@ export async function autoDetectDatabases(userId: number): Promise<void> {
         await createConnectorActions(connector.id);
         logger.info(`Auto-created connector actions for: ${dbConfig.name}`);
       } catch (error) {
-        logger.error(`Failed to create connector for ${dbConfig.name}:`, error);
+        logger.error(`Failed to create/update connector for ${dbConfig.name}:`, error);
       }
     }
   } catch (error) {
@@ -383,6 +411,29 @@ async function createInferenceActions(connectorId: number): Promise<void> {
 }
 
 /**
+ * Normalize inference URL and extract base URL and endpoint
+ */
+function normalizeInferenceUrl(url: string): { baseUrl: string; endpoint: string } {
+  // Remove trailing slashes
+  url = url.replace(/\/+$/, '');
+  
+  // If URL already includes the endpoint, extract it
+  if (url.includes('/chat/completions')) {
+    const parts = url.split('/chat/completions');
+    return {
+      baseUrl: parts[0],
+      endpoint: '/chat/completions',
+    };
+  }
+  
+  // Default endpoint for OpenAI-compatible APIs
+  return {
+    baseUrl: url,
+    endpoint: '/chat/completions',
+  };
+}
+
+/**
  * Auto-detect and create Inference connectors from environment variables
  */
 async function autoDetectInference(userId: number): Promise<void> {
@@ -395,11 +446,13 @@ async function autoDetectInference(userId: number): Promise<void> {
     const inferenceUrl = process.env.INFERENCE_URL || 'https://api.openai.com/v1';
 
     if (inferenceKey) {
+      const { baseUrl, endpoint } = normalizeInferenceUrl(inferenceUrl);
       inferenceConfigs.push({
         name: 'AI',
         apiKey: inferenceKey,
         modelId: inferenceModelId,
-        baseUrl: inferenceUrl,
+        baseUrl,
+        endpoint,
       });
     }
 
@@ -411,20 +464,22 @@ async function autoDetectInference(userId: number): Promise<void> {
       const color = keyVar.replace('HEROKU_INFERENCE_', '').replace('_KEY', '');
       const apiKey = process.env[keyVar];
       const modelId = process.env[`HEROKU_INFERENCE_${color}_MODEL_ID`] || 'gpt-4o-mini';
-      const baseUrl = process.env[`HEROKU_INFERENCE_${color}_URL`] || 'https://api.openai.com/v1';
+      const envUrl = process.env[`HEROKU_INFERENCE_${color}_URL`] || 'https://api.openai.com/v1';
 
       if (apiKey) {
         const name = `Heroku AI ${color.charAt(0).toUpperCase() + color.slice(1).toLowerCase()}`;
+        const { baseUrl, endpoint } = normalizeInferenceUrl(envUrl);
         inferenceConfigs.push({
           name,
           apiKey,
           modelId,
           baseUrl,
+          endpoint,
         });
       }
     }
 
-    // Create connectors for each detected inference service
+    // Create or update connectors for each detected inference service
     for (const inferenceConfig of inferenceConfigs) {
       try {
         // Check if connector already exists
@@ -436,8 +491,36 @@ async function autoDetectInference(userId: number): Promise<void> {
           },
         });
 
+        const expectedConfig = {
+          apiKey: inferenceConfig.apiKey,
+          modelId: inferenceConfig.modelId,
+          baseUrl: inferenceConfig.baseUrl,
+          endpoint: inferenceConfig.endpoint || '/chat/completions',
+        };
+
         if (existing) {
-          logger.info(`Inference connector "${inferenceConfig.name}" already exists`);
+          // Verify configuration matches environment variables
+          const existingConfig = existing.config as any;
+          const configChanged = 
+            existingConfig.apiKey !== expectedConfig.apiKey ||
+            existingConfig.modelId !== expectedConfig.modelId ||
+            existingConfig.baseUrl !== expectedConfig.baseUrl ||
+            existingConfig.endpoint !== expectedConfig.endpoint;
+
+          if (configChanged) {
+            // Update connector with new configuration from env vars
+            await prisma.connector.update({
+              where: { id: existing.id },
+              data: {
+                config: expectedConfig,
+                category: 'System',
+              },
+            });
+            logger.info(`Updated inference connector "${inferenceConfig.name}" with new configuration from env vars`);
+          } else {
+            logger.info(`Inference connector "${inferenceConfig.name}" already exists with correct configuration`);
+          }
+          
           // Ensure actions exist for existing connectors
           await createInferenceActions(existing.id);
           continue;
@@ -449,13 +532,10 @@ async function autoDetectInference(userId: number): Promise<void> {
             name: inferenceConfig.name,
             connectorType: 'inference',
             version: '1.0.0',
-            config: {
-              apiKey: inferenceConfig.apiKey,
-              modelId: inferenceConfig.modelId,
-              baseUrl: inferenceConfig.baseUrl,
-            },
+            config: expectedConfig,
             isActive: true,
             isAutoCreated: true,
+            category: 'System',
             createdBy: userId,
             sharedWith: [],
           },
@@ -467,7 +547,7 @@ async function autoDetectInference(userId: number): Promise<void> {
         await createInferenceActions(connector.id);
         logger.info(`Auto-created connector actions for: ${inferenceConfig.name}`);
       } catch (error) {
-        logger.error(`Failed to create connector for ${inferenceConfig.name}:`, error);
+        logger.error(`Failed to create/update connector for ${inferenceConfig.name}:`, error);
       }
     }
   } catch (error) {

@@ -953,7 +953,10 @@ class DatabaseExplorerService {
     let baseUrl = (config.baseUrl || 'https://api.openai.com/v1').trim();
     baseUrl = baseUrl.replace(/\/+$/, ''); // Remove trailing slashes
     
-    const apiUrl = `${baseUrl}/chat/completions`;
+    // Get endpoint from config, default to /chat/completions
+    const endpoint = config.endpoint || '/chat/completions';
+    
+    const apiUrl = `${baseUrl}${endpoint}`;
     
     logger.info(`Calling AI API: ${apiUrl} with model: ${config.modelId || 'gpt-4o-mini'}`);
 
