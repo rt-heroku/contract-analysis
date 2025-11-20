@@ -539,6 +539,7 @@ export const getConnectors = async (req: AuthenticatedRequest, res: Response) =>
         isActive: true,
         OR: [
           { createdBy: userId },
+          { isAutoCreated: true }, // Include auto-detected databases
         ],
       },
       select: {
@@ -547,10 +548,14 @@ export const getConnectors = async (req: AuthenticatedRequest, res: Response) =>
         connectorType: true,
         version: true,
         iconUrl: true,
+        isAutoCreated: true,
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: { name: 'asc' },
+      orderBy: [
+        { isAutoCreated: 'desc' }, // Auto-created first
+        { name: 'asc' },
+      ],
     });
 
     res.json({ connectors });

@@ -91,7 +91,7 @@ const App = () => {
             <Route path="/admin/logs" element={<MainLayout><Logs /></MainLayout>} />
             
             {/* Database Explorer */}
-            <Route path="/db" element={<DatabaseExplorer />} />
+            <Route path="/db" element={<MainLayout><DatabaseExplorer /></MainLayout>} />
 
             {/* Default Route */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

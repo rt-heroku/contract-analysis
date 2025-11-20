@@ -29,9 +29,18 @@ psql $DATABASE_URL -f add-db-explorer-menu.sql
 
 This grants access to users with the **admin** role.
 
-### 3. Create a Database Connector
+### 3. Auto-Detection of Database Connectors (Automatic!)
 
-Before using the Database Explorer, you need at least one database connector:
+**The app automatically detects and creates database connectors** on startup from environment variables:
+
+- **`DATABASE_URL`** → Creates connector named **"Database"**
+- **`HEROKU_POSTGRESQL_<COLOR>_URL`** → Creates connector named **"Heroku PostgreSQL <Color>"**
+
+**You don't need to manually create connectors!** They will appear automatically after server restart.
+
+#### Manual Connector Creation (Optional)
+
+If you want to add additional databases:
 
 1. Navigate to **Connectors** page
 2. Click **New Connector**
