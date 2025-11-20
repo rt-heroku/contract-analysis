@@ -38,6 +38,7 @@ router.get('/:connectorId/schemas/:schemaName/tables/:tableName/data', dbExplore
 router.get('/:connectorId/schemas/:schemaName/erd', dbExplorerController.getSchemaERD);
 
 // AI SQL Generation
+router.get('/ai-connector-info', dbExplorerController.getAIConnectorInfo);
 router.post('/:connectorId/ai-generate', dbExplorerController.generateAISQL);
 
 // Query execution

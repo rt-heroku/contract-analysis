@@ -941,13 +941,21 @@ class DatabaseExplorerService {
     const inferenceConnector = await this.getInferenceConnector();
     const config = inferenceConnector.config as any;
 
+    logger.info(`Using inference connector: ${inferenceConnector.name} (ID: ${inferenceConnector.id})`);
+    logger.info(`Connector config - Model: ${config.modelId}, BaseURL: ${config.baseUrl}`);
+
     if (!config.apiKey) {
       throw new Error('Inference connector is missing API key configuration');
     }
 
     // Build the API URL (baseUrl + endpoint)
-    const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
+    // Normalize baseUrl by removing trailing slashes
+    let baseUrl = (config.baseUrl || 'https://api.openai.com/v1').trim();
+    baseUrl = baseUrl.replace(/\/+$/, ''); // Remove trailing slashes
+    
     const apiUrl = `${baseUrl}/chat/completions`;
+    
+    logger.info(`Calling AI API: ${apiUrl} with model: ${config.modelId || 'gpt-4o-mini'}`);
 
     // Call Inference API
     const response = await fetch(apiUrl, {
@@ -975,7 +983,8 @@ class DatabaseExplorerService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`AI API error: ${errorText}`);
+      logger.error(`AI API error (${response.status}): ${errorText} - URL: ${apiUrl}`);
+      throw new Error(`AI API error (${response.status}): ${errorText}`);
     }
 
     const responseData: any = await response.json();

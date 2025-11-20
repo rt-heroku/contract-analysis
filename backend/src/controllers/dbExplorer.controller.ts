@@ -582,6 +582,60 @@ export const getSchemaERD = async (req: AuthenticatedRequest, res: Response) => 
 };
 
 /**
+ * Get AI connector configuration (for debugging)
+ */
+export const getAIConnectorInfo = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    
+    // Get the setting
+    const setting = await prisma.systemSetting.findUnique({
+      where: { settingKey: 'db_explorer_ai_connector_id' },
+    });
+
+    if (!setting || !setting.settingValue) {
+      return res.json({ 
+        configured: false, 
+        message: 'No AI connector configured in system settings' 
+      });
+    }
+
+    const connectorId = parseInt(setting.settingValue);
+    const connector = await prisma.connector.findFirst({
+      where: {
+        id: connectorId,
+        connectorType: 'inference',
+      },
+    });
+
+    if (!connector) {
+      return res.json({ 
+        configured: false, 
+        message: 'Configured connector not found',
+        settingValue: setting.settingValue 
+      });
+    }
+
+    const config = connector.config as any;
+
+    res.json({
+      configured: true,
+      connector: {
+        id: connector.id,
+        name: connector.name,
+        isActive: connector.isActive,
+        modelId: config.modelId,
+        baseUrl: config.baseUrl,
+        hasApiKey: !!config.apiKey,
+      },
+    });
+  } catch (error: any) {
+    logger.error('Get AI connector info error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get AI connector info' });
+  }
+};
+
+/**
  * Generate SQL using AI
  */
 export const generateAISQL = async (req: AuthenticatedRequest, res: Response) => {
