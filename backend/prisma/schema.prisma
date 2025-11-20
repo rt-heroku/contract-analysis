@@ -194,6 +194,7 @@ model SystemSetting {
   settingKey   String   @unique @map("setting_key") @db.VarChar(100)
   settingValue String?  @map("setting_value") @db.Text
   description  String?  @db.Text
+  category     String?  @db.VarChar(50) // e.g., "Database", "AI", "Email", "General"
   isSecret     Boolean  @default(false) @map("is_secret")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")

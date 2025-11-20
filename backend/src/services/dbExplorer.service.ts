@@ -851,6 +851,35 @@ class DatabaseExplorerService {
   }
 
   /**
+   * Get inference connector for AI operations
+   */
+  private async getInferenceConnector(): Promise<any> {
+    // Get the selected inference connector from settings
+    const setting = await prisma.systemSetting.findUnique({
+      where: { settingKey: 'db_explorer_ai_connector_id' },
+    });
+
+    if (!setting || !setting.settingValue) {
+      throw new Error('No AI connector configured. Please configure an inference connector in system settings.');
+    }
+
+    const connectorId = parseInt(setting.settingValue);
+    const connector = await prisma.connector.findFirst({
+      where: {
+        id: connectorId,
+        connectorType: 'inference',
+        isActive: true,
+      },
+    });
+
+    if (!connector) {
+      throw new Error('Configured AI connector not found or inactive');
+    }
+
+    return connector;
+  }
+
+  /**
    * Generate SQL using AI with full context
    */
   async generateAISQL(connectorId: number, userId: number, schemaName: string, prompt: string): Promise<any> {
@@ -908,20 +937,27 @@ class DatabaseExplorerService {
     // Build AI prompt with full context
     const contextPrompt = this.buildAIPrompt(prompt, schemaName, validContexts);
 
-    // Call OpenAI API
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    if (!openaiApiKey) {
-      throw new Error('OPENAI_API_KEY not configured');
+    // Get inference connector configuration
+    const inferenceConnector = await this.getInferenceConnector();
+    const config = inferenceConnector.config as any;
+
+    if (!config.apiKey) {
+      throw new Error('Inference connector is missing API key configuration');
     }
 
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Build the API URL (baseUrl + endpoint)
+    const baseUrl = config.baseUrl || 'https://api.openai.com/v1';
+    const apiUrl = `${baseUrl}/chat/completions`;
+
+    // Call Inference API
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${config.apiKey}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: config.modelId || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -937,13 +973,13 @@ class DatabaseExplorerService {
       }),
     });
 
-    if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      throw new Error(`OpenAI API error: ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`AI API error: ${errorText}`);
     }
 
-    const openaiData: any = await openaiResponse.json();
-    const generatedText: string = openaiData.choices[0]?.message?.content || '';
+    const responseData: any = await response.json();
+    const generatedText: string = responseData.choices[0]?.message?.content || '';
 
     // Extract SQL from response (remove markdown code blocks if present)
     let sql = generatedText.trim();

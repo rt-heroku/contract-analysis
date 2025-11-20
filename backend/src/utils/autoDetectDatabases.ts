@@ -11,6 +11,13 @@ interface DatabaseConfig {
   ssl: boolean;
 }
 
+interface InferenceConfig {
+  name: string;
+  apiKey: string;
+  modelId: string;
+  baseUrl: string;
+}
+
 /**
  * Parse PostgreSQL connection URL
  * Format: postgres://user:password@host:port/database
@@ -282,6 +289,193 @@ export async function autoDetectDatabases(userId: number): Promise<void> {
 }
 
 /**
+ * Create standard connector actions for an inference connector
+ */
+async function createInferenceActions(connectorId: number): Promise<void> {
+  const actions = [
+    {
+      operation: 'chat_completion',
+      operationId: 'chat_completion',
+      displayName: 'Chat Completion',
+      description: 'Generate chat completion using the LLM',
+      method: 'POST',
+      path: '/chat/completions',
+      parameters: {
+        messages: { type: 'array', required: true, description: 'Array of message objects with role and content' },
+        temperature: { type: 'number', required: false, default: 0.7, description: 'Sampling temperature (0-2)' },
+        max_tokens: { type: 'number', required: false, description: 'Maximum tokens to generate' },
+        stream: { type: 'boolean', required: false, default: false, description: 'Stream response' },
+      },
+      requestBody: {
+        model: '{{modelId}}',
+        messages: '{{messages}}',
+        temperature: '{{temperature}}',
+        max_tokens: '{{max_tokens}}',
+      },
+      responses: undefined,
+    },
+    {
+      operation: 'text_completion',
+      operationId: 'text_completion',
+      displayName: 'Text Completion',
+      description: 'Generate text completion',
+      method: 'POST',
+      path: '/completions',
+      parameters: {
+        prompt: { type: 'string', required: true, description: 'Text prompt' },
+        temperature: { type: 'number', required: false, default: 0.7 },
+        max_tokens: { type: 'number', required: false, default: 1000 },
+      },
+      requestBody: {
+        model: '{{modelId}}',
+        prompt: '{{prompt}}',
+        temperature: '{{temperature}}',
+        max_tokens: '{{max_tokens}}',
+      },
+      responses: undefined,
+    },
+    {
+      operation: 'embeddings',
+      operationId: 'embeddings',
+      displayName: 'Generate Embeddings',
+      description: 'Generate embeddings for text',
+      method: 'POST',
+      path: '/embeddings',
+      parameters: {
+        input: { type: 'string', required: true, description: 'Text to embed' },
+      },
+      requestBody: {
+        model: '{{modelId}}',
+        input: '{{input}}',
+      },
+      responses: undefined,
+    },
+  ];
+
+  for (const action of actions) {
+    try {
+      await prisma.connectorAction.upsert({
+        where: {
+          connectorId_operation: {
+            connectorId,
+            operation: action.operation,
+          },
+        },
+        update: {},
+        create: {
+          connectorId,
+          operation: action.operation,
+          operationId: action.operationId,
+          displayName: action.displayName,
+          description: action.description,
+          method: action.method,
+          path: action.path,
+          parameters: action.parameters,
+          requestBody: action.requestBody ?? undefined,
+          responses: action.responses ?? undefined,
+          isActive: true,
+        },
+      });
+    } catch (error) {
+      logger.error(`Failed to create inference action ${action.operation}:`, error);
+    }
+  }
+}
+
+/**
+ * Auto-detect and create Inference connectors from environment variables
+ */
+async function autoDetectInference(userId: number): Promise<void> {
+  try {
+    const inferenceConfigs: InferenceConfig[] = [];
+
+    // Check for default INFERENCE_* env vars
+    const inferenceKey = process.env.INFERENCE_KEY;
+    const inferenceModelId = process.env.INFERENCE_MODEL_ID || 'gpt-4o-mini';
+    const inferenceUrl = process.env.INFERENCE_URL || 'https://api.openai.com/v1';
+
+    if (inferenceKey) {
+      inferenceConfigs.push({
+        name: 'AI',
+        apiKey: inferenceKey,
+        modelId: inferenceModelId,
+        baseUrl: inferenceUrl,
+      });
+    }
+
+    // Check for Heroku INFERENCE addons (HEROKU_INFERENCE_<COLOR>_KEY, etc.)
+    const envKeys = Object.keys(process.env);
+    const herokuInferenceKeys = envKeys.filter(key => key.startsWith('HEROKU_INFERENCE_') && key.endsWith('_KEY'));
+
+    for (const keyVar of herokuInferenceKeys) {
+      const color = keyVar.replace('HEROKU_INFERENCE_', '').replace('_KEY', '');
+      const apiKey = process.env[keyVar];
+      const modelId = process.env[`HEROKU_INFERENCE_${color}_MODEL_ID`] || 'gpt-4o-mini';
+      const baseUrl = process.env[`HEROKU_INFERENCE_${color}_URL`] || 'https://api.openai.com/v1';
+
+      if (apiKey) {
+        const name = `Heroku AI ${color.charAt(0).toUpperCase() + color.slice(1).toLowerCase()}`;
+        inferenceConfigs.push({
+          name,
+          apiKey,
+          modelId,
+          baseUrl,
+        });
+      }
+    }
+
+    // Create connectors for each detected inference service
+    for (const inferenceConfig of inferenceConfigs) {
+      try {
+        // Check if connector already exists
+        const existing = await prisma.connector.findFirst({
+          where: {
+            name: inferenceConfig.name,
+            connectorType: 'inference',
+            isAutoCreated: true,
+          },
+        });
+
+        if (existing) {
+          logger.info(`Inference connector "${inferenceConfig.name}" already exists`);
+          // Ensure actions exist for existing connectors
+          await createInferenceActions(existing.id);
+          continue;
+        }
+
+        // Create new connector
+        const connector = await prisma.connector.create({
+          data: {
+            name: inferenceConfig.name,
+            connectorType: 'inference',
+            version: '1.0.0',
+            config: {
+              apiKey: inferenceConfig.apiKey,
+              modelId: inferenceConfig.modelId,
+              baseUrl: inferenceConfig.baseUrl,
+            },
+            isActive: true,
+            isAutoCreated: true,
+            createdBy: userId,
+            sharedWith: [],
+          },
+        });
+
+        logger.info(`Auto-created inference connector: ${inferenceConfig.name}`);
+
+        // Create standard connector actions
+        await createInferenceActions(connector.id);
+        logger.info(`Auto-created connector actions for: ${inferenceConfig.name}`);
+      } catch (error) {
+        logger.error(`Failed to create connector for ${inferenceConfig.name}:`, error);
+      }
+    }
+  } catch (error) {
+    logger.error('Failed to auto-detect inference services:', error);
+  }
+}
+
+/**
  * Initialize auto-detection on app startup
  * Finds the first admin user and creates connectors
  */
@@ -307,8 +501,49 @@ export async function initializeAutoDetection(): Promise<void> {
 
     const adminUserId = adminRole.userRoles[0].userId;
     await autoDetectDatabases(adminUserId);
+    await autoDetectInference(adminUserId);
+    await initializeInferenceSettings();
   } catch (error) {
-    logger.error('Failed to initialize database auto-detection:', error);
+    logger.error('Failed to initialize auto-detection:', error);
+  }
+}
+
+/**
+ * Initialize default system settings for inference connectors
+ */
+async function initializeInferenceSettings(): Promise<void> {
+  try {
+    // Find the first inference connector
+    const firstInferenceConnector = await prisma.connector.findFirst({
+      where: {
+        connectorType: 'inference',
+        isActive: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    if (firstInferenceConnector) {
+      // Create or update setting for DB Explorer AI connector
+      await prisma.systemSetting.upsert({
+        where: {
+          settingKey: 'db_explorer_ai_connector_id',
+        },
+        update: {},
+        create: {
+          settingKey: 'db_explorer_ai_connector_id',
+          settingValue: firstInferenceConnector.id.toString(),
+          description: 'Inference connector used for AI SQL generation in Database Explorer',
+          category: 'AI',
+          isSecret: false,
+        },
+      });
+
+      logger.info(`Set default DB Explorer AI connector: ${firstInferenceConnector.name}`);
+    }
+  } catch (error) {
+    logger.error('Failed to initialize inference settings:', error);
   }
 }
 
