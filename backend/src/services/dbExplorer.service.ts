@@ -825,17 +825,25 @@ class DatabaseExplorerService {
 
     // Get all foreign key relationships
     const relationshipsQuery = `
-      SELECT
+      SELECT DISTINCT
         tc.table_name as from_table,
         kcu.column_name as from_column,
         ccu.table_name as to_table,
         ccu.column_name as to_column,
         tc.constraint_name as name
       FROM information_schema.table_constraints tc
-      JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
-      JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name = tc.constraint_name
+      JOIN information_schema.key_column_usage kcu 
+        ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+      JOIN information_schema.constraint_column_usage ccu 
+        ON tc.constraint_name = ccu.constraint_name
+        AND tc.table_schema = ccu.table_schema
       WHERE tc.constraint_type = 'FOREIGN KEY'
         AND tc.table_schema = $1
+        AND tc.table_name NOT LIKE 'pg_%'
+        AND tc.table_name NOT LIKE 'sql_%'
+        AND ccu.table_name NOT LIKE 'pg_%'
+        AND ccu.table_name NOT LIKE 'sql_%'
       ORDER BY tc.table_name, kcu.column_name;
     `;
 
@@ -843,6 +851,15 @@ class DatabaseExplorerService {
       this.executeQuery(connectorId, userId, tablesQuery, [schemaName]),
       this.executeQuery(connectorId, userId, relationshipsQuery, [schemaName]),
     ]);
+
+    logger.info(`ERD Query Results for schema "${schemaName}":`, {
+      tablesCount: tablesResult.rows.length,
+      relationshipsCount: relationshipsResult.rows.length,
+      sampleRelationships: relationshipsResult.rows.slice(0, 5).map((r: any) => ({
+        from: `${r.from_table}.${r.from_column}`,
+        to: `${r.to_table}.${r.to_column}`,
+      })),
+    });
 
     return {
       tables: tablesResult.rows,
