@@ -582,6 +582,28 @@ export const getSchemaERD = async (req: AuthenticatedRequest, res: Response) => 
 };
 
 /**
+ * Generate SQL using AI
+ */
+export const generateAISQL = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { prompt, schemaName = 'public' } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    const result = await dbExplorerService.generateAISQL(connectorId, userId, schemaName, prompt);
+
+    res.json(result);
+  } catch (error: any) {
+    logger.error('AI SQL generation error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate SQL' });
+  }
+};
+
+/**
  * Get database statistics
  */
 export const getDatabaseStats = async (req: AuthenticatedRequest, res: Response) => {

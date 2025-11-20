@@ -14,6 +14,7 @@ import { ConfirmationDialog } from '@/components/db-explorer/ConfirmationDialog'
 import { EditRowDialog } from '@/components/db-explorer/EditRowDialog';
 import { AlterTableDialog } from '@/components/db-explorer/AlterTableDialog';
 import { IndexManagementDialog } from '@/components/db-explorer/IndexManagementDialog';
+import { AISQLGeneratorDialog } from '@/components/db-explorer/AISQLGeneratorDialog';
 import { DatabaseERD } from '@/components/db-explorer/DatabaseERD';
 import api from '@/lib/api';
 import { cn } from '@/utils/helpers';
@@ -107,6 +108,8 @@ export const DatabaseExplorer: React.FC = () => {
     columns: [],
     indexes: [],
   });
+
+  const [aiDialog, setAiDialog] = useState(false);
 
   const [currentTableContext, setCurrentTableContext] = useState<{
     tableName: string;
@@ -595,6 +598,30 @@ export const DatabaseExplorer: React.FC = () => {
       });
     } finally {
       setDialogLoading(false);
+    }
+  };
+
+  const handleAIGenerate = async (prompt: string) => {
+    if (!selectedConnector) throw new Error('No connector selected');
+
+    const response = await api.post(`/db-explorer/${selectedConnector.id}/ai-generate`, {
+      prompt,
+      schemaName: 'public', // TODO: Use selected schema from tree
+    });
+
+    return response.data;
+  };
+
+  const handleInsertAISQL = (sql: string) => {
+    const activeTab = queryTabs.find(tab => tab.id === activeTabId);
+    if (activeTab) {
+      setQueryTabs(tabs =>
+        tabs.map(tab =>
+          tab.id === activeTabId
+            ? { ...tab, query: sql }
+            : tab
+        )
+      );
     }
   };
 
@@ -1109,6 +1136,7 @@ export const DatabaseExplorer: React.FC = () => {
                 }
                 onExecute={(query) => executeQuery(query)}
                 onExplain={handleExplainQuery}
+                onAIGenerate={() => setAiDialog(true)}
                 onSaveFavorite={handleSaveFavorite}
                 isExecuting={activeTab.isExecuting}
                 executionTime={activeTab.result?.executionTime}
@@ -1237,6 +1265,14 @@ export const DatabaseExplorer: React.FC = () => {
         existingIndexes={indexDialog.indexes}
         columns={indexDialog.columns}
         isLoading={dialogLoading}
+      />
+
+      {/* AI SQL Generator Dialog */}
+      <AISQLGeneratorDialog
+        isOpen={aiDialog}
+        onClose={() => setAiDialog(false)}
+        onGenerateSQL={handleAIGenerate}
+        onInsertSQL={handleInsertAISQL}
       />
 
       {/* Confirmation Dialog */}

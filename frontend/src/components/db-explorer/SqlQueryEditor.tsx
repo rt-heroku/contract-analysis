@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import { editor } from 'monaco-editor';
-import { Play, Loader, Clock, Database, FileText, Star, History, Copy } from 'lucide-react';
+import { Play, Loader, Clock, Database, FileText, Star, History, Copy, Sparkles } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { cn } from '@/utils/helpers';
 
@@ -10,6 +10,7 @@ interface SqlQueryEditorProps {
   onChange: (value: string) => void;
   onExecute: (query: string) => void;
   onExplain?: (query: string) => void;
+  onAIGenerate?: () => void;
   onSaveToHistory?: (query: string, queryName?: string) => void;
   onSaveFavorite?: (query: string, queryName: string) => void;
   isExecuting?: boolean;
@@ -24,6 +25,7 @@ export const SqlQueryEditor: React.FC<SqlQueryEditorProps> = ({
   onChange,
   onExecute,
   onExplain,
+  onAIGenerate,
   onSaveToHistory,
   onSaveFavorite,
   isExecuting = false,
@@ -164,6 +166,20 @@ export const SqlQueryEditor: React.FC<SqlQueryEditorProps> = ({
             >
               <Database className="w-4 h-4" />
               Explain
+            </Button>
+          )}
+
+          {onAIGenerate && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onAIGenerate}
+              disabled={isExecuting}
+              className="gap-2 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white border-0"
+              title="Generate SQL with AI"
+            >
+              <Sparkles className="w-4 h-4" />
+              AI
             </Button>
           )}
 

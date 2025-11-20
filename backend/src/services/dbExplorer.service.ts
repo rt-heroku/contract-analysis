@@ -851,6 +851,169 @@ class DatabaseExplorerService {
   }
 
   /**
+   * Generate SQL using AI with full context
+   */
+  async generateAISQL(connectorId: number, userId: number, schemaName: string, prompt: string): Promise<any> {
+    // Extract table names from prompt (simple regex matching)
+    const tableNamePattern = /\b([a-z_][a-z0-9_]*)\b/gi;
+    const potentialTables = prompt.match(tableNamePattern) || [];
+    
+    // Get all tables in schema to validate
+    const tablesQuery = `
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = $1 AND table_type = 'BASE TABLE'
+        AND table_name NOT LIKE 'pg_%'
+        AND table_name NOT LIKE 'sql_%';
+    `;
+    const tablesResult = await this.executeQuery(connectorId, userId, tablesQuery, [schemaName]);
+    const allTables = tablesResult.rows.map((row: any) => row.table_name.toLowerCase());
+
+    // Filter to only valid tables mentioned in prompt
+    const mentionedTables = potentialTables
+      .map(t => t.toLowerCase())
+      .filter(t => allTables.includes(t))
+      .filter((v, i, a) => a.indexOf(v) === i); // unique
+
+    // If no tables mentioned, use all tables (up to 10 for context)
+    const tablesToInclude = mentionedTables.length > 0 
+      ? mentionedTables 
+      : allTables.slice(0, 10);
+
+    // Gather context for each table
+    const tableContexts = await Promise.all(
+      tablesToInclude.map(async (tableName) => {
+        try {
+          const [ddl, indexes, constraints] = await Promise.all([
+            this.getTableDDL(connectorId, userId, schemaName, tableName),
+            this.getIndexes(connectorId, userId, schemaName, tableName),
+            this.getConstraints(connectorId, userId, schemaName, tableName),
+          ]);
+
+          return {
+            tableName,
+            ddl,
+            indexes: indexes.slice(0, 10), // Limit to first 10 indexes
+            constraints: constraints.slice(0, 10), // Limit to first 10 constraints
+          };
+        } catch (error) {
+          logger.warn(`Failed to get context for table ${tableName}:`, error);
+          return null;
+        }
+      })
+    );
+
+    const validContexts = tableContexts.filter(c => c !== null);
+
+    // Build AI prompt with full context
+    const contextPrompt = this.buildAIPrompt(prompt, schemaName, validContexts);
+
+    // Call OpenAI API
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    if (!openaiApiKey) {
+      throw new Error('OPENAI_API_KEY not configured');
+    }
+
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert PostgreSQL developer. Generate clean, efficient SQL queries based on user requirements and the provided database schema context. Return ONLY the SQL query without explanation unless asked.',
+          },
+          {
+            role: 'user',
+            content: contextPrompt,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 2000,
+      }),
+    });
+
+    if (!openaiResponse.ok) {
+      const errorText = await openaiResponse.text();
+      throw new Error(`OpenAI API error: ${errorText}`);
+    }
+
+    const openaiData: any = await openaiResponse.json();
+    const generatedText: string = openaiData.choices[0]?.message?.content || '';
+
+    // Extract SQL from response (remove markdown code blocks if present)
+    let sql = generatedText.trim();
+    sql = sql.replace(/```sql\n?/g, '').replace(/```\n?/g, '').trim();
+
+    // Extract explanation if present (text before SQL or after SQL)
+    let explanation = 'Generated SQL query based on your requirements.';
+    const lines = generatedText.split('\n');
+    const sqlStartIndex = lines.findIndex((line: string) => 
+      line.trim().toUpperCase().startsWith('SELECT') ||
+      line.trim().toUpperCase().startsWith('INSERT') ||
+      line.trim().toUpperCase().startsWith('UPDATE') ||
+      line.trim().toUpperCase().startsWith('DELETE') ||
+      line.trim().toUpperCase().startsWith('WITH')
+    );
+    
+    if (sqlStartIndex > 0) {
+      explanation = lines.slice(0, sqlStartIndex).join('\n').trim();
+    }
+
+    return {
+      sql,
+      explanation: explanation || 'SQL query generated successfully.',
+      tablesUsed: tablesToInclude,
+    };
+  }
+
+  /**
+   * Build comprehensive AI prompt with schema context
+   */
+  private buildAIPrompt(userPrompt: string, schemaName: string, tableContexts: any[]): string {
+    let prompt = `# Database Schema Context\n\nSchema: ${schemaName}\n\n`;
+
+    // Add table DDLs
+    for (const context of tableContexts) {
+      prompt += `## Table: ${context.tableName}\n\n`;
+      prompt += `### DDL:\n\`\`\`sql\n${context.ddl}\n\`\`\`\n\n`;
+
+      // Add indexes
+      if (context.indexes.length > 0) {
+        prompt += `### Indexes:\n`;
+        context.indexes.forEach((idx: any) => {
+          const unique = idx.isUnique ? 'UNIQUE ' : '';
+          const columns = Array.isArray(idx.columns) ? idx.columns.join(', ') : idx.columns;
+          prompt += `- ${unique}${idx.indexName} ON (${columns})\n`;
+        });
+        prompt += '\n';
+      }
+
+      // Add constraints
+      if (context.constraints.length > 0) {
+        prompt += `### Constraints:\n`;
+        context.constraints.forEach((con: any) => {
+          prompt += `- ${con.name} (${con.constraint_type}): ${con.definition}\n`;
+        });
+        prompt += '\n';
+      }
+    }
+
+    prompt += `# User Request\n\n${userPrompt}\n\n`;
+    prompt += `# Instructions\n\n`;
+    prompt += `Generate a PostgreSQL query that fulfills the user's request.\n`;
+    prompt += `Use the provided schema context to ensure correct table and column names.\n`;
+    prompt += `Return the SQL query directly, ready to execute.\n`;
+    prompt += `The query should be clean, efficient, and follow PostgreSQL best practices.\n`;
+
+    return prompt;
+  }
+
+  /**
    * Get database statistics
    */
   async getDatabaseStats(connectorId: number, userId: number): Promise<any> {
