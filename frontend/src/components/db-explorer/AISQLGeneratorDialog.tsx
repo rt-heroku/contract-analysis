@@ -1,12 +1,20 @@
-import React, { useState } from 'react';
-import { Sparkles, Loader, AlertCircle, Copy, Check } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sparkles, Loader, Copy, Check, Send, Bot, User } from 'lucide-react';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  sql?: string;
+  tablesUsed?: string[];
+  timestamp: Date;
+}
 
 interface AISQLGeneratorDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onGenerateSQL: (prompt: string) => Promise<{ sql: string; explanation: string; tablesUsed: string[] }>;
+  onGenerateSQL: (prompt: string, history: Message[]) => Promise<{ sql: string; explanation: string; tablesUsed: string[] }>;
   onInsertSQL: (sql: string) => void;
 }
 
@@ -18,50 +26,81 @@ export const AISQLGeneratorDialog: React.FC<AISQLGeneratorDialogProps> = ({
 }) => {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{
-    sql: string;
-    explanation: string;
-    tablesUsed: string[];
-  } | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [copied, setCopied] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleGenerate = async () => {
-    if (!prompt.trim()) return;
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Focus input when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      inputRef.current?.focus();
+    }
+  }, [isOpen]);
+
+  const handleSend = async () => {
+    if (!prompt.trim() || loading) return;
+
+    const userMessage: Message = {
+      role: 'user',
+      content: prompt.trim(),
+      timestamp: new Date(),
+    };
+
+    // Add user message immediately
+    setMessages((prev) => [...prev, userMessage]);
+    setPrompt('');
+    setLoading(true);
 
     try {
-      setLoading(true);
-      setError(null);
-      setResult(null);
+      // Call AI with conversation history
+      const result = await onGenerateSQL(userMessage.content, messages);
 
-      const generatedResult = await onGenerateSQL(prompt);
-      setResult(generatedResult);
+      // Check if response contains SQL or is a question/clarification
+      const isSQLResponse = result.sql && result.sql.trim().length > 0;
+
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: result.explanation,
+        sql: isSQLResponse ? result.sql : undefined,
+        tablesUsed: result.tablesUsed,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Failed to generate SQL');
+      // Add error message to chat
+      const errorMessage: Message = {
+        role: 'assistant',
+        content: `❌ Error: ${err.response?.data?.error || err.message || 'Failed to generate SQL'}`,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
+      inputRef.current?.focus();
     }
   };
 
-  const handleCopySQL = () => {
-    if (result?.sql) {
-      navigator.clipboard.writeText(result.sql);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const handleCopySQL = (sql: string) => {
+    navigator.clipboard.writeText(sql);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleInsert = () => {
-    if (result?.sql) {
-      onInsertSQL(result.sql);
-      handleClose();
-    }
+  const handleInsert = (sql: string) => {
+    onInsertSQL(sql);
+    handleClose();
   };
 
   const handleClose = () => {
     setPrompt('');
-    setResult(null);
-    setError(null);
+    setMessages([]);
     setLoading(false);
     setCopied(false);
     onClose();
@@ -76,7 +115,12 @@ export const AISQLGeneratorDialog: React.FC<AISQLGeneratorDialogProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-primary-600 to-primary-700">
           <div className="flex items-center gap-3">
             <Sparkles className="w-6 h-6 text-white" />
-            <h2 className="text-xl font-bold text-white">AI SQL Generator</h2>
+            <h2 className="text-xl font-bold text-white">AI SQL Assistant</h2>
+            {messages.length > 0 && (
+              <span className="text-xs bg-white/20 text-white px-2 py-1 rounded">
+                {messages.length} {messages.length === 1 ? 'message' : 'messages'}
+              </span>
+            )}
           </div>
           <Button
             size="sm"
@@ -88,156 +132,175 @@ export const AISQLGeneratorDialog: React.FC<AISQLGeneratorDialogProps> = ({
           </Button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Prompt Input */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              What would you like to do?
-            </label>
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-900">
+          {messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center max-w-md">
+                <Bot className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-600" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  AI SQL Assistant
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Ask me to generate SQL queries in natural language. I can help you:
+                </p>
+                <ul className="text-xs text-left text-gray-600 dark:text-gray-400 space-y-2">
+                  <li>• Create SELECT queries with JOINs and filters</li>
+                  <li>• Generate aggregation and GROUP BY queries</li>
+                  <li>• Build complex WHERE conditions</li>
+                  <li>• Answer questions about your database schema</li>
+                </ul>
+              </div>
+            </div>
+          ) : (
+            messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {message.role === 'assistant' && (
+                  <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                  </div>
+                )}
+                <div
+                  className={`flex-1 max-w-[80%] ${
+                    message.role === 'user'
+                      ? 'bg-primary-600 text-white rounded-l-lg rounded-tr-lg'
+                      : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-r-lg rounded-tl-lg'
+                  } p-4 shadow-sm`}
+                >
+                  {/* Message content */}
+                  <p
+                    className={`text-sm whitespace-pre-wrap ${
+                      message.role === 'user'
+                        ? 'text-white'
+                        : 'text-gray-900 dark:text-gray-100'
+                    }`}
+                  >
+                    {message.content}
+                  </p>
+
+                  {/* Tables used */}
+                  {message.tablesUsed && message.tablesUsed.length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        Tables Used:
+                      </span>
+                      {message.tablesUsed.map((table) => (
+                        <Badge key={table} variant="info">
+                          {table}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* SQL code block */}
+                  {message.sql && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                          Generated SQL:
+                        </span>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleCopySQL(message.sql!)}
+                            className="gap-1 text-xs h-7"
+                          >
+                            {copied ? (
+                              <>
+                                <Check className="w-3 h-3" />
+                                Copied
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                Copy
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="primary"
+                            onClick={() => handleInsert(message.sql!)}
+                            className="gap-1 text-xs h-7"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Insert
+                          </Button>
+                        </div>
+                      </div>
+                      <pre className="p-3 bg-gray-900 dark:bg-black border border-gray-700 rounded-lg overflow-x-auto">
+                        <code className="text-xs text-gray-100 font-mono">{message.sql}</code>
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Timestamp */}
+                  <p className="text-xs mt-2 opacity-60">
+                    {message.timestamp.toLocaleTimeString()}
+                  </p>
+                </div>
+                {message.role === 'user' && (
+                  <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center flex-shrink-0">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+
+          {/* Loading indicator */}
+          {loading && (
+            <div className="flex gap-3 justify-start">
+              <div className="w-8 h-8 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
+                <Bot className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+              </div>
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-r-lg rounded-tl-lg p-4 shadow-sm">
+                <Loader className="w-5 h-5 animate-spin text-primary-600 dark:text-primary-400" />
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Area */}
+        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+          <div className="flex gap-3">
             <textarea
+              ref={inputRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Example: Show me all users who registered in the last 7 days with their total order count"
-              className="w-full h-32 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+              placeholder="Ask me to generate SQL... (e.g., 'Show all customers with orders in the last 7 days')"
+              className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+              rows={2}
               disabled={loading}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  handleGenerate();
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
                 }
               }}
             />
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              💡 Tip: Mention specific table names for better results. Press Cmd/Ctrl+Enter to generate.
-            </p>
-          </div>
-
-          {/* Loading State */}
-          {loading && (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <Loader className="w-12 h-12 animate-spin mx-auto text-primary-600 dark:text-primary-400 mb-4" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Analyzing your request and generating SQL...
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && (
-            <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">
-                  Generation Failed
-                </p>
-                <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Result */}
-          {result && (
-            <div className="space-y-4">
-              {/* Explanation */}
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                  Query Explanation
-                </p>
-                <p className="text-sm text-blue-800 dark:text-blue-200">{result.explanation}</p>
-              </div>
-
-              {/* Tables Used */}
-              {result.tablesUsed.length > 0 && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    Tables Used:
-                  </span>
-                  {result.tablesUsed.map((table) => (
-                    <Badge key={table} variant="info">
-                      {table}
-                    </Badge>
-                  ))}
-                </div>
+            <Button
+              variant="primary"
+              onClick={handleSend}
+              disabled={!prompt.trim() || loading}
+              className="gap-2 px-6 self-end"
+            >
+              {loading ? (
+                <Loader className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
               )}
-
-              {/* Generated SQL */}
-              <div className="relative">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    Generated SQL
-                  </label>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCopySQL}
-                    className="gap-2"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        Copy
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <pre className="p-4 bg-gray-900 dark:bg-black border border-gray-700 rounded-lg overflow-x-auto">
-                  <code className="text-sm text-gray-100 font-mono">{result.sql}</code>
-                </pre>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            {result ? (
-              <span>✨ SQL generated successfully</span>
-            ) : (
-              <span>Powered by AI • Context-aware generation</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" onClick={handleClose}>
-              Cancel
             </Button>
-            {result ? (
-              <Button
-                variant="primary"
-                onClick={handleInsert}
-                className="gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                Insert into Editor
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                onClick={handleGenerate}
-                disabled={!prompt.trim() || loading}
-                className="gap-2"
-              >
-                {loading ? (
-                  <>
-                    <Loader className="w-4 h-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Generate SQL
-                  </>
-                )}
-              </Button>
-            )}
           </div>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            💡 Press Enter to send, Shift+Enter for new line
+          </p>
         </div>
       </div>
     </div>

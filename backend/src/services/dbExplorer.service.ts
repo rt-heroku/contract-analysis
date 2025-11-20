@@ -897,9 +897,15 @@ class DatabaseExplorerService {
   }
 
   /**
-   * Generate SQL using AI with full context
+   * Generate SQL using AI with full context and conversation history
    */
-  async generateAISQL(connectorId: number, userId: number, schemaName: string, prompt: string): Promise<any> {
+  async generateAISQL(
+    connectorId: number, 
+    userId: number, 
+    schemaName: string, 
+    prompt: string,
+    history: Array<{ role: string; content: string; sql?: string }> = []
+  ): Promise<any> {
     // Get all tables in schema with basic info
     const tablesQuery = `
       SELECT 
@@ -982,6 +988,56 @@ class DatabaseExplorerService {
     const apiUrl = `${baseUrl}${endpoint}`;
     
     logger.info(`Calling AI API: ${apiUrl} with model: ${config.modelId || 'gpt-4o-mini'}`);
+    logger.info(`Conversation history: ${history.length} messages`);
+
+    // Build messages array with conversation history
+    const messages: any[] = [
+      {
+        role: 'system',
+        content: `You are an expert PostgreSQL database assistant. Your role is to help users generate SQL queries and answer questions about their database.
+
+IMPORTANT INSTRUCTIONS:
+1. If you receive database schema context, use it to generate accurate SQL queries
+2. If you have questions or need clarification, ASK the user - don't make assumptions
+3. If tables are missing from the detailed context, refer to the "Available Tables" list
+4. When generating SQL:
+   - Return ONLY the SQL query, ready to execute
+   - No markdown formatting, no explanations (unless the user asks for them)
+   - Ensure column names and table names match the schema exactly
+5. When asking questions:
+   - Be specific about what information you need
+   - Suggest possible options based on the schema
+6. Always be helpful and conversational
+
+The user can provide additional details in follow-up messages. Keep the conversation natural.`,
+      },
+    ];
+
+    // Add conversation history
+    for (const msg of history) {
+      if (msg.role === 'user') {
+        messages.push({
+          role: 'user',
+          content: msg.content,
+        });
+      } else if (msg.role === 'assistant') {
+        // Include both the explanation and SQL in the assistant message
+        let assistantContent = msg.content;
+        if (msg.sql) {
+          assistantContent += `\n\n${msg.sql}`;
+        }
+        messages.push({
+          role: 'assistant',
+          content: assistantContent,
+        });
+      }
+    }
+
+    // Add current prompt with full schema context
+    messages.push({
+      role: 'user',
+      content: contextPrompt,
+    });
 
     // Call Inference API
     const response = await fetch(apiUrl, {
@@ -992,16 +1048,7 @@ class DatabaseExplorerService {
       },
       body: JSON.stringify({
         model: config.modelId || 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert PostgreSQL developer. Generate clean, efficient SQL queries based on user requirements and the provided database schema context. Return ONLY the SQL query without explanation unless asked.',
-          },
-          {
-            role: 'user',
-            content: contextPrompt,
-          },
-        ],
+        messages,
         temperature: 0.3,
         max_tokens: 2000,
       }),
@@ -1016,23 +1063,43 @@ class DatabaseExplorerService {
     const responseData: any = await response.json();
     const generatedText: string = responseData.choices[0]?.message?.content || '';
 
-    // Extract SQL from response (remove markdown code blocks if present)
-    let sql = generatedText.trim();
-    sql = sql.replace(/```sql\n?/g, '').replace(/```\n?/g, '').trim();
+    logger.debug('AI Response:', generatedText.substring(0, 200));
 
-    // Extract explanation if present (text before SQL or after SQL)
-    let explanation = 'Generated SQL query based on your requirements.';
+    // Detect if response contains SQL or is a question/clarification
     const lines = generatedText.split('\n');
-    const sqlStartIndex = lines.findIndex((line: string) => 
-      line.trim().toUpperCase().startsWith('SELECT') ||
-      line.trim().toUpperCase().startsWith('INSERT') ||
-      line.trim().toUpperCase().startsWith('UPDATE') ||
-      line.trim().toUpperCase().startsWith('DELETE') ||
-      line.trim().toUpperCase().startsWith('WITH')
-    );
+    const sqlStartIndex = lines.findIndex((line: string) => {
+      const trimmed = line.trim().toUpperCase();
+      return trimmed.startsWith('SELECT') ||
+             trimmed.startsWith('INSERT') ||
+             trimmed.startsWith('UPDATE') ||
+             trimmed.startsWith('DELETE') ||
+             trimmed.startsWith('WITH') ||
+             trimmed.startsWith('CREATE') ||
+             trimmed.startsWith('ALTER') ||
+             trimmed.startsWith('DROP');
+    });
     
-    if (sqlStartIndex > 0) {
-      explanation = lines.slice(0, sqlStartIndex).join('\n').trim();
+    let sql = '';
+    let explanation = generatedText.trim();
+
+    if (sqlStartIndex >= 0) {
+      // SQL detected - extract it
+      const sqlLines = lines.slice(sqlStartIndex);
+      sql = sqlLines.join('\n').trim();
+      
+      // Remove markdown code blocks if present
+      sql = sql.replace(/```sql\n?/g, '').replace(/```\n?/g, '').trim();
+      
+      // Extract explanation (text before SQL)
+      if (sqlStartIndex > 0) {
+        explanation = lines.slice(0, sqlStartIndex).join('\n').trim();
+      } else {
+        explanation = 'Generated SQL query based on your requirements.';
+      }
+    } else {
+      // No SQL detected - AI is asking questions or providing clarification
+      sql = ''; // Empty SQL indicates this is a conversation message, not a query
+      explanation = generatedText.trim();
     }
 
     return {

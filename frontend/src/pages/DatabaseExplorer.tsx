@@ -601,12 +601,17 @@ export const DatabaseExplorer: React.FC = () => {
     }
   };
 
-  const handleAIGenerate = async (prompt: string) => {
+  const handleAIGenerate = async (prompt: string, history: any[]) => {
     if (!selectedConnector) throw new Error('No connector selected');
 
     const response = await api.post(`/db-explorer/${selectedConnector.id}/ai-generate`, {
       prompt,
       schemaName: 'public', // TODO: Use selected schema from tree
+      history: history.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        sql: msg.sql,
+      })),
     });
 
     return response.data;

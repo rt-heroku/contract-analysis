@@ -642,13 +642,13 @@ export const generateAISQL = async (req: AuthenticatedRequest, res: Response) =>
   try {
     const connectorId = parseInt(req.params.connectorId);
     const userId = req.user!.id;
-    const { prompt, schemaName = 'public' } = req.body;
+    const { prompt, schemaName = 'public', history = [] } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
-    const result = await dbExplorerService.generateAISQL(connectorId, userId, schemaName, prompt);
+    const result = await dbExplorerService.generateAISQL(connectorId, userId, schemaName, prompt, history);
 
     res.json(result);
   } catch (error: any) {
