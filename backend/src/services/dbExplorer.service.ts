@@ -900,20 +900,26 @@ class DatabaseExplorerService {
    * Generate SQL using AI with full context
    */
   async generateAISQL(connectorId: number, userId: number, schemaName: string, prompt: string): Promise<any> {
-    // Extract table names from prompt (simple regex matching)
-    const tableNamePattern = /\b([a-z_][a-z0-9_]*)\b/gi;
-    const potentialTables = prompt.match(tableNamePattern) || [];
-    
-    // Get all tables in schema to validate
+    // Get all tables in schema with basic info
     const tablesQuery = `
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = $1 AND table_type = 'BASE TABLE'
-        AND table_name NOT LIKE 'pg_%'
-        AND table_name NOT LIKE 'sql_%';
+      SELECT 
+        t.table_name,
+        obj_description(to_regclass($1 || '.' || t.table_name)) as table_comment,
+        (SELECT count(*) FROM information_schema.columns c 
+         WHERE c.table_schema = t.table_schema AND c.table_name = t.table_name) as column_count
+      FROM information_schema.tables t
+      WHERE t.table_schema = $1 AND t.table_type = 'BASE TABLE'
+        AND t.table_name NOT LIKE 'pg_%'
+        AND t.table_name NOT LIKE 'sql_%'
+      ORDER BY t.table_name;
     `;
     const tablesResult = await this.executeQuery(connectorId, userId, tablesQuery, [schemaName]);
     const allTables = tablesResult.rows.map((row: any) => row.table_name.toLowerCase());
+    const tableList = tablesResult.rows;
+
+    // Extract table names from prompt (simple regex matching)
+    const tableNamePattern = /\b([a-z_][a-z0-9_]*)\b/gi;
+    const potentialTables = prompt.match(tableNamePattern) || [];
 
     // Filter to only valid tables mentioned in prompt
     const mentionedTables = potentialTables
@@ -921,10 +927,10 @@ class DatabaseExplorerService {
       .filter(t => allTables.includes(t))
       .filter((v, i, a) => a.indexOf(v) === i); // unique
 
-    // If no tables mentioned, use all tables (up to 10 for context)
+    // Include detailed context for mentioned tables, or top 5 tables if none mentioned
     const tablesToInclude = mentionedTables.length > 0 
       ? mentionedTables 
-      : allTables.slice(0, 10);
+      : allTables.slice(0, 5);
 
     // Gather context for each table
     const tableContexts = await Promise.all(
@@ -952,7 +958,7 @@ class DatabaseExplorerService {
     const validContexts = tableContexts.filter(c => c !== null);
 
     // Build AI prompt with full context
-    const contextPrompt = this.buildAIPrompt(prompt, schemaName, validContexts);
+    const contextPrompt = this.buildAIPrompt(prompt, schemaName, tableList, validContexts);
 
     // Get inference connector configuration
     const inferenceConnector = await this.getInferenceConnector();
@@ -1039,41 +1045,60 @@ class DatabaseExplorerService {
   /**
    * Build comprehensive AI prompt with schema context
    */
-  private buildAIPrompt(userPrompt: string, schemaName: string, tableContexts: any[]): string {
+  private buildAIPrompt(userPrompt: string, schemaName: string, allTables: any[], tableContexts: any[]): string {
     let prompt = `# Database Schema Context\n\nSchema: ${schemaName}\n\n`;
 
-    // Add table DDLs
-    for (const context of tableContexts) {
-      prompt += `## Table: ${context.tableName}\n\n`;
-      prompt += `### DDL:\n\`\`\`sql\n${context.ddl}\n\`\`\`\n\n`;
-
-      // Add indexes
-      if (context.indexes.length > 0) {
-        prompt += `### Indexes:\n`;
-        context.indexes.forEach((idx: any) => {
-          const unique = idx.isUnique ? 'UNIQUE ' : '';
-          const columns = Array.isArray(idx.columns) ? idx.columns.join(', ') : idx.columns;
-          prompt += `- ${unique}${idx.indexName} ON (${columns})\n`;
-        });
-        prompt += '\n';
+    // Add complete table list first so AI knows what's available
+    prompt += `## Available Tables (${allTables.length} total):\n\n`;
+    allTables.forEach((table: any) => {
+      prompt += `- **${table.table_name}** (${table.column_count} columns)`;
+      if (table.table_comment) {
+        prompt += ` - ${table.table_comment}`;
       }
+      prompt += '\n';
+    });
+    prompt += '\n---\n\n';
 
-      // Add constraints
-      if (context.constraints.length > 0) {
-        prompt += `### Constraints:\n`;
-        context.constraints.forEach((con: any) => {
-          prompt += `- ${con.name} (${con.constraint_type}): ${con.definition}\n`;
-        });
-        prompt += '\n';
+    // Add detailed DDL for mentioned/relevant tables
+    if (tableContexts.length > 0) {
+      prompt += `## Detailed Table Schemas:\n\n`;
+      for (const context of tableContexts) {
+        prompt += `### Table: ${context.tableName}\n\n`;
+        prompt += `#### DDL:\n\`\`\`sql\n${context.ddl}\n\`\`\`\n\n`;
+
+        // Add indexes
+        if (context.indexes.length > 0) {
+          prompt += `#### Indexes:\n`;
+          context.indexes.forEach((idx: any) => {
+            const unique = idx.isUnique ? 'UNIQUE ' : '';
+            const columns = Array.isArray(idx.columns) ? idx.columns.join(', ') : idx.columns;
+            prompt += `- ${unique}${idx.indexName} ON (${columns})\n`;
+          });
+          prompt += '\n';
+        }
+
+        // Add constraints
+        if (context.constraints.length > 0) {
+          prompt += `#### Constraints:\n`;
+          context.constraints.forEach((con: any) => {
+            prompt += `- ${con.name} (${con.constraint_type}): ${con.definition}\n`;
+          });
+          prompt += '\n';
+        }
       }
+      prompt += '---\n\n';
     }
 
     prompt += `# User Request\n\n${userPrompt}\n\n`;
     prompt += `# Instructions\n\n`;
-    prompt += `Generate a PostgreSQL query that fulfills the user's request.\n`;
-    prompt += `Use the provided schema context to ensure correct table and column names.\n`;
-    prompt += `Return the SQL query directly, ready to execute.\n`;
-    prompt += `The query should be clean, efficient, and follow PostgreSQL best practices.\n`;
+    prompt += `1. Review the COMPLETE list of available tables above (${allTables.length} tables total)\n`;
+    prompt += `2. If the user mentions tables that don't exist, suggest similar table names from the available list\n`;
+    prompt += `3. If detailed DDL is not provided for a table, make reasonable assumptions based on the table name\n`;
+    prompt += `4. Generate a PostgreSQL query that fulfills the user's request\n`;
+    prompt += `5. Use correct table and column names from the provided schema context\n`;
+    prompt += `6. Return ONLY the SQL query, ready to execute, without explanations or markdown\n`;
+    prompt += `7. The query should be clean, efficient, and follow PostgreSQL best practices\n`;
+    prompt += `\nIMPORTANT: You have a complete list of ${allTables.length} tables. Use this list to understand what's available in the database.\n`;
 
     return prompt;
   }
