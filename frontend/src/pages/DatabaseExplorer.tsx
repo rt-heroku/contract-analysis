@@ -9,6 +9,8 @@ import { SqlQueryEditor } from '@/components/db-explorer/SqlQueryEditor';
 import { ResultsGrid } from '@/components/db-explorer/ResultsGrid';
 import { ObjectDetailsPanel } from '@/components/db-explorer/ObjectDetailsPanel';
 import { QueryHistoryPanel } from '@/components/db-explorer/QueryHistoryPanel';
+import { CreateTableDialog } from '@/components/db-explorer/CreateTableDialog';
+import { ConfirmationDialog } from '@/components/db-explorer/ConfirmationDialog';
 import api from '@/lib/api';
 import { cn } from '@/utils/helpers';
 
@@ -53,6 +55,28 @@ export const DatabaseExplorer: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [showObjectDetails, setShowObjectDetails] = useState(false);
   const treeWidth = 280;
+
+  // Dialogs
+  const [createTableDialog, setCreateTableDialog] = useState<{
+    isOpen: boolean;
+    schemaName: string;
+  }>({ isOpen: false, schemaName: '' });
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    danger: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    danger: false,
+    onConfirm: () => {},
+  });
+
+  const [dialogLoading, setDialogLoading] = useState(false);
 
   // Alert dialog
   const [alertDialog, setAlertDialog] = useState<{
@@ -175,24 +199,87 @@ export const DatabaseExplorer: React.FC = () => {
         break;
 
       case 'truncate':
-        // Show confirmation dialog (will be implemented in Part B)
-        setAlertDialog({
+        setConfirmDialog({
           isOpen: true,
           title: 'Truncate Table',
-          message: `Are you sure you want to truncate table "${schemaName}"."${tableName}"? This will delete all rows.`,
-          type: 'warning',
+          message: `Are you sure you want to truncate table "${schemaName}"."${tableName}"? This will delete all rows but keep the table structure.`,
+          danger: true,
+          onConfirm: () => handleTruncateTable(schemaName, tableName),
         });
         break;
 
       case 'drop':
-        // Show confirmation dialog (will be implemented in Part B)
-        setAlertDialog({
+        setConfirmDialog({
           isOpen: true,
           title: 'Drop Table',
-          message: `Are you sure you want to drop table "${schemaName}"."${tableName}"? This action cannot be undone.`,
-          type: 'warning',
+          message: `Are you sure you want to drop table "${schemaName}"."${tableName}"? This action cannot be undone and will permanently delete the table and all its data.`,
+          danger: true,
+          onConfirm: () => handleDropTable(schemaName, tableName),
         });
         break;
+    }
+  };
+
+  const handleDropTable = async (schemaName: string, tableName: string) => {
+    if (!selectedConnector) return;
+
+    try {
+      setDialogLoading(true);
+      await api.post(`/db-explorer/${selectedConnector.id}/tables/drop`, {
+        schemaName,
+        tableName,
+        cascade: false,
+      });
+
+      setConfirmDialog({ ...confirmDialog, isOpen: false });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Table "${tableName}" dropped successfully`,
+        type: 'success',
+      });
+
+      // Refresh the tree
+      loadConnectors();
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to drop table',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
+    }
+  };
+
+  const handleTruncateTable = async (schemaName: string, tableName: string) => {
+    if (!selectedConnector) return;
+
+    try {
+      setDialogLoading(true);
+      await api.post(`/db-explorer/${selectedConnector.id}/tables/truncate`, {
+        schemaName,
+        tableName,
+        cascade: false,
+      });
+
+      setConfirmDialog({ ...confirmDialog, isOpen: false });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Table "${tableName}" truncated successfully`,
+        type: 'success',
+      });
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to truncate table',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
     }
   };
 
@@ -226,13 +313,45 @@ export const DatabaseExplorer: React.FC = () => {
 
     switch (action) {
       case 'create-table':
-        setAlertDialog({
+        setCreateTableDialog({
           isOpen: true,
-          title: 'Create Table',
-          message: `Create table functionality in schema "${schemaName}" will be implemented in Part B.`,
-          type: 'info',
+          schemaName,
         });
         break;
+    }
+  };
+
+  const handleCreateTable = async (data: {
+    tableName: string;
+    schemaName: string;
+    columns: any[];
+    primaryKey: string[];
+  }) => {
+    if (!selectedConnector) return;
+
+    try {
+      setDialogLoading(true);
+      await api.post(`/db-explorer/${selectedConnector.id}/tables/create`, data);
+
+      setCreateTableDialog({ isOpen: false, schemaName: '' });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Table "${data.tableName}" created successfully`,
+        type: 'success',
+      });
+
+      // Refresh the tree
+      loadConnectors();
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to create table',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
     }
   };
 
@@ -584,6 +703,27 @@ export const DatabaseExplorer: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Create Table Dialog */}
+      <CreateTableDialog
+        isOpen={createTableDialog.isOpen}
+        onClose={() => setCreateTableDialog({ isOpen: false, schemaName: '' })}
+        onSubmit={handleCreateTable}
+        schemaName={createTableDialog.schemaName}
+        isLoading={dialogLoading}
+      />
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        danger={confirmDialog.danger}
+        isLoading={dialogLoading}
+        confirmText={confirmDialog.danger ? 'Delete' : 'Confirm'}
+      />
 
       {/* Alert Dialog */}
       <AlertDialog

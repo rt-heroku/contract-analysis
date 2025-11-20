@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { requireAdmin } from '../middleware/admin';
 import * as dbExplorerController from '../controllers/dbExplorer.controller';
+import * as dbTableOperations from '../controllers/dbTableOperations.controller';
 
 const router = Router();
 
@@ -41,6 +42,16 @@ router.delete('/queries/:queryId', dbExplorerController.deleteQuery);
 
 // Database statistics
 router.get('/:connectorId/stats', dbExplorerController.getDatabaseStats);
+
+// Table operations
+router.post('/:connectorId/tables/create', dbTableOperations.createTable);
+router.post('/:connectorId/tables/drop', dbTableOperations.dropTable);
+router.post('/:connectorId/tables/truncate', dbTableOperations.truncateTable);
+router.post('/:connectorId/tables/rename', dbTableOperations.renameTable);
+router.post('/:connectorId/tables/add-column', dbTableOperations.addColumn);
+router.post('/:connectorId/tables/drop-column', dbTableOperations.dropColumn);
+router.post('/:connectorId/tables/copy-structure', dbTableOperations.copyTableStructure);
+router.post('/:connectorId/tables/duplicate', dbTableOperations.duplicateTable);
 
 export default router;
 
