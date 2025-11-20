@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth';
 import { requireAdmin } from '../middleware/admin';
 import * as dbExplorerController from '../controllers/dbExplorer.controller';
 import * as dbTableOperations from '../controllers/dbTableOperations.controller';
+import * as dbDataOperations from '../controllers/dbDataOperations.controller';
 
 const router = Router();
 
@@ -52,6 +53,13 @@ router.post('/:connectorId/tables/add-column', dbTableOperations.addColumn);
 router.post('/:connectorId/tables/drop-column', dbTableOperations.dropColumn);
 router.post('/:connectorId/tables/copy-structure', dbTableOperations.copyTableStructure);
 router.post('/:connectorId/tables/duplicate', dbTableOperations.duplicateTable);
+
+// Data operations
+router.post('/:connectorId/data/insert', dbDataOperations.insertRow);
+router.post('/:connectorId/data/update', dbDataOperations.updateRows);
+router.post('/:connectorId/data/delete', dbDataOperations.deleteRows);
+router.post('/:connectorId/data/bulk-insert', dbDataOperations.bulkInsert);
+router.post('/:connectorId/data/bulk-delete', dbDataOperations.bulkDelete);
 
 export default router;
 
