@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { IconUpload } from '@/components/common/IconUpload';
 import { 
   Plus, Edit, Trash2, TestTube, Eye, Database, Globe, 
-  HardDrive, FolderOpen, Server, Code, X
+  HardDrive, FolderOpen, Server, Code, X, Sparkles, Lock
 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -17,6 +17,7 @@ interface Connector {
   connectorType: string;
   authType: string | null;
   isActive: boolean;
+  isAutoCreated?: boolean;
   config: any;
   openApiSpec?: any;
   version?: string;
@@ -45,6 +46,7 @@ interface ConnectorAction {
 const connectorIcons = {
   rest: { icon: Globe, color: '#3b82f6' },
   database: { icon: Database, color: '#10b981' },
+  inference: { icon: Sparkles, color: '#ec4899' },
   s3: { icon: HardDrive, color: '#f59e0b' },
   ftp: { icon: FolderOpen, color: '#8b5cf6' },
   file: { icon: Server, color: '#6366f1' },
@@ -199,6 +201,15 @@ export const Connectors: React.FC = () => {
   };
 
   const handleEdit = (connector: Connector) => {
+    if (connector.isAutoCreated) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Cannot Edit',
+        message: 'Auto-created connectors are read-only and cannot be edited.',
+        type: 'warning',
+      });
+      return;
+    }
     setEditingConnector(connector);
     setFormData({
       name: connector.name,
@@ -211,6 +222,15 @@ export const Connectors: React.FC = () => {
   };
 
   const handleDelete = (connector: Connector) => {
+    if (connector.isAutoCreated) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Cannot Delete',
+        message: 'Auto-created connectors cannot be deleted. They are managed automatically from environment variables.',
+        type: 'warning',
+      });
+      return;
+    }
     setConfirmDialog({
       isOpen: true,
       title: 'Delete Connector',
@@ -354,6 +374,7 @@ export const Connectors: React.FC = () => {
 
   const renderConnectorCard = (connector: Connector) => {
     const { IconComponent, color } = getConnectorIcon(connector.connectorType);
+    const isReadOnly = connector.isAutoCreated;
     
     return (
       <div
@@ -363,20 +384,29 @@ export const Connectors: React.FC = () => {
       >
         {/* Edit and Delete icons in top-right corner */}
         <div className="absolute top-4 right-4 flex space-x-2">
-          <button
-            onClick={() => handleEdit(connector)}
-            className="p-2 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
-            title="Edit connector"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => handleDelete(connector)}
-            className="p-2 rounded-md bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
-            title="Delete connector"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {isReadOnly ? (
+            <div className="px-3 py-1.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs flex items-center gap-1">
+              <Lock className="w-3 h-3" />
+              <span>Auto-Created</span>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => handleEdit(connector)}
+                className="p-2 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+                title="Edit connector"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDelete(connector)}
+                className="p-2 rounded-md bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                title="Delete connector"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
         </div>
 
         <div className="flex items-start space-x-4 mb-4">
@@ -384,33 +414,76 @@ export const Connectors: React.FC = () => {
             <IconComponent className="w-8 h-8" style={{ color }} />
           </div>
           <div className="flex-1">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1 pr-20">{connector.name}</h3>
-            <div className="flex items-center space-x-2">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1 pr-32">{connector.name}</h3>
+            <div className="flex items-center space-x-2 flex-wrap gap-1">
               <Badge variant={connector.isActive ? 'success' : 'default'}>
                 {connector.isActive ? 'Active' : 'Inactive'}
               </Badge>
-              <span className="text-xs text-gray-500 uppercase">{connector.connectorType}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">{connector.connectorType}</span>
             </div>
           </div>
         </div>
 
-        <div className="space-y-2 text-sm text-gray-600 mb-4">
+        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
           {connector.connectorType === 'rest' && connector.config?.baseUrl && (
             <div>
-              <span className="font-medium">Base URL:</span> {connector.config.baseUrl}
+              <span className="font-medium text-gray-900 dark:text-gray-200">Base URL:</span> {connector.config.baseUrl}
             </div>
+          )}
+          {connector.connectorType === 'database' && connector.config && (
+            <>
+              {connector.config.host && (
+                <div>
+                  <span className="font-medium text-gray-900 dark:text-gray-200">Host:</span> {connector.config.host}:{connector.config.port || 5432}
+                </div>
+              )}
+              {connector.config.database && (
+                <div>
+                  <span className="font-medium text-gray-900 dark:text-gray-200">Database:</span> {connector.config.database}
+                </div>
+              )}
+              {connector.config.username && (
+                <div>
+                  <span className="font-medium text-gray-900 dark:text-gray-200">Username:</span> {connector.config.username}
+                </div>
+              )}
+              {connector.config.ssl !== undefined && (
+                <div>
+                  <span className="font-medium text-gray-900 dark:text-gray-200">SSL:</span> {connector.config.ssl ? 'Enabled' : 'Disabled'}
+                </div>
+              )}
+            </>
+          )}
+          {connector.connectorType === 'inference' && connector.config && (
+            <>
+              {connector.config.baseUrl && (
+                <div>
+                  <span className="font-medium text-gray-900 dark:text-gray-200">API URL:</span> {connector.config.baseUrl}
+                </div>
+              )}
+              {connector.config.modelId && (
+                <div>
+                  <span className="font-medium text-gray-900 dark:text-gray-200">Model:</span> {connector.config.modelId}
+                </div>
+              )}
+              {connector.config.apiKey && (
+                <div>
+                  <span className="font-medium text-gray-900 dark:text-gray-200">API Key:</span> {connector.config.apiKey.substring(0, 10)}...
+                </div>
+              )}
+            </>
           )}
           {connector.authType && connector.authType !== 'none' && (
             <div>
-              <span className="font-medium">Auth:</span> {connector.authType}
+              <span className="font-medium text-gray-900 dark:text-gray-200">Auth:</span> {connector.authType}
             </div>
           )}
           <div>
-            <span className="font-medium">Created by:</span> {connector.creator.firstName} {connector.creator.lastName}
+            <span className="font-medium text-gray-900 dark:text-gray-200">Created by:</span> {connector.creator.firstName} {connector.creator.lastName}
           </div>
           {connector._count?.connectorActions !== undefined && (
             <div>
-              <span className="font-medium">Actions:</span> {connector._count.connectorActions}
+              <span className="font-medium text-gray-900 dark:text-gray-200">Actions:</span> {connector._count.connectorActions}
             </div>
           )}
         </div>
@@ -893,6 +966,7 @@ export const Connectors: React.FC = () => {
                   >
                     <option value="rest">REST API</option>
                     <option value="database">Database</option>
+                    <option value="inference">AI / Inference</option>
                     <option value="s3">S3 Storage</option>
                     <option value="ftp">FTP/SFTP</option>
                     <option value="file">File System</option>

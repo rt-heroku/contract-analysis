@@ -6,7 +6,8 @@ import api from '@/lib/api';
 import { MenuItem } from '@/types';
 import { 
   Home, User, FileText, History, CreditCard, 
-  Shield, Settings, ChevronDown, ChevronRight, Folder, GitBranch
+  Shield, Settings, ChevronDown, ChevronRight, Folder, GitBranch,
+  ShoppingBag, HelpCircle
 } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 
@@ -20,6 +21,8 @@ const iconMap: any = {
   settings: Settings,
   folder: Folder,
   'git-branch': GitBranch,
+  'shopping-bag': ShoppingBag,
+  'help-circle': HelpCircle,
 };
 
 export const Sidebar: React.FC = () => {
