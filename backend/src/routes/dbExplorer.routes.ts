@@ -4,6 +4,7 @@ import { requireAdmin } from '../middleware/admin';
 import * as dbExplorerController from '../controllers/dbExplorer.controller';
 import * as dbTableOperations from '../controllers/dbTableOperations.controller';
 import * as dbDataOperations from '../controllers/dbDataOperations.controller';
+import * as dbIndexOperations from '../controllers/dbIndexOperations.controller';
 
 const router = Router();
 
@@ -60,6 +61,10 @@ router.post('/:connectorId/data/update', dbDataOperations.updateRows);
 router.post('/:connectorId/data/delete', dbDataOperations.deleteRows);
 router.post('/:connectorId/data/bulk-insert', dbDataOperations.bulkInsert);
 router.post('/:connectorId/data/bulk-delete', dbDataOperations.bulkDelete);
+
+// Index operations
+router.post('/:connectorId/indexes/create', dbIndexOperations.createIndex);
+router.post('/:connectorId/indexes/drop', dbIndexOperations.dropIndex);
 
 export default router;
 

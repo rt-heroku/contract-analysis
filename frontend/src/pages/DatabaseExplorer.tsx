@@ -13,6 +13,7 @@ import { CreateTableDialog } from '@/components/db-explorer/CreateTableDialog';
 import { ConfirmationDialog } from '@/components/db-explorer/ConfirmationDialog';
 import { EditRowDialog } from '@/components/db-explorer/EditRowDialog';
 import { AlterTableDialog } from '@/components/db-explorer/AlterTableDialog';
+import { IndexManagementDialog } from '@/components/db-explorer/IndexManagementDialog';
 import api from '@/lib/api';
 import { cn } from '@/utils/helpers';
 
@@ -89,6 +90,20 @@ export const DatabaseExplorer: React.FC = () => {
     tableName: '',
     schemaName: '',
     columns: [],
+  });
+
+  const [indexDialog, setIndexDialog] = useState<{
+    isOpen: boolean;
+    tableName: string;
+    schemaName: string;
+    columns: any[];
+    indexes: any[];
+  }>({
+    isOpen: false,
+    tableName: '',
+    schemaName: '',
+    columns: [],
+    indexes: [],
   });
 
   const [currentTableContext, setCurrentTableContext] = useState<{
@@ -237,6 +252,10 @@ export const DatabaseExplorer: React.FC = () => {
 
       case 'alter':
         await handleAlterTable(tableName, schemaName);
+        break;
+
+      case 'manage-indexes':
+        await handleManageIndexes(tableName, schemaName);
         break;
 
       case 'truncate':
@@ -480,6 +499,96 @@ export const DatabaseExplorer: React.FC = () => {
         isOpen: true,
         title: 'Error',
         message: error.response?.data?.error || 'Failed to drop column',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
+    }
+  };
+
+  const handleManageIndexes = async (tableName: string, schemaName: string) => {
+    if (!selectedConnector) return;
+
+    try {
+      const [columnsRes, indexesRes] = await Promise.all([
+        api.get(`/db-explorer/${selectedConnector.id}/schemas/${schemaName}/tables/${tableName}/columns`),
+        api.get(`/db-explorer/${selectedConnector.id}/schemas/${schemaName}/tables/${tableName}/indexes`),
+      ]);
+
+      setIndexDialog({
+        isOpen: true,
+        tableName,
+        schemaName,
+        columns: columnsRes.data,
+        indexes: indexesRes.data,
+      });
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to load table metadata',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleCreateIndex = async (data: { name: string; columns: string[]; isUnique: boolean }) => {
+    if (!selectedConnector || !indexDialog.schemaName || !indexDialog.tableName) return;
+
+    try {
+      setDialogLoading(true);
+      await api.post(`/db-explorer/${selectedConnector.id}/indexes/create`, {
+        schemaName: indexDialog.schemaName,
+        tableName: indexDialog.tableName,
+        ...data,
+      });
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Index "${data.name}" created successfully`,
+        type: 'success',
+      });
+
+      setIndexDialog({ ...indexDialog, isOpen: false });
+      loadConnectors();
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to create index',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
+    }
+  };
+
+  const handleDropIndex = async (indexName: string) => {
+    if (!selectedConnector || !indexDialog.schemaName) return;
+
+    try {
+      setDialogLoading(true);
+      await api.post(`/db-explorer/${selectedConnector.id}/indexes/drop`, {
+        schemaName: indexDialog.schemaName,
+        indexName,
+        cascade: false,
+      });
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Index "${indexName}" dropped successfully`,
+        type: 'success',
+      });
+
+      setIndexDialog({ ...indexDialog, isOpen: false });
+      loadConnectors();
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to drop index',
         type: 'error',
       });
     } finally {
@@ -1076,6 +1185,19 @@ export const DatabaseExplorer: React.FC = () => {
         tableName={alterTableDialog.tableName}
         schemaName={alterTableDialog.schemaName}
         existingColumns={alterTableDialog.columns}
+        isLoading={dialogLoading}
+      />
+
+      {/* Index Management Dialog */}
+      <IndexManagementDialog
+        isOpen={indexDialog.isOpen}
+        onClose={() => setIndexDialog({ ...indexDialog, isOpen: false })}
+        onCreateIndex={handleCreateIndex}
+        onDropIndex={handleDropIndex}
+        tableName={indexDialog.tableName}
+        schemaName={indexDialog.schemaName}
+        existingIndexes={indexDialog.indexes}
+        columns={indexDialog.columns}
         isLoading={dialogLoading}
       />
 

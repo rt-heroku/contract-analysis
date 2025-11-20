@@ -123,6 +123,7 @@ export const getTableContextMenuItems = (
   onCopyName: () => void,
   onExport: () => void,
   onAlter: () => void,
+  onManageIndexes: () => void,
   onTruncate: () => void,
   onDrop: () => void,
   onRefresh: () => void
@@ -147,6 +148,11 @@ export const getTableContextMenuItems = (
     label: 'Alter Table',
     icon: <FileText className="w-4 h-4" />,
     onClick: onAlter,
+  },
+  {
+    label: 'Manage Indexes',
+    icon: <Key className="w-4 h-4" />,
+    onClick: onManageIndexes,
   },
   {
     label: 'Refresh',
