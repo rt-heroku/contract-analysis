@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Database, Table, Eye, FileCode, Zap, List, Hash, Key, Loader } from 'lucide-react';
+import { ChevronRight, ChevronDown, Database, Table, Eye, FileCode, Zap, List, Hash, Key, Loader, Link, Shield, AlertCircle, FileWarning } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import api from '@/lib/api';
 import { ContextMenu, getTableContextMenuItems, getColumnContextMenuItems, getSchemaContextMenuItems, getViewContextMenuItems } from './ContextMenu';
@@ -105,6 +105,46 @@ export const DbTree: React.FC<DbTreeProps> = ({
             isExpanded: false,
             metadata: { schemaName: schema, folderType: 'materialized_views' },
           },
+          {
+            id: `schema-${schema}-triggers`,
+            label: 'Triggers',
+            icon: Zap,
+            type: 'folder',
+            isExpanded: false,
+            metadata: { schemaName: schema, folderType: 'triggers' },
+          },
+          {
+            id: `schema-${schema}-foreign-keys`,
+            label: 'Foreign Keys',
+            icon: Link,
+            type: 'folder',
+            isExpanded: false,
+            metadata: { schemaName: schema, folderType: 'foreign_keys' },
+          },
+          {
+            id: `schema-${schema}-constraints`,
+            label: 'Constraints',
+            icon: Shield,
+            type: 'folder',
+            isExpanded: false,
+            metadata: { schemaName: schema, folderType: 'constraints' },
+          },
+          {
+            id: `schema-${schema}-policies`,
+            label: 'Policies',
+            icon: AlertCircle,
+            type: 'folder',
+            isExpanded: false,
+            metadata: { schemaName: schema, folderType: 'policies' },
+          },
+          {
+            id: `schema-${schema}-rules`,
+            label: 'Rules',
+            icon: FileWarning,
+            type: 'folder',
+            isExpanded: false,
+            metadata: { schemaName: schema, folderType: 'rules' },
+          },
         ],
       }));
 
@@ -147,6 +187,41 @@ export const DbTree: React.FC<DbTreeProps> = ({
               label: 'Indexes',
               icon: Key,
               type: 'indexes-folder',
+              metadata: { schemaName, tableName: table.tableName },
+            },
+            {
+              id: `table-${schemaName}-${table.tableName}-foreign-keys`,
+              label: 'Foreign Keys',
+              icon: Link,
+              type: 'foreign-keys-folder',
+              metadata: { schemaName, tableName: table.tableName },
+            },
+            {
+              id: `table-${schemaName}-${table.tableName}-triggers`,
+              label: 'Triggers',
+              icon: Zap,
+              type: 'triggers-folder',
+              metadata: { schemaName, tableName: table.tableName },
+            },
+            {
+              id: `table-${schemaName}-${table.tableName}-constraints`,
+              label: 'Constraints',
+              icon: Shield,
+              type: 'constraints-folder',
+              metadata: { schemaName, tableName: table.tableName },
+            },
+            {
+              id: `table-${schemaName}-${table.tableName}-policies`,
+              label: 'Policies',
+              icon: AlertCircle,
+              type: 'policies-folder',
+              metadata: { schemaName, tableName: table.tableName },
+            },
+            {
+              id: `table-${schemaName}-${table.tableName}-rules`,
+              label: 'Rules',
+              icon: FileWarning,
+              type: 'rules-folder',
               metadata: { schemaName, tableName: table.tableName },
             },
           ],

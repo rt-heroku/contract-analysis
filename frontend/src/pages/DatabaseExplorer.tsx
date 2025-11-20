@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, RefreshCw, Plus, Code, X } from 'lucide-react';
+import { Database, RefreshCw, Plus, Code, X, List, Network } from 'lucide-react';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Loading } from '@/components/common/Loading';
@@ -14,6 +14,7 @@ import { ConfirmationDialog } from '@/components/db-explorer/ConfirmationDialog'
 import { EditRowDialog } from '@/components/db-explorer/EditRowDialog';
 import { AlterTableDialog } from '@/components/db-explorer/AlterTableDialog';
 import { IndexManagementDialog } from '@/components/db-explorer/IndexManagementDialog';
+import { DatabaseERD } from '@/components/db-explorer/DatabaseERD';
 import api from '@/lib/api';
 import { cn } from '@/utils/helpers';
 
@@ -57,6 +58,7 @@ export const DatabaseExplorer: React.FC = () => {
   // Layout state
   const [showHistory, setShowHistory] = useState(false);
   const [showObjectDetails, setShowObjectDetails] = useState(false);
+  const [viewMode, setViewMode] = useState<'tree' | 'erd'>('tree');
   const treeWidth = 280;
 
   // Dialogs
@@ -976,6 +978,28 @@ export const DatabaseExplorer: React.FC = () => {
             ))}
           </select>
 
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            <Button
+              size="sm"
+              variant={viewMode === 'tree' ? 'primary' : 'ghost'}
+              onClick={() => setViewMode('tree')}
+              className="gap-2"
+            >
+              <List className="w-4 h-4" />
+              Tree
+            </Button>
+            <Button
+              size="sm"
+              variant={viewMode === 'erd' ? 'primary' : 'ghost'}
+              onClick={() => setViewMode('erd')}
+              className="gap-2"
+            >
+              <Network className="w-4 h-4" />
+              ERD
+            </Button>
+          </div>
+
           <Button
             size="sm"
             variant="ghost"
@@ -998,30 +1022,43 @@ export const DatabaseExplorer: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Left Sidebar - Database Tree */}
-        <div
-          className="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-auto"
-          style={{ width: `${treeWidth}px` }}
-        >
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-              Objects
-            </h3>
+        {/* Left Sidebar - Database Tree (Tree View Only) */}
+        {viewMode === 'tree' && (
+          <div
+            className="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-auto"
+            style={{ width: `${treeWidth}px` }}
+          >
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Objects
+              </h3>
+            </div>
+            {selectedConnector && (
+              <DbTree
+                connectorId={selectedConnector.id}
+                onSelectObject={handleSelectObject}
+                onTableAction={handleTableAction}
+                onViewAction={handleViewAction}
+                onSchemaAction={handleSchemaAction}
+                onColumnAction={handleColumnAction}
+              />
+            )}
           </div>
-          {selectedConnector && (
-            <DbTree
-              connectorId={selectedConnector.id}
-              onSelectObject={handleSelectObject}
-              onTableAction={handleTableAction}
-              onViewAction={handleViewAction}
-              onSchemaAction={handleSchemaAction}
-              onColumnAction={handleColumnAction}
-            />
-          )}
-        </div>
+        )}
 
-        {/* Center - Query Editor & Results */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Center - ERD View or Query Editor & Results */}
+        {viewMode === 'erd' ? (
+          <div className="flex-1 overflow-hidden">
+            {selectedConnector && (
+              <DatabaseERD
+                connectorId={selectedConnector.id}
+                schemaName="public"
+                className="w-full h-full"
+              />
+            )}
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col overflow-hidden">
           {/* Query Tabs */}
           <div className="flex items-center gap-1 px-4 py-2 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
             {queryTabs.map(tab => (
@@ -1100,9 +1137,10 @@ export const DatabaseExplorer: React.FC = () => {
             )}
           </div>
         </div>
+        )}
 
-        {/* Right Sidebar - Object Details */}
-        {showObjectDetails && (
+        {/* Right Sidebar - Object Details (Tree View Only) */}
+        {viewMode === 'tree' && showObjectDetails && (
           <div
             className="flex-shrink-0 border-l border-gray-200 dark:border-gray-700 overflow-auto"
             style={{ width: '400px' }}
@@ -1128,8 +1166,8 @@ export const DatabaseExplorer: React.FC = () => {
           </div>
         )}
 
-        {/* History Panel (Overlay) */}
-        {showHistory && (
+        {/* History Panel (Overlay - Tree View Only) */}
+        {viewMode === 'tree' && showHistory && (
           <div className="absolute top-0 right-0 bottom-0 w-96 bg-white dark:bg-gray-800 shadow-xl z-10 border-l border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">

@@ -510,6 +510,78 @@ export const getTableData = async (req: AuthenticatedRequest, res: Response) => 
 };
 
 /**
+ * Get constraints for a table
+ */
+export const getConstraints = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName, tableName } = req.params;
+
+    const constraints = await dbExplorerService.getConstraints(connectorId, userId, schemaName, tableName);
+
+    res.json(constraints);
+  } catch (error: any) {
+    logger.error('Get constraints error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get constraints' });
+  }
+};
+
+/**
+ * Get policies for a table
+ */
+export const getPolicies = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName, tableName } = req.params;
+
+    const policies = await dbExplorerService.getPolicies(connectorId, userId, schemaName, tableName);
+
+    res.json(policies);
+  } catch (error: any) {
+    logger.error('Get policies error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get policies' });
+  }
+};
+
+/**
+ * Get rules for a table
+ */
+export const getRules = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName, tableName } = req.params;
+
+    const rules = await dbExplorerService.getRules(connectorId, userId, schemaName, tableName);
+
+    res.json(rules);
+  } catch (error: any) {
+    logger.error('Get rules error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get rules' });
+  }
+};
+
+/**
+ * Get all tables with relationships for ERD
+ */
+export const getSchemaERD = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName } = req.params;
+
+    const erdData = await dbExplorerService.getSchemaERD(connectorId, userId, schemaName);
+
+    res.json(erdData);
+  } catch (error: any) {
+    logger.error('Get schema ERD error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get schema ERD' });
+  }
+};
+
+/**
  * Get database statistics
  */
 export const getDatabaseStats = async (req: AuthenticatedRequest, res: Response) => {

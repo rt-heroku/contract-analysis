@@ -28,8 +28,14 @@ router.get('/:connectorId/schemas/:schemaName/tables/:tableName/columns', dbExpl
 router.get('/:connectorId/schemas/:schemaName/tables/:tableName/indexes', dbExplorerController.getIndexes);
 router.get('/:connectorId/schemas/:schemaName/tables/:tableName/foreign-keys', dbExplorerController.getForeignKeys);
 router.get('/:connectorId/schemas/:schemaName/tables/:tableName/triggers', dbExplorerController.getTriggers);
+router.get('/:connectorId/schemas/:schemaName/tables/:tableName/constraints', dbExplorerController.getConstraints);
+router.get('/:connectorId/schemas/:schemaName/tables/:tableName/policies', dbExplorerController.getPolicies);
+router.get('/:connectorId/schemas/:schemaName/tables/:tableName/rules', dbExplorerController.getRules);
 router.get('/:connectorId/schemas/:schemaName/tables/:tableName/ddl', dbExplorerController.getTableDDL);
 router.get('/:connectorId/schemas/:schemaName/tables/:tableName/data', dbExplorerController.getTableData);
+
+// Schema ERD
+router.get('/:connectorId/schemas/:schemaName/erd', dbExplorerController.getSchemaERD);
 
 // Query execution
 router.post('/:connectorId/query', dbExplorerController.executeQuery);

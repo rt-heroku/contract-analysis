@@ -705,6 +705,152 @@ class DatabaseExplorerService {
   }
 
   /**
+   * Get constraints for a table
+   */
+  async getConstraints(connectorId: number, userId: number, schemaName: string, tableName: string): Promise<any[]> {
+    const query = `
+      SELECT
+        con.conname as name,
+        con.contype as type,
+        pg_get_constraintdef(con.oid) as definition,
+        CASE con.contype
+          WHEN 'c' THEN 'CHECK'
+          WHEN 'f' THEN 'FOREIGN KEY'
+          WHEN 'p' THEN 'PRIMARY KEY'
+          WHEN 'u' THEN 'UNIQUE'
+          WHEN 't' THEN 'TRIGGER'
+          WHEN 'x' THEN 'EXCLUSION'
+        END as constraint_type
+      FROM pg_constraint con
+      JOIN pg_class rel ON rel.oid = con.conrelid
+      JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+      WHERE nsp.nspname = $1 AND rel.relname = $2
+      ORDER BY con.conname;
+    `;
+
+    const result = await this.executeQuery(connectorId, userId, query, [schemaName, tableName]);
+    return result.rows;
+  }
+
+  /**
+   * Get policies for a table
+   */
+  async getPolicies(connectorId: number, userId: number, schemaName: string, tableName: string): Promise<any[]> {
+    const query = `
+      SELECT
+        pol.polname as name,
+        pol.polcmd as command,
+        CASE pol.polcmd
+          WHEN 'r' THEN 'SELECT'
+          WHEN 'a' THEN 'INSERT'
+          WHEN 'w' THEN 'UPDATE'
+          WHEN 'd' THEN 'DELETE'
+          WHEN '*' THEN 'ALL'
+        END as command_type,
+        pol.polpermissive as is_permissive,
+        pg_get_expr(pol.polqual, pol.polrelid) as using_expression,
+        pg_get_expr(pol.polwithcheck, pol.polrelid) as check_expression,
+        r.rolname as role
+      FROM pg_policy pol
+      JOIN pg_class c ON c.oid = pol.polrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      LEFT JOIN pg_roles r ON r.oid = ANY(pol.polroles)
+      WHERE n.nspname = $1 AND c.relname = $2
+      ORDER BY pol.polname;
+    `;
+
+    const result = await this.executeQuery(connectorId, userId, query, [schemaName, tableName]);
+    return result.rows;
+  }
+
+  /**
+   * Get rules for a table
+   */
+  async getRules(connectorId: number, userId: number, schemaName: string, tableName: string): Promise<any[]> {
+    const query = `
+      SELECT
+        r.rulename as name,
+        CASE r.ev_type
+          WHEN '1' THEN 'SELECT'
+          WHEN '2' THEN 'UPDATE'
+          WHEN '3' THEN 'INSERT'
+          WHEN '4' THEN 'DELETE'
+        END as event_type,
+        r.is_instead as is_instead,
+        pg_get_ruledef(r.oid) as definition
+      FROM pg_rewrite r
+      JOIN pg_class c ON c.oid = r.ev_class
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = $1 AND c.relname = $2 AND r.rulename != '_RETURN'
+      ORDER BY r.rulename;
+    `;
+
+    const result = await this.executeQuery(connectorId, userId, query, [schemaName, tableName]);
+    return result.rows;
+  }
+
+  /**
+   * Get schema ERD data (tables with columns and relationships)
+   */
+  async getSchemaERD(connectorId: number, userId: number, schemaName: string): Promise<any> {
+    // Get all tables with their columns
+    const tablesQuery = `
+      SELECT
+        t.table_name,
+        t.table_type,
+        json_agg(
+          json_build_object(
+            'name', c.column_name,
+            'type', c.data_type,
+            'nullable', c.is_nullable = 'YES',
+            'isPrimaryKey', EXISTS (
+              SELECT 1 FROM information_schema.table_constraints tc
+              JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+              WHERE tc.table_schema = t.table_schema
+                AND tc.table_name = t.table_name
+                AND tc.constraint_type = 'PRIMARY KEY'
+                AND kcu.column_name = c.column_name
+            )
+          ) ORDER BY c.ordinal_position
+        ) as columns
+      FROM information_schema.tables t
+      LEFT JOIN information_schema.columns c ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+      WHERE t.table_schema = $1
+        AND t.table_type = 'BASE TABLE'
+        AND t.table_name NOT LIKE 'pg_%'
+        AND t.table_name NOT LIKE 'sql_%'
+      GROUP BY t.table_name, t.table_type
+      ORDER BY t.table_name;
+    `;
+
+    // Get all foreign key relationships
+    const relationshipsQuery = `
+      SELECT
+        tc.table_name as from_table,
+        kcu.column_name as from_column,
+        ccu.table_name as to_table,
+        ccu.column_name as to_column,
+        tc.constraint_name as name
+      FROM information_schema.table_constraints tc
+      JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
+      JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name = tc.constraint_name
+      WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_schema = $1
+      ORDER BY tc.table_name, kcu.column_name;
+    `;
+
+    const [tablesResult, relationshipsResult] = await Promise.all([
+      this.executeQuery(connectorId, userId, tablesQuery, [schemaName]),
+      this.executeQuery(connectorId, userId, relationshipsQuery, [schemaName]),
+    ]);
+
+    return {
+      tables: tablesResult.rows,
+      relationships: relationshipsResult.rows,
+    };
+  }
+
+  /**
    * Get database statistics
    */
   async getDatabaseStats(connectorId: number, userId: number): Promise<any> {
