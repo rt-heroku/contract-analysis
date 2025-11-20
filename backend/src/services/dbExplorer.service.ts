@@ -264,6 +264,8 @@ class DatabaseExplorerService {
       LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace AND n.nspname = t.table_schema
       WHERE t.table_schema = $1
         AND t.table_type IN ('BASE TABLE', 'VIEW')
+        AND t.table_name NOT LIKE 'pg_%'  -- Exclude PostgreSQL system tables/views
+        AND t.table_name NOT LIKE 'sql_%' -- Exclude SQL standard information tables
       ORDER BY t.table_name;
     `;
 
