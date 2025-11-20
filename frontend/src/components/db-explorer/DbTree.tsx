@@ -325,9 +325,15 @@ export const DbTree: React.FC<DbTreeProps> = ({
     
     // Emit select event
     if (node.type !== 'folder' && node.type !== 'schema') {
+      // Use metadata tableName for tables (to avoid row count in label)
+      // Otherwise use the label
+      const actualName = node.type === 'table' && node.metadata?.tableName 
+        ? node.metadata.tableName 
+        : node.label;
+      
       const dbObject: DbObject = {
         type: node.type as any,
-        name: node.label,
+        name: actualName,
         schemaName: node.metadata?.schemaName,
         tableName: node.metadata?.tableName,
         metadata: node.metadata,
@@ -354,18 +360,21 @@ export const DbTree: React.FC<DbTreeProps> = ({
     }
     // Table context menu
     else if (node.type === 'table') {
+      // Use actual table name from metadata (not label which includes row count)
+      const tableName = node.metadata?.tableName || node.label;
+      
       menuItems = getTableContextMenuItems(
-        node.label,
+        tableName,
         schemaName,
-        () => onTableAction?.('view-data', node.label, schemaName),
+        () => onTableAction?.('view-data', tableName, schemaName),
         () => {
-          navigator.clipboard.writeText(node.label);
+          navigator.clipboard.writeText(tableName);
         },
-        () => onTableAction?.('export', node.label, schemaName),
-        () => onTableAction?.('alter', node.label, schemaName),
-        () => onTableAction?.('manage-indexes', node.label, schemaName),
-        () => onTableAction?.('truncate', node.label, schemaName),
-        () => onTableAction?.('drop', node.label, schemaName),
+        () => onTableAction?.('export', tableName, schemaName),
+        () => onTableAction?.('alter', tableName, schemaName),
+        () => onTableAction?.('manage-indexes', tableName, schemaName),
+        () => onTableAction?.('truncate', tableName, schemaName),
+        () => onTableAction?.('drop', tableName, schemaName),
         () => toggleNode(node.id)
       );
     }
