@@ -61,7 +61,7 @@ export const DatabaseExplorer: React.FC = () => {
   // Layout state
   const [showHistory, setShowHistory] = useState(false);
   const [viewMode, setViewMode] = useState<'tree' | 'erd'>('tree');
-  const [showQueryEditor, setShowQueryEditor] = useState(true);
+  const [showQueryEditor, setShowQueryEditor] = useState(false);
   // Resizable panel state
   const [treeWidth, setTreeWidth] = useState(() => {
     const saved = localStorage.getItem('db-explorer-tree-width');
