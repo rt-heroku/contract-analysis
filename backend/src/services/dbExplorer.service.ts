@@ -131,7 +131,9 @@ class DatabaseExplorerService {
       throw new Error(`Connector ${connectorId} is not a database connector`);
     }
 
-    const config = connector.config as any;
+    // Decrypt the config (passwords are encrypted in DB)
+    const { decryptConnectorConfig } = require('../utils/encryption');
+    const config = decryptConnectorConfig(connector.config) as any;
 
     // Create new pool
     const poolConfig: any = {
@@ -139,11 +141,11 @@ class DatabaseExplorerService {
       port: config.port || 5432,
       database: config.database,
       user: config.user,
-      password: config.password,
+      password: config.password, // Now decrypted
       ssl: config.ssl ? { rejectUnauthorized: false } : false, // Accept self-signed certs
-      connectionTimeoutMillis: 5000,
-      idleTimeoutMillis: 30000,
-      max: 10, // Max 10 connections per pool
+      connectionTimeoutMillis: config.connectTimeout || 5000,
+      idleTimeoutMillis: config.idleTimeout || 30000,
+      max: config.poolMax || 10, // Use configured pool size or default to 10
     };
 
     const pool = new Pool(poolConfig);
