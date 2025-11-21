@@ -100,12 +100,17 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
         api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/stats`),
       ]);
 
-      setColumns(columnsRes.data);
-      setForeignKeys(fkRes.data);
-      setIndexes(indexesRes.data);
-      setStats(statsRes.data);
+      setColumns(Array.isArray(columnsRes.data) ? columnsRes.data : []);
+      setForeignKeys(Array.isArray(fkRes.data) ? fkRes.data : []);
+      setIndexes(Array.isArray(indexesRes.data) ? indexesRes.data : []);
+      setStats(statsRes.data || null);
     } catch (error) {
       console.error('Failed to load table details:', error);
+      // Reset to defaults on error
+      setColumns([]);
+      setForeignKeys([]);
+      setIndexes([]);
+      setStats(null);
     } finally {
       setLoading(false);
     }
@@ -138,9 +143,10 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
         api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/triggers`),
       ]);
 
-      setTriggers(triggersRes.data);
+      setTriggers(Array.isArray(triggersRes.data) ? triggersRes.data : []);
     } catch (error) {
       console.error('Failed to load additional details:', error);
+      setTriggers([]);
     }
   };
 
@@ -161,13 +167,13 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
     );
   }
 
-  const filteredColumns = columns.filter(col =>
+  const filteredColumns = Array.isArray(columns) ? columns.filter(col =>
     col.column_name.toLowerCase().includes(columnSearch.toLowerCase()) ||
     col.data_type.toLowerCase().includes(columnSearch.toLowerCase())
-  );
+  ) : [];
 
-  const outgoingFKs = foreignKeys.filter(fk => fk.direction === 'outgoing');
-  const incomingFKs = foreignKeys.filter(fk => fk.direction === 'incoming');
+  const outgoingFKs = Array.isArray(foreignKeys) ? foreignKeys.filter(fk => fk.direction === 'outgoing') : [];
+  const incomingFKs = Array.isArray(foreignKeys) ? foreignKeys.filter(fk => fk.direction === 'incoming') : [];
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800">
