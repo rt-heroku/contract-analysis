@@ -6,7 +6,8 @@ import { ContextMenu, getTableContextMenuItems, getColumnContextMenuItems, getSc
 
 interface DbTreeProps {
   connectorId: number;
-  onSelectObject: (object: DbObject) => void;
+  onSelectObject: (object: DbObject, targetTab?: string) => void;
+  onDoubleClickTable?: (tableName: string, schemaName: string) => void;
   onTableAction?: (action: string, tableName: string, schemaName: string) => void;
   onViewAction?: (action: string, viewName: string, schemaName: string) => void;
   onSchemaAction?: (action: string, schemaName: string) => void;
@@ -35,7 +36,8 @@ interface TreeNode {
 
 export const DbTree: React.FC<DbTreeProps> = ({ 
   connectorId, 
-  onSelectObject, 
+  onSelectObject,
+  onDoubleClickTable,
   onTableAction,
   onViewAction,
   onSchemaAction,
@@ -157,10 +159,115 @@ export const DbTree: React.FC<DbTreeProps> = ({
   };
 
   const loadFolderContents = async (node: TreeNode) => {
-    const { schemaName, folderType } = node.metadata;
+    const { schemaName, folderType, tableName } = node.metadata;
 
     try {
-      if (folderType === 'tables') {
+      // Handle table sub-folders (columns, indexes, etc.)
+      if (node.type === 'columns-folder') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/tables/${tableName}/columns`);
+        const columns = response.data || [];
+        return columns.map((col: any) => ({
+          id: `column-${schemaName}-${tableName}-${col.column_name}`,
+          label: `${col.column_name} (${col.data_type})`,
+          icon: List,
+          type: 'column',
+          metadata: {
+            schemaName,
+            tableName,
+            columnName: col.column_name,
+            dataType: col.data_type,
+            isNullable: col.is_nullable,
+            isPrimaryKey: col.is_primary_key,
+            isForeignKey: col.is_foreign_key,
+            defaultValue: col.column_default,
+          },
+        }));
+      } else if (node.type === 'indexes-folder') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/tables/${tableName}/indexes`);
+        const indexes = response.data || [];
+        return indexes.map((idx: any) => ({
+          id: `index-${schemaName}-${tableName}-${idx.index_name}`,
+          label: idx.index_name,
+          icon: Key,
+          type: 'index',
+          metadata: {
+            schemaName,
+            tableName,
+            indexName: idx.index_name,
+            ...idx,
+          },
+        }));
+      } else if (node.type === 'foreign-keys-folder') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/tables/${tableName}/foreign-keys`);
+        const fks = response.data || [];
+        return fks.map((fk: any) => ({
+          id: `fk-${schemaName}-${tableName}-${fk.constraint_name}`,
+          label: fk.constraint_name,
+          icon: Link,
+          type: 'foreign-key',
+          metadata: {
+            schemaName,
+            tableName,
+            ...fk,
+          },
+        }));
+      } else if (node.type === 'triggers-folder') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/tables/${tableName}/triggers`);
+        const triggers = response.data || [];
+        return triggers.map((trigger: any) => ({
+          id: `trigger-${schemaName}-${tableName}-${trigger.trigger_name}`,
+          label: trigger.trigger_name,
+          icon: Zap,
+          type: 'trigger',
+          metadata: {
+            schemaName,
+            tableName,
+            ...trigger,
+          },
+        }));
+      } else if (node.type === 'constraints-folder') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/tables/${tableName}/constraints`);
+        const constraints = response.data || [];
+        return constraints.map((constraint: any) => ({
+          id: `constraint-${schemaName}-${tableName}-${constraint.constraint_name}`,
+          label: constraint.constraint_name,
+          icon: Shield,
+          type: 'constraint',
+          metadata: {
+            schemaName,
+            tableName,
+            ...constraint,
+          },
+        }));
+      } else if (node.type === 'policies-folder') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/tables/${tableName}/policies`);
+        const policies = response.data || [];
+        return policies.map((policy: any) => ({
+          id: `policy-${schemaName}-${tableName}-${policy.policy_name}`,
+          label: policy.policy_name,
+          icon: AlertCircle,
+          type: 'policy',
+          metadata: {
+            schemaName,
+            tableName,
+            ...policy,
+          },
+        }));
+      } else if (node.type === 'rules-folder') {
+        const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/tables/${tableName}/rules`);
+        const rules = response.data || [];
+        return rules.map((rule: any) => ({
+          id: `rule-${schemaName}-${tableName}-${rule.rule_name}`,
+          label: rule.rule_name,
+          icon: FileWarning,
+          type: 'rule',
+          metadata: {
+            schemaName,
+            tableName,
+            ...rule,
+          },
+        }));
+      } else if (folderType === 'tables') {
         const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/tables`);
         const tables = response.data.tables || [];
         return tables.map((table: any) => ({
@@ -305,7 +412,14 @@ export const DbTree: React.FC<DbTreeProps> = ({
             // This is the node to toggle
             const newExpanded = !node.isExpanded;
             
-            if (newExpanded && node.children && node.type === 'folder' && !node.children.some(c => c.type !== 'folder')) {
+            // Check if this is a folder that needs to load contents
+            const isFolderType = node.type === 'folder' || 
+                                 node.type.endsWith('-folder');
+            const needsLoading = isFolderType && 
+                                node.children && 
+                                !node.children.some(c => !c.type.endsWith('-folder'));
+            
+            if (newExpanded && needsLoading) {
               // Load folder contents
               return {
                 ...node,
@@ -399,21 +513,53 @@ export const DbTree: React.FC<DbTreeProps> = ({
     setSelectedId(node.id);
     
     // Emit select event
-    if (node.type !== 'folder' && node.type !== 'schema') {
+    if (node.type !== 'folder' && node.type !== 'schema' && !node.type.endsWith('-folder')) {
       // Use metadata tableName for tables (to avoid row count in label)
       // Otherwise use the label
       const actualName = node.type === 'table' && node.metadata?.tableName 
         ? node.metadata.tableName 
         : node.label;
       
+      // Determine which tab to activate based on node type
+      let targetTab: string | undefined;
+      switch (node.type) {
+        case 'column':
+          targetTab = 'columns';
+          break;
+        case 'foreign-key':
+          targetTab = 'foreignkeys';
+          break;
+        case 'index':
+        case 'trigger':
+        case 'constraint':
+        case 'policy':
+        case 'rule':
+          targetTab = 'more';
+          break;
+        default:
+          targetTab = 'overview';
+      }
+
+      // For columns and sub-elements, select the parent table
       const dbObject: DbObject = {
-        type: node.type as any,
-        name: actualName,
+        type: (node.type === 'column' || node.type === 'foreign-key' || node.type === 'index' || 
+               node.type === 'trigger' || node.type === 'constraint' || node.type === 'policy' || 
+               node.type === 'rule') ? 'table' : node.type as any,
+        name: node.type === 'table' && node.metadata?.tableName 
+          ? node.metadata.tableName 
+          : (node.metadata?.tableName || actualName),
         schemaName: node.metadata?.schemaName,
         tableName: node.metadata?.tableName,
         metadata: node.metadata,
       };
-      onSelectObject(dbObject);
+      onSelectObject(dbObject, targetTab);
+    }
+  };
+
+  const handleNodeDoubleClick = (node: TreeNode) => {
+    // Double-click on table opens new query tab
+    if (node.type === 'table' && node.metadata?.tableName && node.metadata?.schemaName) {
+      onDoubleClickTable?.(node.metadata.tableName, node.metadata.schemaName);
     }
   };
 
@@ -505,6 +651,7 @@ export const DbTree: React.FC<DbTreeProps> = ({
             }
             handleNodeClick(node);
           }}
+          onDoubleClick={() => handleNodeDoubleClick(node)}
           onContextMenu={(e) => handleContextMenu(e, node)}
         >
           {canExpand && (

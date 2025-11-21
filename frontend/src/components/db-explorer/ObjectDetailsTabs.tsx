@@ -49,11 +49,18 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
   onAddColumn,
   onExecuteQuery,
 }) => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(object?.metadata?.activeTab || 'overview');
   const [loading, setLoading] = useState(false);
   const [dataLimit, setDataLimit] = useState(100);
   const [showIncomingFK, setShowIncomingFK] = useState(true);
   const [showOutgoingFK, setShowOutgoingFK] = useState(true);
+
+  // Update active tab when object changes with a target tab
+  useEffect(() => {
+    if (object?.metadata?.activeTab) {
+      setActiveTab(object.metadata.activeTab);
+    }
+  }, [object?.metadata?.activeTab]);
   
   // Data states
   const [tableData, setTableData] = useState<any[]>([]);

@@ -7,7 +7,7 @@ import { AlertDialog } from '@/components/common/AlertDialog';
 import { DbTree, DbObject } from '@/components/db-explorer/DbTree';
 import { SqlQueryEditor } from '@/components/db-explorer/SqlQueryEditor';
 import { ResultsGrid } from '@/components/db-explorer/ResultsGrid';
-import { ObjectDetailsPanel } from '@/components/db-explorer/ObjectDetailsPanel';
+import { ObjectDetailsTabs } from '@/components/db-explorer/ObjectDetailsTabs';
 import { QueryHistoryPanel } from '@/components/db-explorer/QueryHistoryPanel';
 import { CreateTableDialog } from '@/components/db-explorer/CreateTableDialog';
 import { ConfirmationDialog } from '@/components/db-explorer/ConfirmationDialog';
@@ -60,7 +60,6 @@ export const DatabaseExplorer: React.FC = () => {
   
   // Layout state
   const [showHistory, setShowHistory] = useState(false);
-  const [showObjectDetails, setShowObjectDetails] = useState(false);
   const [viewMode, setViewMode] = useState<'tree' | 'erd'>('tree');
   // Resizable panel state
   const [treeWidth, setTreeWidth] = useState(() => {
@@ -407,7 +406,6 @@ export const DatabaseExplorer: React.FC = () => {
           name: viewName,
           schemaName: schemaName,
         });
-        setShowObjectDetails(true);
         break;
 
       case 'drop':
@@ -948,9 +946,15 @@ export const DatabaseExplorer: React.FC = () => {
     }
   };
 
-  const handleSelectObject = (object: DbObject) => {
+  const handleSelectObject = (object: DbObject, targetTab?: string) => {
     setSelectedObject(object);
-    setShowObjectDetails(true);
+
+    // Pass target tab to ObjectDetailsTabs via metadata
+    if (targetTab && object.metadata) {
+      object.metadata.activeTab = targetTab;
+    } else if (targetTab) {
+      object.metadata = { activeTab: targetTab };
+    }
 
     // If it's a table, generate SELECT query
     if (object.type === 'table' && object.schemaName && object.tableName) {
@@ -966,6 +970,23 @@ export const DatabaseExplorer: React.FC = () => {
         );
       }
     }
+  };
+
+  const handleDoubleClickTable = (tableName: string, schemaName: string) => {
+    // Create new query tab with table name and smart query
+    const newTabId = `query-${Date.now()}`;
+    const query = `SELECT * FROM "${schemaName}"."${tableName}" LIMIT 100;`;
+    
+    const newTab: QueryTab = {
+      id: newTabId,
+      name: tableName,
+      query,
+      result: null,
+      isExecuting: false,
+    };
+
+    setQueryTabs([...queryTabs, newTab]);
+    setActiveTabId(newTabId);
   };
 
   const handleSelectQueryFromHistory = (query: string) => {
@@ -1112,6 +1133,7 @@ export const DatabaseExplorer: React.FC = () => {
                 <DbTree
                   connectorId={selectedConnector.id}
                   onSelectObject={handleSelectObject}
+                  onDoubleClickTable={handleDoubleClickTable}
                   onTableAction={handleTableAction}
                   onViewAction={handleViewAction}
                   onSchemaAction={handleSchemaAction}
@@ -1216,52 +1238,53 @@ export const DatabaseExplorer: React.FC = () => {
             <div className="absolute inset-x-0 -top-1 -bottom-1" />
           </div>
 
-          {/* Results */}
-          <div className="flex-1 overflow-auto p-4">
-            {activeTab?.result ? (
-              <ResultsGrid
-                data={activeTab.result.rows}
-                columns={Object.keys(activeTab.result.rows[0] || {})}
-                showActions={!!currentTableContext}
-                onEdit={currentTableContext ? handleEditRow : undefined}
-                onDelete={currentTableContext ? handleDeleteRow : undefined}
-                onAdd={currentTableContext ? handleAddRow : undefined}
-                onBulkDelete={currentTableContext ? handleBulkDelete : undefined}
-              />
+          {/* Results or Object Details Tabs */}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {selectedObject ? (
+              /* Object Details Tabs */
+              selectedConnector && (
+                <ObjectDetailsTabs
+                  connectorId={selectedConnector.id}
+                  object={selectedObject}
+                  onRefreshData={loadConnectors}
+                  onAddRow={handleAddRow}
+                  onEditRow={handleEditRow}
+                  onDeleteRow={handleDeleteRow}
+                  onAddColumn={handleAddColumn}
+                  onExecuteQuery={(query) => {
+                    // Insert query into current tab
+                    if (activeTab) {
+                      setQueryTabs(tabs =>
+                        tabs.map(tab =>
+                          tab.id === activeTabId ? { ...tab, query } : tab
+                        )
+                      );
+                    }
+                  }}
+                />
+              )
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                {activeTab?.isExecuting ? 'Executing query...' : 'Execute a query to see results'}
+              /* Query Results */
+              <div className="flex-1 overflow-auto p-4">
+                {activeTab?.result ? (
+                  <ResultsGrid
+                    data={activeTab.result.rows}
+                    columns={Object.keys(activeTab.result.rows[0] || {})}
+                    showActions={!!currentTableContext}
+                    onEdit={currentTableContext ? handleEditRow : undefined}
+                    onDelete={currentTableContext ? handleDeleteRow : undefined}
+                    onAdd={currentTableContext ? handleAddRow : undefined}
+                    onBulkDelete={currentTableContext ? handleBulkDelete : undefined}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                    {activeTab?.isExecuting ? 'Executing query...' : 'Execute a query to see results'}
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
-        )}
-
-        {/* Right Sidebar - Object Details (Tree View Only) */}
-        {viewMode === 'tree' && showObjectDetails && (
-          <div
-            className="flex-shrink-0 border-l border-gray-200 dark:border-gray-700 overflow-auto"
-            style={{ width: '400px' }}
-          >
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Object Details
-              </h3>
-              <button
-                onClick={() => setShowObjectDetails(false)}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            {selectedConnector && (
-              <ObjectDetailsPanel
-                connectorId={selectedConnector.id}
-                object={selectedObject}
-                className="border-0"
-              />
-            )}
-          </div>
         )}
 
         {/* History Panel (Overlay - Tree View Only) */}
