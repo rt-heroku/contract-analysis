@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, RefreshCw, Plus, Code, X, List, Network } from 'lucide-react';
+import { Database, RefreshCw, Plus, Code, X, List, Network, ChevronUp, ChevronDown } from 'lucide-react';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Loading } from '@/components/common/Loading';
@@ -61,6 +61,7 @@ export const DatabaseExplorer: React.FC = () => {
   // Layout state
   const [showHistory, setShowHistory] = useState(false);
   const [viewMode, setViewMode] = useState<'tree' | 'erd'>('tree');
+  const [showQueryEditor, setShowQueryEditor] = useState(true);
   // Resizable panel state
   const [treeWidth, setTreeWidth] = useState(() => {
     const saved = localStorage.getItem('db-explorer-tree-width');
@@ -1168,75 +1169,100 @@ export const DatabaseExplorer: React.FC = () => {
         ) : (
           <div className="flex-1 flex flex-col overflow-hidden">
           {/* Query Tabs */}
-          <div className="flex items-center gap-1 px-4 py-2 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-            {queryTabs.map(tab => (
-              <div
-                key={tab.id}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-1.5 rounded-t-lg cursor-pointer group',
-                  activeTabId === tab.id
-                    ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-                    : 'bg-gray-200 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-700'
-                )}
-                onClick={() => setActiveTabId(tab.id)}
+          <div className="flex items-center justify-between px-4 py-2 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-1 overflow-x-auto">
+              {queryTabs.map(tab => (
+                <div
+                  key={tab.id}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-1.5 rounded-t-lg cursor-pointer group',
+                    activeTabId === tab.id
+                      ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                      : 'bg-gray-200 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-700'
+                  )}
+                  onClick={() => setActiveTabId(tab.id)}
+                >
+                  <span className="text-sm font-medium">{tab.name}</span>
+                  {queryTabs.length > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        closeQueryTab(tab.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 hover:bg-gray-300 dark:hover:bg-gray-600 rounded p-0.5 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={addNewQueryTab}
+                className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+                title="New Query Tab"
               >
-                <span className="text-sm font-medium">{tab.name}</span>
-                {queryTabs.length > 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeQueryTab(tab.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 hover:bg-gray-300 dark:hover:bg-gray-600 rounded p-0.5 transition-opacity"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            ))}
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            
+            {/* Toggle Query Editor Button */}
             <button
-              onClick={addNewQueryTab}
-              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
-              title="New Query Tab"
+              onClick={() => setShowQueryEditor(!showQueryEditor)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
+              title={showQueryEditor ? "Hide Query Editor" : "Show Query Editor"}
             >
-              <Plus className="w-4 h-4" />
+              {showQueryEditor ? (
+                <>
+                  <ChevronUp className="w-4 h-4" />
+                  <span className="text-xs">Hide Editor</span>
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4" />
+                  <span className="text-xs">Show Editor</span>
+                </>
+              )}
             </button>
           </div>
 
           {/* Query Editor */}
-          <div className="flex-shrink-0 query-editor-container" style={{ height: `${queryEditorHeight}px` }}>
-            {activeTab && (
-              <SqlQueryEditor
-                value={activeTab.query}
-                onChange={(query) =>
-                  setQueryTabs(tabs =>
-                    tabs.map(tab =>
-                      tab.id === activeTabId ? { ...tab, query } : tab
-                    )
-                  )
-                }
-                onExecute={(query) => executeQuery(query)}
-                onExplain={handleExplainQuery}
-                onAIGenerate={() => setAiDialog(true)}
-                onSaveFavorite={handleSaveFavorite}
-                isExecuting={activeTab.isExecuting}
-                executionTime={activeTab.result?.executionTime}
-                rowCount={activeTab.result?.rowCount}
-                className="h-full"
-              />
-            )}
-          </div>
+          {showQueryEditor && (
+            <>
+              <div className="flex-shrink-0 query-editor-container" style={{ height: `${queryEditorHeight}px` }}>
+                {activeTab && (
+                  <SqlQueryEditor
+                    value={activeTab.query}
+                    onChange={(query) =>
+                      setQueryTabs(tabs =>
+                        tabs.map(tab =>
+                          tab.id === activeTabId ? { ...tab, query } : tab
+                        )
+                      )
+                    }
+                    onExecute={(query) => executeQuery(query)}
+                    onExplain={handleExplainQuery}
+                    onAIGenerate={() => setAiDialog(true)}
+                    onSaveFavorite={handleSaveFavorite}
+                    isExecuting={activeTab.isExecuting}
+                    executionTime={activeTab.result?.executionTime}
+                    rowCount={activeTab.result?.rowCount}
+                    className="h-full"
+                  />
+                )}
+              </div>
 
-          {/* Query Editor Resize Handle */}
-          <div
-            className="flex-shrink-0 h-1 bg-gray-200 dark:bg-gray-700 hover:bg-primary-500 dark:hover:bg-primary-500 cursor-ns-resize transition-colors group relative"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setIsResizingQuery(true);
-            }}
-          >
-            <div className="absolute inset-x-0 -top-1 -bottom-1" />
-          </div>
+              {/* Query Editor Resize Handle */}
+              <div
+                className="flex-shrink-0 h-1 bg-gray-200 dark:bg-gray-700 hover:bg-primary-500 dark:hover:bg-primary-500 cursor-ns-resize transition-colors group relative"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setIsResizingQuery(true);
+                }}
+              >
+                <div className="absolute inset-x-0 -top-1 -bottom-1" />
+              </div>
+            </>
+          )}
 
           {/* Results or Object Details Tabs */}
           <div className="flex-1 overflow-hidden flex flex-col">
