@@ -81,9 +81,11 @@ export const Connectors: React.FC = () => {
   const loadConnectors = async () => {
     try {
       const response = await api.get('/connectors');
+      // API returns { connectors: [...] }, not just [...]
+      const data = response.data.connectors || response.data;
       // Ensure we always set an array
-      const data = Array.isArray(response.data) ? response.data : [];
-      setConnectors(data);
+      const connectors = Array.isArray(data) ? data : [];
+      setConnectors(connectors);
     } catch (error: any) {
       setAlertDialog({
         isOpen: true,
