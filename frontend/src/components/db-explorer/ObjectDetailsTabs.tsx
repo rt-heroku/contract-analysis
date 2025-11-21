@@ -14,7 +14,6 @@ import {
   Zap,
   Activity,
   Key,
-  Lock,
   Eye,
   Loader,
   ChevronRight,
@@ -25,8 +24,8 @@ import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/common/Tabs';
 import { DbObject } from './DbTree';
+import { MiniERD } from './MiniERD';
 import api from '@/lib/api';
-import { cn } from '@/utils/helpers';
 
 interface ObjectDetailsTabsProps {
   connectorId: number;
@@ -42,12 +41,10 @@ interface ObjectDetailsTabsProps {
 export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
   connectorId,
   object,
-  onRefreshData,
   onAddRow,
   onEditRow,
   onDeleteRow,
   onAddColumn,
-  onExecuteQuery,
 }) => {
   const [activeTab, setActiveTab] = useState(object?.metadata?.activeTab || 'overview');
   const [loading, setLoading] = useState(false);
@@ -68,10 +65,7 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
   const [foreignKeys, setForeignKeys] = useState<any[]>([]);
   const [indexes, setIndexes] = useState<any[]>([]);
   const [triggers, setTriggers] = useState<any[]>([]);
-  const [constraints, setConstraints] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
-  const [dependencies, setDependencies] = useState<any[]>([]);
-  const [performance, setPerformance] = useState<any>(null);
   
   const [columnSearch, setColumnSearch] = useState('');
 
@@ -100,10 +94,10 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
         indexesRes,
         statsRes,
       ] = await Promise.all([
-        api.get(`/db-explorer/${connectorId}/schemas/${object.schema}/tables/${object.name}/columns`),
-        api.get(`/db-explorer/${connectorId}/schemas/${object.schema}/tables/${object.name}/foreign-keys`),
-        api.get(`/db-explorer/${connectorId}/schemas/${object.schema}/tables/${object.name}/indexes`),
-        api.get(`/db-explorer/${connectorId}/schemas/${object.schema}/tables/${object.name}/stats`),
+        api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/columns`),
+        api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/foreign-keys`),
+        api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/indexes`),
+        api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/stats`),
       ]);
 
       setColumns(columnsRes.data);
@@ -123,7 +117,7 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
     try {
       setLoading(true);
       const response = await api.post(`/db-explorer/${connectorId}/query`, {
-        query: `SELECT * FROM "${object.schema}"."${object.name}" LIMIT ${dataLimit}`,
+        query: `SELECT * FROM "${object.schemaName}"."${object.name}" LIMIT ${dataLimit}`,
         saveToHistory: false,
       });
       
@@ -140,17 +134,11 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
     if (!object || object.type !== 'table') return;
 
     try {
-      const [triggersRes, constraintsRes, depsRes, perfRes] = await Promise.all([
-        api.get(`/db-explorer/${connectorId}/schemas/${object.schema}/tables/${object.name}/triggers`),
-        api.get(`/db-explorer/${connectorId}/schemas/${object.schema}/tables/${object.name}/constraints`),
-        api.get(`/db-explorer/${connectorId}/schemas/${object.schema}/tables/${object.name}/dependencies`),
-        api.get(`/db-explorer/${connectorId}/schemas/${object.schema}/tables/${object.name}/performance`),
+      const [triggersRes] = await Promise.all([
+        api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/triggers`),
       ]);
 
       setTriggers(triggersRes.data);
-      setConstraints(constraintsRes.data);
-      setDependencies(depsRes.data);
-      setPerformance(perfRes.data);
     } catch (error) {
       console.error('Failed to load additional details:', error);
     }
@@ -229,7 +217,7 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-sm text-gray-500 dark:text-gray-400">Name:</span>
-                    <p className="font-mono">{object.schema}.{object.name}</p>
+                    <p className="font-mono">{object.schemaName}.{object.name}</p>
                   </div>
                   <div>
                     <span className="text-sm text-gray-500 dark:text-gray-400">Type:</span>
@@ -644,9 +632,15 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
             <p className="text-gray-500 dark:text-gray-400">Performance metrics will be displayed here</p>
           </TabsContent>
 
-          {/* Relationships Tab - Placeholder */}
-          <TabsContent value="relationships" className="p-4">
-            <p className="text-gray-500 dark:text-gray-400">Relationship diagram will be displayed here</p>
+          {/* Relationships Tab */}
+          <TabsContent value="relationships" className="p-0 h-full">
+            {object && object.type === 'table' && object.schemaName && object.tableName && (
+              <MiniERD
+                connectorId={connectorId}
+                schemaName={object.schemaName}
+                tableName={object.tableName}
+              />
+            )}
           </TabsContent>
         </div>
       </Tabs>

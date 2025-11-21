@@ -981,7 +981,7 @@ export const DatabaseExplorer: React.FC = () => {
       id: newTabId,
       name: tableName,
       query,
-      result: null,
+      result: undefined,
       isExecuting: false,
     };
 
@@ -1246,21 +1246,10 @@ export const DatabaseExplorer: React.FC = () => {
                 <ObjectDetailsTabs
                   connectorId={selectedConnector.id}
                   object={selectedObject}
-                  onRefreshData={loadConnectors}
                   onAddRow={handleAddRow}
                   onEditRow={handleEditRow}
                   onDeleteRow={handleDeleteRow}
-                  onAddColumn={handleAddColumn}
-                  onExecuteQuery={(query) => {
-                    // Insert query into current tab
-                    if (activeTab) {
-                      setQueryTabs(tabs =>
-                        tabs.map(tab =>
-                          tab.id === activeTabId ? { ...tab, query } : tab
-                        )
-                      );
-                    }
-                  }}
+                  onAddColumn={() => setAlterTableDialog({ isOpen: true, schemaName: selectedObject.schemaName || '', tableName: selectedObject.tableName || '', columns: [] })}
                 />
               )
             ) : (

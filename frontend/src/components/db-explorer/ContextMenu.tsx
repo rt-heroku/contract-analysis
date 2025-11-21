@@ -8,7 +8,9 @@ import {
   RefreshCw,
   Scissors,
   FileText,
-  Key
+  Key,
+  Edit,
+  Eye
 } from 'lucide-react';
 
 export interface ContextMenuItem {
@@ -177,19 +179,44 @@ export const getTableContextMenuItems = (
 export const getColumnContextMenuItems = (
   _columnName: string,
   onCopyName: () => void,
-  onCreateIndex: () => void
-): ContextMenuItem[] => [
-  {
-    label: 'Copy Column Name',
-    icon: <Copy className="w-4 h-4" />,
-    onClick: onCopyName,
-  },
-  {
-    label: 'Create Index',
-    icon: <Key className="w-4 h-4" />,
-    onClick: onCreateIndex,
-  },
-];
+  onCreateIndex: () => void,
+  onEditColumn?: () => void,
+  onDeleteColumn?: () => void
+): ContextMenuItem[] => {
+  const items: ContextMenuItem[] = [
+    {
+      label: 'Copy Column Name',
+      icon: <Copy className="w-4 h-4" />,
+      onClick: onCopyName,
+    },
+    {
+      label: 'Create Index',
+      icon: <Key className="w-4 h-4" />,
+      onClick: onCreateIndex,
+    },
+  ];
+
+  if (onEditColumn || onDeleteColumn) {
+    items.push({ divider: true } as ContextMenuItem);
+    if (onEditColumn) {
+      items.push({
+        label: 'Edit Column',
+        icon: <Edit className="w-4 h-4" />,
+        onClick: onEditColumn,
+      });
+    }
+    if (onDeleteColumn) {
+      items.push({
+        label: 'Delete Column',
+        icon: <Trash className="w-4 h-4" />,
+        onClick: onDeleteColumn,
+        danger: true,
+      });
+    }
+  }
+
+  return items;
+};
 
 export const getSchemaContextMenuItems = (
   _schemaName: string,
@@ -242,4 +269,45 @@ export const getDatabaseContextMenuItems = (
     onClick: onRefresh,
   },
 ];
+
+/**
+ * Context menu for data rows in table view
+ */
+export const getDataRowContextMenuItems = (
+  onView: () => void,
+  onEdit: () => void,
+  onDelete: () => void,
+  onCopy?: () => void
+): ContextMenuItem[] => {
+  const items: ContextMenuItem[] = [
+    {
+      label: 'View Details',
+      icon: <Eye className="w-4 h-4" />,
+      onClick: onView,
+    },
+    {
+      label: 'Edit Row',
+      icon: <Edit className="w-4 h-4" />,
+      onClick: onEdit,
+    },
+  ];
+
+  if (onCopy) {
+    items.push({
+      label: 'Copy Row Data',
+      icon: <Copy className="w-4 h-4" />,
+      onClick: onCopy,
+    });
+  }
+
+  items.push({ divider: true } as ContextMenuItem);
+  items.push({
+    label: 'Delete Row',
+    icon: <Trash className="w-4 h-4" />,
+    onClick: onDelete,
+    danger: true,
+  });
+
+  return items;
+};
 
