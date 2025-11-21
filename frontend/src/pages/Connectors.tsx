@@ -8,7 +8,7 @@ import { DatabaseConnectorConfigModal } from '@/components/connectors/DatabaseCo
 import { 
   Plus, Edit, Trash2, TestTube, Database, Globe, 
   HardDrive, FolderOpen, Server, Sparkles, Lock,
-  ChevronRight, CheckCircle, XCircle, Loader, AlertCircle, X
+  CheckCircle, XCircle, Loader, AlertCircle, X
 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -275,7 +275,8 @@ export const Connectors: React.FC = () => {
     return (
       <div
         key={connector.id}
-        className="group relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-all duration-200 overflow-hidden"
+        onClick={() => setViewingConnector(connector)}
+        className="group relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer"
       >
         {/* Colored accent bar */}
         <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: color }} />
@@ -292,12 +293,9 @@ export const Connectors: React.FC = () => {
           {/* Connector Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-1">
-              <button
-                onClick={() => setViewingConnector(connector)}
-                className="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left truncate"
-              >
+              <span className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                 {connector.name}
-              </button>
+              </span>
               
               {isReadOnly && (
                 <Badge variant="default">
@@ -340,7 +338,10 @@ export const Connectors: React.FC = () => {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => testConnection(connector)}
+              onClick={(e) => {
+                e.stopPropagation();
+                testConnection(connector);
+              }}
               disabled={testingConnectors.has(connector.id)}
               className="flex items-center gap-1.5"
             >
@@ -353,7 +354,10 @@ export const Connectors: React.FC = () => {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => handleEdit(connector)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(connector);
+                  }}
                   className="flex items-center gap-1.5"
                 >
                   <Edit className="w-4 h-4" />
@@ -363,7 +367,10 @@ export const Connectors: React.FC = () => {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => handleDelete(connector)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(connector);
+                  }}
                   className="flex items-center gap-1.5 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -371,13 +378,6 @@ export const Connectors: React.FC = () => {
                 </Button>
               </>
             )}
-            
-            <button
-              onClick={() => setViewingConnector(connector)}
-              className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
-              <ChevronRight className="w-5 h-5 text-gray-400" />
-            </button>
           </div>
         </div>
       </div>
