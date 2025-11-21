@@ -62,7 +62,17 @@ export const DatabaseExplorer: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [showObjectDetails, setShowObjectDetails] = useState(false);
   const [viewMode, setViewMode] = useState<'tree' | 'erd'>('tree');
-  const treeWidth = 280;
+  // Resizable panel state
+  const [treeWidth, setTreeWidth] = useState(() => {
+    const saved = localStorage.getItem('db-explorer-tree-width');
+    return saved ? parseInt(saved) : 280;
+  });
+  const [queryEditorHeight, setQueryEditorHeight] = useState(() => {
+    const saved = localStorage.getItem('db-explorer-query-height');
+    return saved ? parseInt(saved) : 300;
+  });
+  const [isResizingTree, setIsResizingTree] = useState(false);
+  const [isResizingQuery, setIsResizingQuery] = useState(false);
 
   // Dialogs
   const [createTableDialog, setCreateTableDialog] = useState<{
@@ -150,6 +160,42 @@ export const DatabaseExplorer: React.FC = () => {
   useEffect(() => {
     loadConnectors();
   }, []);
+
+  // Resize handlers
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizingTree) {
+        const newWidth = Math.max(200, Math.min(600, e.clientX));
+        setTreeWidth(newWidth);
+        localStorage.setItem('db-explorer-tree-width', newWidth.toString());
+      }
+      if (isResizingQuery) {
+        const editorTop = document.querySelector('.query-editor-container')?.getBoundingClientRect().top || 0;
+        const newHeight = Math.max(150, Math.min(600, e.clientY - editorTop));
+        setQueryEditorHeight(newHeight);
+        localStorage.setItem('db-explorer-query-height', newHeight.toString());
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingTree(false);
+      setIsResizingQuery(false);
+    };
+
+    if (isResizingTree || isResizingQuery) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = isResizingTree ? 'ew-resize' : 'ns-resize';
+      document.body.style.userSelect = 'none';
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isResizingTree, isResizingQuery]);
 
   const loadConnectors = async () => {
     try {
@@ -1052,26 +1098,38 @@ export const DatabaseExplorer: React.FC = () => {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left Sidebar - Database Tree (Tree View Only) */}
         {viewMode === 'tree' && (
-          <div
-            className="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-auto"
-            style={{ width: `${treeWidth}px` }}
-          >
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                Objects
-              </h3>
+          <>
+            <div
+              className="flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-auto"
+              style={{ width: `${treeWidth}px` }}
+            >
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Objects
+                </h3>
+              </div>
+              {selectedConnector && (
+                <DbTree
+                  connectorId={selectedConnector.id}
+                  onSelectObject={handleSelectObject}
+                  onTableAction={handleTableAction}
+                  onViewAction={handleViewAction}
+                  onSchemaAction={handleSchemaAction}
+                  onColumnAction={handleColumnAction}
+                />
+              )}
             </div>
-            {selectedConnector && (
-              <DbTree
-                connectorId={selectedConnector.id}
-                onSelectObject={handleSelectObject}
-                onTableAction={handleTableAction}
-                onViewAction={handleViewAction}
-                onSchemaAction={handleSchemaAction}
-                onColumnAction={handleColumnAction}
-              />
-            )}
-          </div>
+            {/* Tree Resize Handle */}
+            <div
+              className="flex-shrink-0 w-1 bg-gray-200 dark:bg-gray-700 hover:bg-primary-500 dark:hover:bg-primary-500 cursor-ew-resize transition-colors group relative"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsResizingTree(true);
+              }}
+            >
+              <div className="absolute inset-y-0 -left-1 -right-1" />
+            </div>
+          </>
         )}
 
         {/* Center - ERD View or Query Editor & Results */}
@@ -1124,7 +1182,7 @@ export const DatabaseExplorer: React.FC = () => {
           </div>
 
           {/* Query Editor */}
-          <div className="flex-shrink-0" style={{ height: '300px' }}>
+          <div className="flex-shrink-0 query-editor-container" style={{ height: `${queryEditorHeight}px` }}>
             {activeTab && (
               <SqlQueryEditor
                 value={activeTab.query}
@@ -1145,6 +1203,17 @@ export const DatabaseExplorer: React.FC = () => {
                 className="h-full"
               />
             )}
+          </div>
+
+          {/* Query Editor Resize Handle */}
+          <div
+            className="flex-shrink-0 h-1 bg-gray-200 dark:bg-gray-700 hover:bg-primary-500 dark:hover:bg-primary-500 cursor-ns-resize transition-colors group relative"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsResizingQuery(true);
+            }}
+          >
+            <div className="absolute inset-x-0 -top-1 -bottom-1" />
           </div>
 
           {/* Results */}
