@@ -25,6 +25,7 @@ import { Badge } from '@/components/common/Badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/common/Tabs';
 import { DbObject } from './DbTree';
 import { MiniERD } from './MiniERD';
+import { CellValueModal } from './CellValueModal';
 import api from '@/lib/api';
 
 interface ObjectDetailsTabsProps {
@@ -51,6 +52,11 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
   const [dataLimit, setDataLimit] = useState(100);
   const [showIncomingFK, setShowIncomingFK] = useState(true);
   const [showOutgoingFK, setShowOutgoingFK] = useState(true);
+  
+  // Cell value modal
+  const [cellModalOpen, setCellModalOpen] = useState(false);
+  const [selectedCellValue, setSelectedCellValue] = useState<any>(null);
+  const [selectedColumnName, setSelectedColumnName] = useState('');
 
   // Update active tab when object changes with a target tab
   useEffect(() => {
@@ -79,7 +85,7 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
     if (object && activeTab === 'data') {
       loadTableData();
     }
-  }, [activeTab, dataLimit]);
+  }, [activeTab, dataLimit, object, connectorId]);
 
   const loadTableDetails = async () => {
     if (!object || object.type !== 'table') return;
@@ -155,6 +161,41 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
       loadMoreDetails();
     }
   }, [activeTab]);
+
+  const handleViewCellValue = (value: any, columnName: string) => {
+    setSelectedCellValue(value);
+    setSelectedColumnName(columnName);
+    setCellModalOpen(true);
+  };
+
+  const renderCellValue = (value: any, columnName: string, maxLength: number = 50) => {
+    if (value === null || value === undefined) {
+      return <span className="text-gray-400 italic">NULL</span>;
+    }
+
+    const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    const isTruncated = stringValue.length > maxLength;
+
+    if (isTruncated) {
+      return (
+        <div className="flex items-center gap-2">
+          <span className="truncate flex-1">{stringValue.substring(0, maxLength)}</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewCellValue(value, columnName);
+            }}
+            className="flex-shrink-0 px-2 py-0.5 text-xs bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded transition-colors"
+            title="View full value"
+          >
+            ...
+          </button>
+        </div>
+      );
+    }
+
+    return <span>{stringValue}</span>;
+  };
 
   if (!object) {
     return (
@@ -310,13 +351,9 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
                       <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {tableData.slice(0, 5).map((row, idx) => (
                           <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                            {Object.values(row).slice(0, 6).map((value: any, vIdx) => (
-                              <td key={vIdx} className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">
-                                {value === null ? (
-                                  <span className="text-gray-400 italic">NULL</span>
-                                ) : (
-                                  String(value).substring(0, 50)
-                                )}
+                            {Object.entries(row).slice(0, 6).map(([key, value]: [string, any], vIdx) => (
+                              <td key={vIdx} className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 max-w-xs">
+                                {renderCellValue(value, key, 40)}
                               </td>
                             ))}
                             {Object.keys(row).length > 6 && (
@@ -402,15 +439,9 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                       {tableData.map((row, idx) => (
                         <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                          {Object.values(row).map((value: any, vIdx) => (
-                            <td key={vIdx} className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                              {value === null ? (
-                                <span className="text-gray-400 italic">NULL</span>
-                              ) : typeof value === 'object' ? (
-                                <span className="font-mono text-xs">{JSON.stringify(value)}</span>
-                              ) : (
-                                String(value)
-                              )}
+                          {Object.entries(row).map(([key, value]: [string, any], vIdx) => (
+                            <td key={vIdx} className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 max-w-md">
+                              {renderCellValue(value, key, 100)}
                             </td>
                           ))}
                           <td className="px-4 py-3 text-right text-sm">
@@ -650,6 +681,14 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Cell Value Modal */}
+      <CellValueModal
+        isOpen={cellModalOpen}
+        onClose={() => setCellModalOpen(false)}
+        value={selectedCellValue}
+        columnName={selectedColumnName}
+      />
     </div>
   );
 };
