@@ -1197,7 +1197,7 @@ The user can provide additional details in follow-up messages. Keep the conversa
     const query = `
       SELECT
         schemaname,
-        tablename,
+        relname as tablename,
         (SELECT count(*) FROM "${schemaName}"."${tableName}") as row_count,
         pg_size_pretty(pg_total_relation_size('"${schemaName}"."${tableName}"')) as total_size,
         pg_size_pretty(pg_relation_size('"${schemaName}"."${tableName}"')) as table_size,
@@ -1217,7 +1217,7 @@ The user can provide additional details in follow-up messages. Keep the conversa
         analyze_count,
         autoanalyze_count
       FROM pg_stat_user_tables
-      WHERE schemaname = '${schemaName}' AND tablename = '${tableName}';
+      WHERE schemaname = '${schemaName}' AND relname = '${tableName}';
     `;
 
     const result = await this.executeQuery(connectorId, userId, query);
@@ -1276,7 +1276,7 @@ The user can provide additional details in follow-up messages. Keep the conversa
     const query = `
       SELECT 
         schemaname,
-        tablename,
+        relname as tablename,
         seq_scan,
         seq_tup_read,
         CASE WHEN seq_scan > 0 THEN seq_tup_read::float / seq_scan ELSE 0 END as avg_seq_read,
@@ -1291,7 +1291,7 @@ The user can provide additional details in follow-up messages. Keep the conversa
         n_dead_tup as dead_rows,
         CASE WHEN n_live_tup > 0 THEN (n_dead_tup::float / n_live_tup * 100) ELSE 0 END as bloat_ratio
       FROM pg_stat_user_tables
-      WHERE schemaname = '${schemaName}' AND tablename = '${tableName}';
+      WHERE schemaname = '${schemaName}' AND relname = '${tableName}';
     `;
 
     const statsResult = await this.executeQuery(connectorId, userId, query);
@@ -1305,7 +1305,7 @@ The user can provide additional details in follow-up messages. Keep the conversa
         idx_tup_fetch as tuples_fetched,
         pg_size_pretty(pg_relation_size(indexrelid)) as index_size
       FROM pg_stat_user_indexes
-      WHERE schemaname = '${schemaName}' AND tablename = '${tableName}'
+      WHERE schemaname = '${schemaName}' AND relname = '${tableName}'
       ORDER BY idx_scan DESC;
     `;
 
