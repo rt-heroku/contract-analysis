@@ -13,6 +13,9 @@ router.get('/', connectorController.getConnectors);
 // GET /api/connectors/llm-models - Get available LLM models (must be before /:id)
 router.get('/llm-models', connectorController.getLLMModels);
 
+// POST /api/connectors/test-config - Test connection config before creating (must be before /:id)
+router.post('/test-config', connectorController.testConnectionConfig);
+
 // GET /api/connectors/:id - Get connector by ID
 router.get('/:id', connectorController.getConnectorById);
 

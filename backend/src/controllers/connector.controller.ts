@@ -172,6 +172,27 @@ export const connectorController = {
     }
   },
 
+  async testConnectionConfig(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const { connectorType, config } = req.body;
+
+      if (!connectorType || !config) {
+        return res.status(400).json({ error: 'connectorType and config are required' });
+      }
+
+      const result = await connectorService.testConnectionWithConfig(connectorType, config);
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error testing connection config:', error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
   async importOpenApi(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {

@@ -298,9 +298,13 @@ class ConnectorService {
    * Encrypt sensitive config fields
    */
   private encryptConfig(config: any): any {
-    // In a real implementation, you'd selectively encrypt sensitive fields
-    // For now, we'll just store as-is
-    // TODO: Implement field-level encryption for passwords, API keys, etc.
+    const { encryptConnectorConfig, isEncrypted } = require('../utils/encryption');
+    
+    // Don't re-encrypt if already encrypted
+    if (config.password && !isEncrypted(config.password)) {
+      return encryptConnectorConfig(config);
+    }
+    
     return config;
   }
 
@@ -308,9 +312,158 @@ class ConnectorService {
    * Decrypt sensitive config fields
    */
   private decryptConfig(config: any): any {
-    // In a real implementation, you'd decrypt sensitive fields
-    // For now, return as-is
-    return config;
+    const { decryptConnectorConfig } = require('../utils/encryption');
+    return decryptConnectorConfig(config);
+  }
+
+  /**
+   * Test connector connection with config (before creating)
+   */
+  async testConnectionWithConfig(connectorType: string, config: any) {
+    try {
+      logger.info(`Testing ${connectorType} connection`);
+
+      switch (connectorType) {
+        case 'database':
+          return await this.testDatabaseConnection(config);
+        case 'rest':
+          return await this.testRestConnection(config);
+        case 'inference':
+          return await this.testInferenceConnection(config);
+        default:
+          return {
+            success: false,
+            message: `Connection testing not implemented for ${connectorType}`,
+          };
+      }
+    } catch (error: any) {
+      logger.error(`Error testing ${connectorType} connection:`, error);
+      return {
+        success: false,
+        message: error.message || 'Connection test failed',
+      };
+    }
+  }
+
+  /**
+   * Test database connection (PostgreSQL)
+   */
+  private async testDatabaseConnection(config: any) {
+    const { Pool } = require('pg');
+    const startTime = Date.now();
+    
+    let pool: any = null;
+    
+    try {
+      // Decrypt password if encrypted
+      const { decryptConnectorConfig } = require('../utils/encryption');
+      const decryptedConfig = decryptConnectorConfig(config);
+      
+      // Build connection config
+      const poolConfig: any = {
+        host: decryptedConfig.host,
+        port: decryptedConfig.port || 5432,
+        database: decryptedConfig.database,
+        user: decryptedConfig.user,
+        password: decryptedConfig.password,
+        connectionTimeoutMillis: decryptedConfig.connectTimeout || 10000,
+        query_timeout: decryptedConfig.queryTimeout || 30000,
+      };
+
+      // SSL configuration
+      if (decryptedConfig.ssl) {
+        poolConfig.ssl = {
+          rejectUnauthorized: decryptedConfig.sslmode === 'verify-full',
+        };
+      }
+
+      // Application name
+      if (decryptedConfig.applicationName) {
+        poolConfig.application_name = decryptedConfig.applicationName;
+      }
+
+      // Create pool
+      pool = new Pool(poolConfig);
+
+      // Test query
+      const testQuery = decryptedConfig.testQuery || 'SELECT version()';
+      const result = await pool.query(testQuery);
+      
+      const responseTime = Date.now() - startTime;
+
+      // Extract version info
+      let version = 'Unknown';
+      if (result.rows && result.rows.length > 0) {
+        const firstRow = result.rows[0];
+        version = firstRow.version || firstRow[Object.keys(firstRow)[0]] || 'Unknown';
+      }
+
+      return {
+        success: true,
+        message: 'Database connection successful',
+        details: {
+          version,
+          responseTime,
+          rowCount: result.rowCount,
+        },
+      };
+    } catch (error: any) {
+      logger.error('Database connection test failed:', error);
+      
+      // Provide user-friendly error messages
+      let message = 'Database connection failed';
+      if (error.code === 'ECONNREFUSED') {
+        message = 'Connection refused. Check host and port.';
+      } else if (error.code === 'ENOTFOUND') {
+        message = 'Host not found. Check hostname.';
+      } else if (error.code === '28P01') {
+        message = 'Authentication failed. Check username and password.';
+      } else if (error.code === '3D000') {
+        message = 'Database does not exist.';
+      } else if (error.message) {
+        message = error.message;
+      }
+
+      return {
+        success: false,
+        message,
+        details: {
+          code: error.code,
+          originalMessage: error.message,
+        },
+      };
+    } finally {
+      // Always close the pool
+      if (pool) {
+        try {
+          await pool.end();
+        } catch (err) {
+          logger.error('Error closing test pool:', err);
+        }
+      }
+    }
+  }
+
+  /**
+   * Test REST API connection
+   */
+  private async testRestConnection(config: any) {
+    // TODO: Implement REST API connection test
+    return {
+      success: true,
+      message: 'REST API connection test not yet implemented',
+    };
+  }
+
+  /**
+   * Test Inference connection
+   */
+  private async testInferenceConnection(config: any) {
+    // TODO: Implement Inference connection test
+    return {
+      success: true,
+      message: 'Inference connection test not yet implemented',
+    };
   }
 
   /**
@@ -319,16 +472,12 @@ class ConnectorService {
   async testConnection(connectorId: number, userId: number) {
     try {
       const connector = await this.getConnectorById(connectorId, userId);
-
-      // TODO: Implement actual connection testing based on connector type
-      // For now, just return success
       logger.info(`Testing connection for connector ${connector.name}`);
 
-      return {
-        success: true,
-        message: 'Connection test successful',
-        connectorType: connector.connectorType,
-      };
+      return await this.testConnectionWithConfig(
+        connector.connectorType,
+        connector.config
+      );
     } catch (error: any) {
       logger.error(`Error testing connector ${connectorId}:`, error);
       return {

@@ -1,132 +1,173 @@
 import crypto from 'crypto';
 
-// Use environment variable or generate a consistent key for the session
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY 
-  ? Buffer.from(process.env.ENCRYPTION_KEY, 'hex')
-  : crypto.scryptSync(process.env.JWT_SECRET || 'default-secret', 'salt', 32);
-
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
-const ALGORITHM = 'aes-256-cbc';
+const SALT_LENGTH = 64;
+const TAG_LENGTH = 16;
+const TAG_POSITION = SALT_LENGTH + IV_LENGTH;
+const ENCRYPTED_POSITION = TAG_POSITION + TAG_LENGTH;
 
-export const encryption = {
-  /**
-   * Encrypt a text value
-   */
-  encrypt(text: string): string {
-    if (!text) return '';
-    
-    try {
-      const iv = crypto.randomBytes(IV_LENGTH);
-      const cipher = crypto.createCipheriv(
-        ALGORITHM,
-        ENCRYPTION_KEY,
-        iv
-      );
-      
-      let encrypted = cipher.update(text, 'utf8', 'hex');
-      encrypted += cipher.final('hex');
-      
-      // Return IV + encrypted data
-      return iv.toString('hex') + ':' + encrypted;
-    } catch (error) {
-      console.error('Encryption error:', error);
-      throw new Error('Failed to encrypt data');
+/**
+ * Get encryption key (32 bytes for AES-256)
+ */
+function getKey(): Buffer {
+  // Use first 32 bytes of the key
+  return Buffer.from(ENCRYPTION_KEY.slice(0, 64), 'hex');
+}
+
+/**
+ * Encrypt a string value
+ */
+export function encrypt(text: string): string {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const salt = crypto.randomBytes(SALT_LENGTH);
+  
+  const key = crypto.pbkdf2Sync(getKey(), salt, 100000, 32, 'sha512');
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+  
+  const encrypted = Buffer.concat([
+    cipher.update(text, 'utf8'),
+    cipher.final(),
+  ]);
+  
+  const tag = cipher.getAuthTag();
+  
+  return Buffer.concat([salt, iv, tag, encrypted]).toString('base64');
+}
+
+/**
+ * Decrypt an encrypted string
+ */
+export function decrypt(encryptedData: string): string {
+  const buffer = Buffer.from(encryptedData, 'base64');
+  
+  const salt = buffer.subarray(0, SALT_LENGTH);
+  const iv = buffer.subarray(SALT_LENGTH, TAG_POSITION);
+  const tag = buffer.subarray(TAG_POSITION, ENCRYPTED_POSITION);
+  const encrypted = buffer.subarray(ENCRYPTED_POSITION);
+  
+  const key = crypto.pbkdf2Sync(getKey(), salt, 100000, 32, 'sha512');
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+  decipher.setAuthTag(tag);
+  
+  return decipher.update(encrypted) + decipher.final('utf8');
+}
+
+/**
+ * Encrypt connector config passwords
+ */
+export function encryptConnectorConfig(config: any): any {
+  if (!config) return config;
+  
+  const encrypted = { ...config };
+  
+  // Encrypt password field if it exists
+  if (encrypted.password) {
+    encrypted.password = encrypt(encrypted.password);
+  }
+  
+  // Encrypt API key if it exists
+  if (encrypted.apiKey) {
+    encrypted.apiKey = encrypt(encrypted.apiKey);
+  }
+  
+  // Encrypt token if it exists
+  if (encrypted.token) {
+    encrypted.token = encrypt(encrypted.token);
+  }
+  
+  return encrypted;
+}
+
+/**
+ * Decrypt connector config passwords
+ */
+export function decryptConnectorConfig(config: any): any {
+  if (!config) return config;
+  
+  const decrypted = { ...config };
+  
+  try {
+    // Decrypt password field if it exists
+    if (decrypted.password) {
+      decrypted.password = decrypt(decrypted.password);
     }
-  },
-
-  /**
-   * Decrypt a text value
-   */
-  decrypt(text: string): string {
-    if (!text) return '';
     
-    try {
-      const parts = text.split(':');
-      if (parts.length !== 2) {
-        throw new Error('Invalid encrypted format');
-      }
-      
-      const iv = Buffer.from(parts[0], 'hex');
-      const encryptedText = parts[1];
-      
-      const decipher = crypto.createDecipheriv(
-        ALGORITHM,
-        ENCRYPTION_KEY,
-        iv
-      );
-      
-      let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
-      
-      return decrypted;
-    } catch (error) {
-      console.error('Decryption error:', error);
-      return '';
+    // Decrypt API key if it exists
+    if (decrypted.apiKey) {
+      decrypted.apiKey = decrypt(decrypted.apiKey);
     }
-  },
+    
+    // Decrypt token if it exists
+    if (decrypted.token) {
+      decrypted.token = decrypt(decrypted.token);
+    }
+  } catch (error) {
+    // If decryption fails, assume it's already decrypted or invalid
+    console.warn('Failed to decrypt config, using as-is:', error);
+  }
+  
+  return decrypted;
+}
 
-  /**
-   * Parse MuleSoft IDP URL
-   * Example: https://idp-rt.us-east-1.anypoint.mulesoft.com/api/v1/organizations/eb16587a-02cf-43f4-aa5f-c6a924fb3635/actions/1665e50a-9f68-43d0-a533-49bfc24d920b/versions/1.3.0/executions
-   */
-  parseIdpUrl(url: string): {
-    protocol: string;
-    host: string;
-    basePath: string;
-    orgId: string;
-    actionId: string;
-    actionVersion: string;
-  } | null {
-    try {
-      // Remove leading @ if present
-      const cleanUrl = url.trim().replace(/^@/, '');
-      
-      // Pattern: protocol://host/api/v1/organizations/ORG_ID/actions/ACTION_ID/versions/VERSION/executions
-      const regex = /^(https?):\/\/([^\/]+)(\/api\/v1\/organizations\/)([^\/]+)\/actions\/([^\/]+)\/versions\/([^\/]+)\/executions\/?$/i;
-      const match = cleanUrl.match(regex);
-      
-      if (!match) {
-        return null;
-      }
-      
-      return {
-        protocol: match[1].toUpperCase(),
-        host: match[2],
-        basePath: match[3],
-        orgId: match[4],
-        actionId: match[5],
-        actionVersion: match[6],
-      };
-    } catch (error) {
-      console.error('URL parsing error:', error);
+/**
+ * Check if a string is encrypted
+ */
+export function isEncrypted(value: string): boolean {
+  try {
+    const buffer = Buffer.from(value, 'base64');
+    return buffer.length > (SALT_LENGTH + IV_LENGTH + TAG_LENGTH);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Mask a secret string (show only first 4 chars)
+ */
+export function maskSecret(value: string): string {
+  if (!value || value.length < 8) {
+    return '********';
+  }
+  return value.substring(0, 4) + '********';
+}
+
+/**
+ * Parse IDP URL to extract components
+ * Expected format: protocol://host/api/v1/organizations/ORG_ID/actions/ACTION_ID/versions/VERSION/executions
+ */
+export function parseIdpUrl(url: string): any {
+  try {
+    const urlPattern = /^(.+):\/\/(.+?)\/api\/v1\/organizations\/([^\/]+)\/actions\/([^\/]+)\/versions\/([^\/]+)\/executions$/;
+    const match = url.match(urlPattern);
+    
+    if (!match) {
       return null;
     }
-  },
-
-  /**
-   * Mask sensitive data for display
-   */
-  maskSecret(text: string): string {
-    if (!text || text.length < 8) return '***';
     
-    // Show first 4 and last 4 characters
-    const start = text.substring(0, 4);
-    const end = text.substring(text.length - 4);
-    return `${start}***${end}`;
-  },
-
-  /**
-   * Build full IDP URL from components
-   */
-  buildIdpUrl(config: {
-    protocol: string;
-    host: string;
-    basePath: string;
-    orgId: string;
-    actionId: string;
-    actionVersion: string;
-  }): string {
-    return `${config.protocol.toLowerCase()}://${config.host}${config.basePath}${config.orgId}/actions/${config.actionId}/versions/${config.actionVersion}/executions`;
+    return {
+      protocol: match[1],
+      host: match[2],
+      baseUrl: `${match[1]}://${match[2]}`,
+      organizationId: match[3],
+      actionId: match[4],
+      version: match[5],
+    };
+  } catch (error) {
+    return null;
   }
-};
+}
 
+/**
+ * Default export object for compatibility with existing code
+ */
+export const encryption = {
+  encrypt,
+  decrypt,
+  encryptConnectorConfig,
+  decryptConnectorConfig,
+  isEncrypted,
+  maskSecret,
+  parseIdpUrl,
+};

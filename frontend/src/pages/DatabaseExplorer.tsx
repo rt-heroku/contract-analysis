@@ -16,6 +16,7 @@ import { AlterTableDialog } from '@/components/db-explorer/AlterTableDialog';
 import { IndexManagementDialog } from '@/components/db-explorer/IndexManagementDialog';
 import { AISQLGeneratorDialog } from '@/components/db-explorer/AISQLGeneratorDialog';
 import { DatabaseERD } from '@/components/db-explorer/DatabaseERD';
+import { ConnectorSelectorModal } from '@/components/db-explorer/ConnectorSelectorModal';
 import api from '@/lib/api';
 import { cn } from '@/utils/helpers';
 
@@ -49,6 +50,7 @@ export const DatabaseExplorer: React.FC = () => {
   const [selectedConnector, setSelectedConnector] = useState<Connector | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedObject, setSelectedObject] = useState<DbObject | null>(null);
+  const [showConnectorSelector, setShowConnectorSelector] = useState(false);
   
   // Query tabs
   const [queryTabs, setQueryTabs] = useState<QueryTab[]>([
@@ -995,20 +997,14 @@ export const DatabaseExplorer: React.FC = () => {
 
         <div className="flex items-center gap-4">
           {/* Connector Selector */}
-          <select
-            value={selectedConnector?.id || ''}
-            onChange={(e) => {
-              const connector = connectors.find(c => c.id === parseInt(e.target.value));
-              setSelectedConnector(connector || null);
-            }}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          <Button
+            onClick={() => setShowConnectorSelector(true)}
+            variant="outline"
+            className="gap-2"
           >
-            {connectors.map(connector => (
-              <option key={connector.id} value={connector.id}>
-                {connector.name}
-              </option>
-            ))}
-          </select>
+            <Database className="w-4 h-4" />
+            {selectedConnector ? selectedConnector.name : 'Select Database'}
+          </Button>
 
           {/* View Mode Toggle */}
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
@@ -1299,6 +1295,15 @@ export const DatabaseExplorer: React.FC = () => {
         title={alertDialog.title}
         message={alertDialog.message}
         type={alertDialog.type}
+      />
+
+      {/* Connector Selector Modal */}
+      <ConnectorSelectorModal
+        isOpen={showConnectorSelector}
+        onClose={() => setShowConnectorSelector(false)}
+        onSelectConnector={(connector) => setSelectedConnector(connector)}
+        currentConnectorId={selectedConnector?.id}
+        isAdmin={true}
       />
     </div>
   );

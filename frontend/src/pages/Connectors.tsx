@@ -5,6 +5,8 @@ import { Badge } from '@/components/common/Badge';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { IconUpload } from '@/components/common/IconUpload';
+import { ConnectorTypeSelectionModal } from '@/components/connectors/ConnectorTypeSelectionModal';
+import { DatabaseConnectorConfigModal } from '@/components/connectors/DatabaseConnectorConfigModal';
 import { 
   Plus, Edit, Trash2, TestTube, Eye, Database, Globe, 
   HardDrive, FolderOpen, Server, Code, X, Sparkles, Lock
@@ -57,6 +59,10 @@ export const Connectors: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingConnector, setEditingConnector] = useState<Connector | null>(null);
+  
+  // New modal states
+  const [showTypeSelectionModal, setShowTypeSelectionModal] = useState(false);
+  const [showDatabaseConfigModal, setShowDatabaseConfigModal] = useState(false);
   
   // Connector Detail View
   const [viewingConnector, setViewingConnector] = useState<Connector | null>(null);
@@ -162,6 +168,60 @@ export const Connectors: React.FC = () => {
       setConnectorStores([]);
     } finally {
       setLoadingStores(false);
+    }
+  };
+
+  // Handle new connector button click
+  const handleCreateConnector = () => {
+    setEditingConnector(null);
+    setShowTypeSelectionModal(true);
+  };
+
+  // Handle connector type selection
+  const handleConnectorTypeSelected = (type: string) => {
+    setShowTypeSelectionModal(false);
+    
+    // Open appropriate config modal based on type
+    if (type === 'database') {
+      setShowDatabaseConfigModal(true);
+    } else {
+      // For other types, show the old modal for now
+      setShowModal(true);
+      setFormData(prev => ({ ...prev, connectorType: type }));
+    }
+  };
+
+  // Handle database connector save
+  const handleDatabaseConnectorSave = async (data: any) => {
+    try {
+      if (editingConnector) {
+        await api.put(`/connectors/${editingConnector.id}`, data);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Success',
+          message: 'Database connector updated successfully',
+          type: 'success',
+        });
+      } else {
+        await api.post('/connectors', data);
+        setAlertDialog({
+          isOpen: true,
+          title: 'Success',
+          message: 'Database connector created successfully',
+          type: 'success',
+        });
+      }
+      
+      setShowDatabaseConfigModal(false);
+      setEditingConnector(null);
+      loadConnectors();
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to save connector',
+        type: 'error',
+      });
     }
   };
 
@@ -908,10 +968,7 @@ export const Connectors: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400 mt-1">Manage external service connections</p>
         </div>
         <Button
-          onClick={() => {
-            resetForm();
-            setShowModal(true);
-          }}
+          onClick={handleCreateConnector}
           className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
         >
           <Plus className="w-5 h-5" />
@@ -923,7 +980,7 @@ export const Connectors: React.FC = () => {
         <Card className="text-center py-12">
           <p className="text-gray-600 mb-4">No connectors found. Create your first connector to get started.</p>
           <Button
-            onClick={() => setShowModal(true)}
+            onClick={handleCreateConnector}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <Plus className="w-5 h-5 mr-2" />
@@ -1165,6 +1222,21 @@ export const Connectors: React.FC = () => {
         onConfirm={confirmDialog.onConfirm}
         title={confirmDialog.title}
         message={confirmDialog.message}
+      />
+
+      {/* Connector Type Selection Modal */}
+      <ConnectorTypeSelectionModal
+        isOpen={showTypeSelectionModal}
+        onClose={() => setShowTypeSelectionModal(false)}
+        onSelectType={handleConnectorTypeSelected}
+      />
+
+      {/* Database Connector Config Modal */}
+      <DatabaseConnectorConfigModal
+        isOpen={showDatabaseConfigModal}
+        onClose={() => setShowDatabaseConfigModal(false)}
+        onSave={handleDatabaseConnectorSave}
+        editingConnector={editingConnector}
       />
     </div>
   );
