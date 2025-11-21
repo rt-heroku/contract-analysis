@@ -168,8 +168,8 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
   }
 
   const filteredColumns = Array.isArray(columns) ? columns.filter(col =>
-    col.column_name.toLowerCase().includes(columnSearch.toLowerCase()) ||
-    col.data_type.toLowerCase().includes(columnSearch.toLowerCase())
+    (col.column_name || '').toLowerCase().includes(columnSearch.toLowerCase()) ||
+    (col.data_type || '').toLowerCase().includes(columnSearch.toLowerCase())
   ) : [];
 
   const outgoingFKs = Array.isArray(foreignKeys) ? foreignKeys.filter(fk => fk.direction === 'outgoing') : [];

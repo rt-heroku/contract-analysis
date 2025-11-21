@@ -271,16 +271,30 @@ export const ConnectorSelectorModal: React.FC<ConnectorSelectorModalProps> = ({
                       {/* Status & Actions */}
                       <div className="flex flex-col items-end gap-2">
                         {getConnectionStatusIcon(connector.id) || (
-                          <button
+                          <span
                             onClick={(e) => {
                               e.stopPropagation();
-                              testConnection(connector.id);
+                              if (status !== 'testing') {
+                                testConnection(connector.id);
+                              }
                             }}
-                            className="text-xs px-2 py-1 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors"
-                            disabled={status === 'testing'}
+                            role="button"
+                            tabIndex={0}
+                            className={`text-xs px-2 py-1 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded transition-colors cursor-pointer ${
+                              status === 'testing' ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (status !== 'testing') {
+                                  testConnection(connector.id);
+                                }
+                              }
+                            }}
                           >
                             Test
-                          </button>
+                          </span>
                         )}
                         
                         {status && (
