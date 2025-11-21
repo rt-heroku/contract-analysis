@@ -81,7 +81,9 @@ export const Connectors: React.FC = () => {
   const loadConnectors = async () => {
     try {
       const response = await api.get('/connectors');
-      setConnectors(response.data);
+      // Ensure we always set an array
+      const data = Array.isArray(response.data) ? response.data : [];
+      setConnectors(data);
     } catch (error: any) {
       setAlertDialog({
         isOpen: true,
@@ -89,6 +91,8 @@ export const Connectors: React.FC = () => {
         message: error.response?.data?.error || 'Failed to load connectors',
         type: 'error',
       });
+      // Set empty array on error
+      setConnectors([]);
     } finally {
       setLoading(false);
     }
@@ -218,14 +222,17 @@ export const Connectors: React.FC = () => {
     return config;
   };
 
-  const groupedConnectors = connectors.reduce((acc, connector) => {
-    const type = connector.connectorType;
-    if (!acc[type]) {
-      acc[type] = [];
-    }
-    acc[type].push(connector);
-    return acc;
-  }, {} as Record<string, Connector[]>);
+  // Safely group connectors by type
+  const groupedConnectors = Array.isArray(connectors) 
+    ? connectors.reduce((acc, connector) => {
+        const type = connector.connectorType;
+        if (!acc[type]) {
+          acc[type] = [];
+        }
+        acc[type].push(connector);
+        return acc;
+      }, {} as Record<string, Connector[]>)
+    : {};
 
   const renderConnectionStatus = (connectorId: number) => {
     if (testingConnectors.has(connectorId)) {
