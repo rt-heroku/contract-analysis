@@ -62,12 +62,12 @@ export const MiniERD: React.FC<MiniERDProps> = ({
         api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/tables/${tableName}/foreign-keys`),
       ]);
 
-      const columns = columnsRes.data || [];
-      const foreignKeys: ForeignKey[] = fkRes.data || [];
+      const columns = Array.isArray(columnsRes.data.columns) ? columnsRes.data.columns : [];
+      const foreignKeys: ForeignKey[] = Array.isArray(fkRes.data.foreignKeys) ? fkRes.data.foreignKeys : [];
 
       // Separate outgoing and incoming FKs
-      const outgoingFKs = foreignKeys.filter(fk => fk.direction === 'outgoing' || !fk.direction);
-      const incomingFKs = foreignKeys.filter(fk => fk.direction === 'incoming');
+      const outgoingFKs = Array.isArray(foreignKeys) ? foreignKeys.filter(fk => fk.direction === 'outgoing' || !fk.direction) : [];
+      const incomingFKs = Array.isArray(foreignKeys) ? foreignKeys.filter(fk => fk.direction === 'incoming') : [];
 
       // Get unique related tables
       const relatedTables = new Set<string>();
@@ -93,7 +93,7 @@ export const MiniERD: React.FC<MiniERDProps> = ({
             );
             relatedTableData.set(tableKey, {
               tableName: relTable,
-              columns: relColumnsRes.data || [],
+              columns: Array.isArray(relColumnsRes.data.columns) ? relColumnsRes.data.columns : [],
             });
           } catch (error) {
             console.error(`Failed to load columns for ${tableKey}:`, error);

@@ -100,9 +100,9 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
         api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/stats`),
       ]);
 
-      setColumns(Array.isArray(columnsRes.data) ? columnsRes.data : []);
-      setForeignKeys(Array.isArray(fkRes.data) ? fkRes.data : []);
-      setIndexes(Array.isArray(indexesRes.data) ? indexesRes.data : []);
+      setColumns(Array.isArray(columnsRes.data.columns) ? columnsRes.data.columns : []);
+      setForeignKeys(Array.isArray(fkRes.data.foreignKeys) ? fkRes.data.foreignKeys : []);
+      setIndexes(Array.isArray(indexesRes.data.indexes) ? indexesRes.data.indexes : []);
       setStats(statsRes.data || null);
     } catch (error) {
       console.error('Failed to load table details:', error);
