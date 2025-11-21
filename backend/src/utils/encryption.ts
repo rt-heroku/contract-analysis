@@ -89,18 +89,18 @@ export function decryptConnectorConfig(config: any): any {
   const decrypted = { ...config };
   
   try {
-    // Decrypt password field if it exists
-    if (decrypted.password) {
+    // Decrypt password field if it exists and is encrypted
+    if (decrypted.password && typeof decrypted.password === 'string' && isEncrypted(decrypted.password)) {
       decrypted.password = decrypt(decrypted.password);
     }
     
-    // Decrypt API key if it exists
-    if (decrypted.apiKey) {
+    // Decrypt API key if it exists and is encrypted
+    if (decrypted.apiKey && typeof decrypted.apiKey === 'string' && isEncrypted(decrypted.apiKey)) {
       decrypted.apiKey = decrypt(decrypted.apiKey);
     }
     
-    // Decrypt token if it exists
-    if (decrypted.token) {
+    // Decrypt token if it exists and is encrypted
+    if (decrypted.token && typeof decrypted.token === 'string' && isEncrypted(decrypted.token)) {
       decrypted.token = decrypt(decrypted.token);
     }
   } catch (error) {

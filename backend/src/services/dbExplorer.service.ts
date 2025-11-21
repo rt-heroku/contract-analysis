@@ -36,16 +36,17 @@ interface TableInfo {
 }
 
 interface ColumnInfo {
-  columnName: string;
-  dataType: string;
-  isNullable: boolean;
-  defaultValue?: string;
-  maxLength?: number;
-  numericPrecision?: number;
-  numericScale?: number;
-  isPrimaryKey: boolean;
-  isForeignKey: boolean;
-  isUnique: boolean;
+  column_name: string;
+  data_type: string;
+  is_nullable: boolean;
+  column_default?: string;
+  max_length?: number;
+  numeric_precision?: number;
+  numeric_scale?: number;
+  is_primary_key: boolean;
+  is_foreign_key: boolean;
+  is_unique: boolean;
+  is_indexed: boolean;
   description?: string;
 }
 
@@ -359,16 +360,17 @@ class DatabaseExplorerService {
 
     const result = await this.executeQuery(connectorId, userId, query, [schemaName, tableName]);
     return result.rows.map((row: any) => ({
-      columnName: row.column_name,
-      dataType: row.data_type,
-      isNullable: row.is_nullable,
-      defaultValue: row.default_value,
-      maxLength: row.max_length,
-      numericPrecision: row.numeric_precision,
-      numericScale: row.numeric_scale,
-      isPrimaryKey: row.is_primary_key,
-      isForeignKey: row.is_foreign_key,
-      isUnique: row.is_unique,
+      column_name: row.column_name,
+      data_type: row.data_type,
+      is_nullable: row.is_nullable,
+      column_default: row.default_value,
+      max_length: row.max_length,
+      numeric_precision: row.numeric_precision,
+      numeric_scale: row.numeric_scale,
+      is_primary_key: row.is_primary_key,
+      is_foreign_key: row.is_foreign_key,
+      is_unique: row.is_unique,
+      is_indexed: row.is_unique, // Temporarily map is_unique to is_indexed
       description: row.description,
     }));
   }
@@ -613,17 +615,17 @@ class DatabaseExplorerService {
 
     // Add columns
     const columnDefs = columns.map(col => {
-      let def = `  "${col.columnName}" ${col.dataType}`;
-      if (col.maxLength) def += `(${col.maxLength})`;
-      if (!col.isNullable) def += ' NOT NULL';
-      if (col.defaultValue) def += ` DEFAULT ${col.defaultValue}`;
+      let def = `  "${col.column_name}" ${col.data_type}`;
+      if (col.max_length) def += `(${col.max_length})`;
+      if (!col.is_nullable) def += ' NOT NULL';
+      if (col.column_default) def += ` DEFAULT ${col.column_default}`;
       return def;
     });
 
     ddl += columnDefs.join(',\n');
 
     // Add primary key
-    const pkColumns = columns.filter(c => c.isPrimaryKey).map(c => `"${c.columnName}"`);
+    const pkColumns = columns.filter(c => c.is_primary_key).map(c => `"${c.column_name}"`);
     if (pkColumns.length > 0) {
       ddl += `,\n  PRIMARY KEY (${pkColumns.join(', ')})`;
     }
