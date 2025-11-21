@@ -62,9 +62,9 @@ export const CellValueModal: React.FC<CellValueModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               Cell Value
@@ -103,7 +103,7 @@ export const CellValueModal: React.FC<CellValueModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden min-h-0">
           {language === 'json' ? (
             <Editor
               height="100%"
@@ -112,16 +112,17 @@ export const CellValueModal: React.FC<CellValueModalProps> = ({
               theme="vs-dark"
               options={{
                 readOnly: true,
-                minimap: { enabled: false },
+                minimap: { enabled: true },
                 fontSize: 14,
                 lineNumbers: 'on',
                 scrollBeyondLastLine: false,
                 wordWrap: 'on',
                 folding: true,
+                automaticLayout: true,
               }}
             />
           ) : (
-            <div className="p-4 overflow-auto h-full">
+            <div className="p-4 overflow-auto h-full bg-gray-50 dark:bg-gray-900">
               <pre className="text-sm text-gray-900 dark:text-gray-100 whitespace-pre-wrap font-mono">
                 {formattedValue}
               </pre>
@@ -130,7 +131,7 @@ export const CellValueModal: React.FC<CellValueModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex-shrink-0">
           <div className="text-xs text-gray-500 dark:text-gray-400">
             {language === 'json' ? 'JSON formatted' : 'Text format'} • {formattedValue.length} characters
           </div>
