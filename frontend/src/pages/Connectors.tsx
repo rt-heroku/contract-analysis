@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Badge } from '@/components/common/Badge';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { IconUpload } from '@/components/common/IconUpload';
 import { ConnectorTypeSelectionModal } from '@/components/connectors/ConnectorTypeSelectionModal';
 import { DatabaseConnectorConfigModal } from '@/components/connectors/DatabaseConnectorConfigModal';
 import { 
-  Plus, Edit, Trash2, TestTube, Eye, Database, Globe, 
-  HardDrive, FolderOpen, Server, Code, X, Sparkles, Lock
+  Plus, Edit, Trash2, TestTube, Database, Globe, 
+  HardDrive, FolderOpen, Server, Sparkles, Lock,
+  ChevronRight, CheckCircle, XCircle, Loader, AlertCircle, X
 } from 'lucide-react';
 import api from '@/lib/api';
 
@@ -20,6 +19,7 @@ interface Connector {
   authType: string | null;
   isActive: boolean;
   isAutoCreated?: boolean;
+  category?: string;
   config: any;
   openApiSpec?: any;
   version?: string;
@@ -34,59 +34,27 @@ interface Connector {
   };
 }
 
-interface ConnectorAction {
-  id: number;
-  operation: string;
-  operationId: string | null;
-  displayName: string;
-  description: string | null;
-  method: string;
-  path: string;
-  parameters: any;
-}
-
 const connectorIcons = {
-  rest: { icon: Globe, color: '#3b82f6' },
-  database: { icon: Database, color: '#10b981' },
-  inference: { icon: Sparkles, color: '#ec4899' },
-  s3: { icon: HardDrive, color: '#f59e0b' },
-  ftp: { icon: FolderOpen, color: '#8b5cf6' },
-  file: { icon: Server, color: '#6366f1' },
+  rest: { icon: Globe, color: '#3b82f6', label: 'REST API' },
+  database: { icon: Database, color: '#10b981', label: 'Database' },
+  inference: { icon: Sparkles, color: '#ec4899', label: 'AI / Inference' },
+  s3: { icon: HardDrive, color: '#f59e0b', label: 'Storage' },
+  ftp: { icon: FolderOpen, color: '#8b5cf6', label: 'FTP' },
+  file: { icon: Server, color: '#6366f1', label: 'File System' },
 };
 
 export const Connectors: React.FC = () => {
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingConnector, setEditingConnector] = useState<Connector | null>(null);
+  const [testingConnectors, setTestingConnectors] = useState<Set<number>>(new Set());
+  const [connectionStatus, setConnectionStatus] = useState<Record<number, 'success' | 'error' | null>>({});
   
-  // New modal states
+  // Modals
   const [showTypeSelectionModal, setShowTypeSelectionModal] = useState(false);
   const [showDatabaseConfigModal, setShowDatabaseConfigModal] = useState(false);
-  
-  // Connector Detail View
+  const [editingConnector, setEditingConnector] = useState<Connector | null>(null);
   const [viewingConnector, setViewingConnector] = useState<Connector | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'specification' | 'actions' | 'stores'>('details');
-  const [connectorActions, setConnectorActions] = useState<ConnectorAction[]>([]);
-  const [loadingActions, setLoadingActions] = useState(false);
-  const [connectorStores, setConnectorStores] = useState<any[]>([]);
-  const [loadingStores, setLoadingStores] = useState(false);
   
-  const [formData, setFormData] = useState({
-    name: '',
-    connectorType: 'rest',
-    authType: 'none',
-    iconUrl: null as string | null,
-    config: {
-      baseUrl: '',
-      username: '',
-      password: '',
-      token: '',
-      apiKey: '',
-      timeout: 30000,
-    },
-  });
-
   const [alertDialog, setAlertDialog] = useState({
     isOpen: false,
     title: '',
@@ -106,33 +74,14 @@ export const Connectors: React.FC = () => {
     onConfirm: () => {},
   });
 
-  const [showOpenApiModal, setShowOpenApiModal] = useState(false);
-  const [selectedConnector, setSelectedConnector] = useState<Connector | null>(null);
-  const [openApiSpec, setOpenApiSpec] = useState('');
-  const [openApiUrl, setOpenApiUrl] = useState('');
-  const [importingOpenApi, setImportingOpenApi] = useState(false);
-
   useEffect(() => {
     loadConnectors();
   }, []);
 
-  useEffect(() => {
-    if (viewingConnector && activeTab === 'stores') {
-      loadConnectorStores(viewingConnector.id);
-    }
-  }, [viewingConnector, activeTab]);
-
-  useEffect(() => {
-    if (viewingConnector && activeTab === 'actions') {
-      loadConnectorActions(viewingConnector.id);
-    }
-  }, [viewingConnector, activeTab]);
-
   const loadConnectors = async () => {
     try {
-      setLoading(true);
       const response = await api.get('/connectors');
-      setConnectors(response.data.connectors || []);
+      setConnectors(response.data);
     } catch (error: any) {
       setAlertDialog({
         isOpen: true,
@@ -145,161 +94,69 @@ export const Connectors: React.FC = () => {
     }
   };
 
-  const loadConnectorActions = async (connectorId: number) => {
-    try {
-      setLoadingActions(true);
-      const response = await api.get(`/connectors/${connectorId}/actions`);
-      setConnectorActions(response.data.actions || []);
-    } catch (error: any) {
-      console.error('Error loading connector actions:', error);
-      setConnectorActions([]);
-    } finally {
-      setLoadingActions(false);
-    }
-  };
-
-  const loadConnectorStores = async (connectorId: number) => {
-    try {
-      setLoadingStores(true);
-      const response = await api.get(`/stores?connectorId=${connectorId}`);
-      setConnectorStores(response.data.stores || []);
-    } catch (error: any) {
-      console.error('Error loading connector stores:', error);
-      setConnectorStores([]);
-    } finally {
-      setLoadingStores(false);
-    }
-  };
-
-  // Handle new connector button click
   const handleCreateConnector = () => {
     setEditingConnector(null);
     setShowTypeSelectionModal(true);
   };
 
-  // Handle connector type selection
-  const handleConnectorTypeSelected = (type: string) => {
+  const handleTypeSelected = (type: string) => {
     setShowTypeSelectionModal(false);
-    
-    // Open appropriate config modal based on type
     if (type === 'database') {
       setShowDatabaseConfigModal(true);
     } else {
-      // For other types, show the old modal for now
-      setShowModal(true);
-      setFormData(prev => ({ ...prev, connectorType: type }));
-    }
-  };
-
-  // Handle database connector save
-  const handleDatabaseConnectorSave = async (data: any) => {
-    try {
-      if (editingConnector) {
-        await api.put(`/connectors/${editingConnector.id}`, data);
-        setAlertDialog({
-          isOpen: true,
-          title: 'Success',
-          message: 'Database connector updated successfully',
-          type: 'success',
-        });
-      } else {
-        await api.post('/connectors', data);
-        setAlertDialog({
-          isOpen: true,
-          title: 'Success',
-          message: 'Database connector created successfully',
-          type: 'success',
-        });
-      }
-      
-      setShowDatabaseConfigModal(false);
-      setEditingConnector(null);
-      loadConnectors();
-    } catch (error: any) {
+      // For other types, show appropriate config modal (future implementation)
       setAlertDialog({
         isOpen: true,
-        title: 'Error',
-        message: error.response?.data?.error || 'Failed to save connector',
-        type: 'error',
-      });
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      if (editingConnector) {
-        await api.put(`/connectors/${editingConnector.id}`, formData);
-        setAlertDialog({
-          isOpen: true,
-          title: 'Success',
-          message: 'Connector updated successfully',
-          type: 'success',
-        });
-      } else {
-        await api.post('/connectors', formData);
-        setAlertDialog({
-          isOpen: true,
-          title: 'Success',
-          message: 'Connector created successfully',
-          type: 'success',
-        });
-      }
-      
-      setShowModal(false);
-      resetForm();
-      loadConnectors();
-    } catch (error: any) {
-      setAlertDialog({
-        isOpen: true,
-        title: 'Error',
-        message: error.response?.data?.error || 'Failed to save connector',
-        type: 'error',
+        title: 'Coming Soon',
+        message: `Configuration for ${type} connectors is not yet implemented.`,
+        type: 'info',
       });
     }
   };
 
   const handleEdit = (connector: Connector) => {
-    if (connector.isAutoCreated) {
+    if (connector.isAutoCreated || connector.category === 'System') {
       setAlertDialog({
         isOpen: true,
         title: 'Cannot Edit',
-        message: 'Auto-created connectors are read-only and cannot be edited.',
+        message: 'System connectors are read-only and cannot be edited.',
         type: 'warning',
       });
       return;
     }
+    
     setEditingConnector(connector);
-    setFormData({
-      name: connector.name,
-      connectorType: connector.connectorType,
-      authType: connector.authType || 'none',
-      iconUrl: connector.iconUrl || null,
-      config: connector.config || {},
-    });
-    setShowModal(true);
+    
+    if (connector.connectorType === 'database') {
+      setShowDatabaseConfigModal(true);
+    } else {
+      // For other types, show appropriate config modal
+      setAlertDialog({
+        isOpen: true,
+        title: 'Not Implemented',
+        message: `Editing ${connector.connectorType} connectors is not yet implemented.`,
+        type: 'info',
+      });
+    }
   };
 
   const handleDelete = (connector: Connector) => {
-    if (connector.isAutoCreated) {
+    if (connector.isAutoCreated || connector.category === 'System') {
       setAlertDialog({
         isOpen: true,
         title: 'Cannot Delete',
-        message: 'Auto-created connectors cannot be deleted. They are managed automatically from environment variables.',
+        message: 'System connectors cannot be deleted. They are managed automatically.',
         type: 'warning',
       });
       return;
     }
+
     setConfirmDialog({
       isOpen: true,
       title: 'Delete Connector',
       message: `Are you sure you want to delete "${connector.name}"? This action cannot be undone.`,
       onConfirm: async () => {
         try {
-          // Close confirm dialog immediately
-          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-          
           await api.delete(`/connectors/${connector.id}`);
           setAlertDialog({
             isOpen: true,
@@ -309,9 +166,6 @@ export const Connectors: React.FC = () => {
           });
           loadConnectors();
         } catch (error: any) {
-          // Close confirm dialog on error too
-          setConfirmDialog(prev => ({ ...prev, isOpen: false }));
-          
           setAlertDialog({
             isOpen: true,
             title: 'Error',
@@ -323,535 +177,199 @@ export const Connectors: React.FC = () => {
     });
   };
 
-  const handleTest = async (connector: Connector) => {
-    try {
-      await api.post(`/connectors/${connector.id}/test`);
-      setAlertDialog({
-        isOpen: true,
-        title: 'Success',
-        message: 'Connection test successful',
-        type: 'success',
-      });
-    } catch (error: any) {
-      setAlertDialog({
-        isOpen: true,
-        title: 'Error',
-        message: error.response?.data?.error || 'Connection test failed',
-        type: 'error',
-      });
-    }
-  };
-
-  const handleImportOpenApi = async () => {
-    if (!selectedConnector) return;
+  const testConnection = async (connector: Connector) => {
+    setTestingConnectors(prev => new Set(prev).add(connector.id));
+    setConnectionStatus(prev => ({ ...prev, [connector.id]: null }));
 
     try {
-      setImportingOpenApi(true);
+      const response = await api.post(`/connectors/test/${connector.id}`);
+      setConnectionStatus(prev => ({ 
+        ...prev, 
+        [connector.id]: response.data.success ? 'success' : 'error' 
+      }));
       
-      const payload: any = {};
-      if (openApiUrl) {
-        payload.url = openApiUrl;
-      } else if (openApiSpec) {
-        payload.openApiSpec = openApiSpec.trim();
-        console.log('Sending OpenAPI spec to backend:', payload.openApiSpec.substring(0, 200) + '...');
-      } else {
+      if (!response.data.success) {
         setAlertDialog({
           isOpen: true,
-          title: 'Error',
-          message: 'Please provide either an OpenAPI spec or URL',
+          title: 'Connection Failed',
+          message: response.data.error || 'Failed to connect',
           type: 'error',
         });
-        return;
-      }
-
-      console.log('Importing OpenAPI spec for connector:', selectedConnector.id);
-      const response = await api.post(`/connectors/${selectedConnector.id}/import-openapi`, payload);
-      console.log('OpenAPI import response:', response.data);
-      
-      setAlertDialog({
-        isOpen: true,
-        title: 'Success',
-        message: `Successfully imported OpenAPI spec. Created ${response.data.actionsCreated} connector actions.`,
-        type: 'success',
-      });
-      
-      setShowOpenApiModal(false);
-      setOpenApiSpec('');
-      setOpenApiUrl('');
-      setSelectedConnector(null);
-      
-      loadConnectors();
-      
-      // If we're viewing this connector, refresh the actions
-      if (viewingConnector?.id === selectedConnector.id) {
-        loadConnectorActions(selectedConnector.id);
       }
     } catch (error: any) {
-      console.error('Error importing OpenAPI spec:', error);
-      console.error('Error response:', error.response?.data);
-      
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to import OpenAPI spec';
-      
+      setConnectionStatus(prev => ({ ...prev, [connector.id]: 'error' }));
       setAlertDialog({
         isOpen: true,
-        title: 'Error',
-        message: errorMessage,
+        title: 'Connection Error',
+        message: error.response?.data?.error || 'Failed to test connection',
         type: 'error',
       });
     } finally {
-      setImportingOpenApi(false);
+      setTestingConnectors(prev => {
+        const next = new Set(prev);
+        next.delete(connector.id);
+        return next;
+      });
     }
   };
 
-  const openImportModal = (connector: Connector) => {
-    setSelectedConnector(connector);
-    setShowOpenApiModal(true);
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      connectorType: 'rest',
-      authType: 'none',
-      iconUrl: null,
-      config: {
-        baseUrl: '',
-        username: '',
-        password: '',
-        token: '',
-        apiKey: '',
-        timeout: 30000,
-      },
-    });
-    setEditingConnector(null);
-  };
-
   const getConnectorIcon = (type: string) => {
-    const iconData = connectorIcons[type as keyof typeof connectorIcons] || connectorIcons.rest;
-    const IconComponent = iconData.icon;
-    return { IconComponent, color: iconData.color };
+    const config = connectorIcons[type as keyof typeof connectorIcons] || connectorIcons.rest;
+    return config;
   };
 
-  const renderConnectorCard = (connector: Connector) => {
-    const { IconComponent, color } = getConnectorIcon(connector.connectorType);
-    const isReadOnly = connector.isAutoCreated;
+  const groupedConnectors = connectors.reduce((acc, connector) => {
+    const type = connector.connectorType;
+    if (!acc[type]) {
+      acc[type] = [];
+    }
+    acc[type].push(connector);
+    return acc;
+  }, {} as Record<string, Connector[]>);
+
+  const renderConnectionStatus = (connectorId: number) => {
+    if (testingConnectors.has(connectorId)) {
+      return (
+        <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 text-xs">
+          <Loader className="w-3.5 h-3.5 animate-spin" />
+          <span>Testing...</span>
+        </div>
+      );
+    }
+    
+    const status = connectionStatus[connectorId];
+    if (status === 'success') {
+      return (
+        <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 text-xs">
+          <CheckCircle className="w-3.5 h-3.5" />
+          <span>Connected</span>
+        </div>
+      );
+    }
+    
+    if (status === 'error') {
+      return (
+        <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400 text-xs">
+          <XCircle className="w-3.5 h-3.5" />
+          <span>Failed</span>
+        </div>
+      );
+    }
+    
+    return null;
+  };
+
+  const renderConnectorRow = (connector: Connector) => {
+    const { icon: IconComponent, color } = getConnectorIcon(connector.connectorType);
+    const isReadOnly = connector.isAutoCreated || connector.category === 'System';
     
     return (
       <div
         key={connector.id}
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 relative"
-        style={{ borderLeft: `4px solid ${color}` }}
+        className="group relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-all duration-200 overflow-hidden"
       >
-        {/* Edit and Delete icons in top-right corner */}
-        <div className="absolute top-4 right-4 flex space-x-2">
-          {isReadOnly ? (
-            <div className="px-3 py-1.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs flex items-center gap-1">
-              <Lock className="w-3 h-3" />
-              <span>Auto-Created</span>
-            </div>
-          ) : (
-            <>
-              <button
-                onClick={() => handleEdit(connector)}
-                className="p-2 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
-                title="Edit connector"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleDelete(connector)}
-                className="p-2 rounded-md bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
-                title="Delete connector"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-start space-x-4 mb-4">
-          <div className="p-3 rounded-lg" style={{ backgroundColor: `${color}20` }}>
-            <IconComponent className="w-8 h-8" style={{ color }} />
+        {/* Colored accent bar */}
+        <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: color }} />
+        
+        <div className="flex items-center gap-4 p-4 pl-6">
+          {/* Icon */}
+          <div 
+            className="flex-shrink-0 p-2.5 rounded-lg" 
+            style={{ backgroundColor: `${color}15` }}
+          >
+            <IconComponent className="w-5 h-5" style={{ color }} />
           </div>
-          <div className="flex-1">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1 pr-32">{connector.name}</h3>
-            <div className="flex items-center space-x-2 flex-wrap gap-1">
+          
+          {/* Connector Info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-1">
+              <button
+                onClick={() => setViewingConnector(connector)}
+                className="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-left truncate"
+              >
+                {connector.name}
+              </button>
+              
+              {isReadOnly && (
+                <Badge variant="default">
+                  <Lock className="w-3 h-3 mr-1" />
+                  System
+                </Badge>
+              )}
+              
               <Badge variant={connector.isActive ? 'success' : 'default'}>
                 {connector.isActive ? 'Active' : 'Inactive'}
               </Badge>
-              <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">{connector.connectorType}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-4">
-          {connector.connectorType === 'rest' && connector.config?.baseUrl && (
-            <div>
-              <span className="font-medium text-gray-900 dark:text-gray-200">Base URL:</span> {connector.config.baseUrl}
-            </div>
-          )}
-          {connector.connectorType === 'database' && connector.config && (
-            <>
-              {connector.config.host && (
-                <div>
-                  <span className="font-medium text-gray-900 dark:text-gray-200">Host:</span> {connector.config.host}:{connector.config.port || 5432}
-                </div>
-              )}
-              {connector.config.database && (
-                <div>
-                  <span className="font-medium text-gray-900 dark:text-gray-200">Database:</span> {connector.config.database}
-                </div>
-              )}
-              {connector.config.username && (
-                <div>
-                  <span className="font-medium text-gray-900 dark:text-gray-200">Username:</span> {connector.config.username}
-                </div>
-              )}
-              {connector.config.ssl !== undefined && (
-                <div>
-                  <span className="font-medium text-gray-900 dark:text-gray-200">SSL:</span> {connector.config.ssl ? 'Enabled' : 'Disabled'}
-                </div>
-              )}
-            </>
-          )}
-          {connector.connectorType === 'inference' && connector.config && (
-            <>
-              {connector.config.baseUrl && (
-                <div>
-                  <span className="font-medium text-gray-900 dark:text-gray-200">API URL:</span> {connector.config.baseUrl}
-                </div>
-              )}
-              {connector.config.modelId && (
-                <div>
-                  <span className="font-medium text-gray-900 dark:text-gray-200">Model:</span> {connector.config.modelId}
-                </div>
-              )}
-              {connector.config.apiKey && (
-                <div>
-                  <span className="font-medium text-gray-900 dark:text-gray-200">API Key:</span> {connector.config.apiKey.substring(0, 10)}...
-                </div>
-              )}
-            </>
-          )}
-          {connector.authType && connector.authType !== 'none' && (
-            <div>
-              <span className="font-medium text-gray-900 dark:text-gray-200">Auth:</span> {connector.authType}
-            </div>
-          )}
-          <div>
-            <span className="font-medium text-gray-900 dark:text-gray-200">Created by:</span> {connector.creator.firstName} {connector.creator.lastName}
-          </div>
-          {connector._count?.connectorActions !== undefined && (
-            <div>
-              <span className="font-medium text-gray-900 dark:text-gray-200">Actions:</span> {connector._count.connectorActions}
-            </div>
-          )}
-        </div>
-
-        <div className="flex space-x-2">
-          <Button
-            onClick={() => {
-              setViewingConnector(connector);
-              setActiveTab('details');
-            }}
-            className="flex-1 flex items-center justify-center space-x-1 text-sm py-2 bg-gray-600 hover:bg-gray-700"
-          >
-            <Eye className="w-4 h-4" />
-            <span>View Details</span>
-          </Button>
-          <Button
-            onClick={() => handleTest(connector)}
-            className="flex items-center justify-center px-4 text-sm py-2 bg-green-600 hover:bg-green-700"
-            title="Test connection"
-          >
-            <TestTube className="w-4 h-4" />
-          </Button>
-          {connector.connectorType === 'rest' && (
-            <Button
-              onClick={() => openImportModal(connector)}
-              className="flex items-center justify-center px-4 text-sm py-2 bg-purple-600 hover:bg-purple-700"
-              title="Import OpenAPI"
-            >
-              <Code className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderDetailsTab = () => {
-    if (!viewingConnector) return null;
-
-    const { IconComponent, color } = getConnectorIcon(viewingConnector.connectorType);
-
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center space-x-4">
-          <div className="p-4 rounded-lg" style={{ backgroundColor: `${color}20` }}>
-            <IconComponent className="w-12 h-12" style={{ color }} />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{viewingConnector.name}</h2>
-            <p className="text-gray-600 capitalize">{viewingConnector.connectorType} Connector</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <Badge variant={viewingConnector.isActive ? 'success' : 'default'}>
-              {viewingConnector.isActive ? 'Active' : 'Inactive'}
-            </Badge>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Authentication</label>
-            <p className="text-gray-900">{viewingConnector.authType || 'None'}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Created By</label>
-            <p className="text-gray-900">{viewingConnector.creator.firstName} {viewingConnector.creator.lastName}</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Created At</label>
-            <p className="text-gray-900">{new Date(viewingConnector.createdAt).toLocaleString()}</p>
-          </div>
-        </div>
-
-        {viewingConnector.connectorType === 'rest' && viewingConnector.config?.baseUrl && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Base URL</label>
-            <p className="text-gray-900 bg-gray-50 p-3 rounded-md">{viewingConnector.config.baseUrl}</p>
-          </div>
-        )}
-
-        {viewingConnector.version && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Version</label>
-            <p className="text-gray-900">{viewingConnector.version}</p>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderSpecificationTab = () => {
-    if (!viewingConnector) return null;
-
-    return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900">OpenAPI Specification</h3>
-          <Button
-            onClick={() => openImportModal(viewingConnector)}
-            className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Import/Update Spec</span>
-          </Button>
-        </div>
-
-        {viewingConnector.openApiSpec ? (
-          <div>
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <div className="flex justify-between items-center mb-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">
-                    API Title: {viewingConnector.openApiSpec.info?.title || 'N/A'}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Version: {viewingConnector.openApiSpec.openapi || viewingConnector.openApiSpec.swagger || 'N/A'}
-                  </p>
-                </div>
-              </div>
-              <pre className="bg-white p-4 rounded border border-gray-200 overflow-auto max-h-96 text-xs">
-                {JSON.stringify(viewingConnector.openApiSpec, null, 2)}
-              </pre>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-            <Code className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-600 mb-4">No OpenAPI specification imported yet</p>
-            <Button
-              onClick={() => openImportModal(viewingConnector)}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Import OpenAPI Spec
-            </Button>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderActionsTab = () => {
-    if (!viewingConnector) return null;
-
-    if (loadingActions) {
-      return (
-        <div className="text-center py-12">
-          <p className="text-gray-600">Loading actions...</p>
-        </div>
-      );
-    }
-
-    if (connectorActions.length === 0) {
-      return (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <Database className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600 mb-4">No actions available for this connector</p>
-          {viewingConnector.connectorType === 'rest' && (
-            <Button
-              onClick={() => openImportModal(viewingConnector)}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Import OpenAPI to Generate Actions
-            </Button>
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Connector Actions ({connectorActions.length})
-          </h3>
-        </div>
-        <div className="grid gap-4">
-          {connectorActions.map((action) => (
-            <div
-              key={action.id}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 mb-1">{action.displayName}</h4>
-                  <div className="flex items-center space-x-3 text-sm mb-2">
-                    <div className="bg-blue-100 text-blue-700 border-blue-200 border px-2 py-1 rounded text-xs font-medium">
-                      {action.method}
-                    </div>
-                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">{action.path}</code>
-                  </div>
-                  {action.description && (
-                    <p className="text-sm text-gray-600 mb-2">{action.description}</p>
-                  )}
-                  {action.operationId && (
-                    <p className="text-xs text-gray-500">Operation ID: {action.operationId}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const renderStoresTab = () => {
-    if (!viewingConnector) return null;
-
-    if (loadingStores) {
-      return (
-        <div className="text-center py-12">
-          <p className="text-gray-600 dark:text-gray-400">Loading stores...</p>
-        </div>
-      );
-    }
-
-    if (connectorStores.length === 0) {
-      return (
-        <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-          <Database className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-600 dark:text-gray-400 mb-4">No stores configured for this connector</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            Stores represent specific data access points within this connector (e.g., tables, buckets, folders)
-          </p>
-          <Button
-            onClick={() => {
-              // Navigate to stores page with pre-selected connector
-              window.location.href = `/stores?connectorId=${viewingConnector.id}`;
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Store
-          </Button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Stores ({connectorStores.length})
-          </h3>
-          <Button
-            onClick={() => {
-              window.location.href = `/stores?connectorId=${viewingConnector.id}`;
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-            size="sm"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Store
-          </Button>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {connectorStores.map((store: any) => (
-            <div
-              key={store.id}
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">{store.name}</h4>
-                  <div className="flex gap-2 flex-wrap mt-2">
-                    <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
-                      {store.storeType.toUpperCase()}
-                    </span>
-                    <span className="text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-2 py-1 rounded">
-                      {store.dataType.toUpperCase()}
-                    </span>
-                    {store.isDefault && (
-                      <span className="text-xs bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded">
-                        DEFAULT
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <span className={`text-xs px-2 py-1 rounded ${
-                  store.isActive 
-                    ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' 
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}>
-                  {store.isActive ? 'Active' : 'Inactive'}
+              
+              {connector._count?.connectorActions !== undefined && connector._count.connectorActions > 0 && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {connector._count.connectorActions} action{connector._count.connectorActions !== 1 ? 's' : ''}
                 </span>
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                {store.storeType === 'database' && store.config.host && (
-                  <div><span className="font-medium">Host:</span> {store.config.host}:{store.config.port}</div>
-                )}
-                {store.storeType === 's3' && store.config.bucket && (
-                  <div><span className="font-medium">Bucket:</span> {store.config.bucket}</div>
-                )}
-                {store.storeType === 'redis' && store.config.url && (
-                  <div><span className="font-medium">URL:</span> {store.config.url.split('@')[1] || 'Redis'}</div>
-                )}
-                {store.storeType === 'local_file' && store.config.basePath && (
-                  <div><span className="font-medium">Path:</span> {store.config.basePath}</div>
-                )}
-                <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  Created: {new Date(store.createdAt).toLocaleDateString()}
-                </div>
-              </div>
+              )}
             </div>
-          ))}
+            
+            <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+              {/* Connection details based on type */}
+              {connector.connectorType === 'database' && connector.config?.host && (
+                <span className="truncate">
+                  {connector.config.host}:{connector.config.port || 5432} / {connector.config.database}
+                </span>
+              )}
+              {connector.connectorType === 'rest' && connector.config?.baseUrl && (
+                <span className="truncate">{connector.config.baseUrl}</span>
+              )}
+              {connector.connectorType === 'inference' && connector.config?.baseUrl && (
+                <span className="truncate">{connector.config.modelId || 'AI Model'}</span>
+              )}
+              
+              {renderConnectionStatus(connector.id)}
+            </div>
+          </div>
+          
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => testConnection(connector)}
+              disabled={testingConnectors.has(connector.id)}
+              className="flex items-center gap-1.5"
+            >
+              <TestTube className="w-4 h-4" />
+              Test
+            </Button>
+            
+            {!isReadOnly && (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleEdit(connector)}
+                  className="flex items-center gap-1.5"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit
+                </Button>
+                
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDelete(connector)}
+                  className="flex items-center gap-1.5 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </Button>
+              </>
+            )}
+            
+            <button
+              onClick={() => setViewingConnector(connector)}
+              className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -860,7 +378,10 @@ export const Connectors: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-lg text-gray-600">Loading connectors...</p>
+        <div className="flex flex-col items-center gap-3">
+          <Loader className="w-8 h-8 animate-spin text-blue-600" />
+          <p className="text-lg text-gray-600 dark:text-gray-400">Loading connectors...</p>
+        </div>
       </div>
     );
   }
@@ -869,116 +390,194 @@ export const Connectors: React.FC = () => {
   if (viewingConnector) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex justify-between items-center">
+        <div className="mb-6">
           <Button
             onClick={() => setViewingConnector(null)}
-            className="flex items-center space-x-2"
+            variant="ghost"
+            className="flex items-center gap-2"
           >
             <X className="w-4 h-4" />
-            <span>Back to Connectors</span>
+            Back to Connectors
           </Button>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          {/* Tabs */}
-          <div className="border-b border-gray-200 mb-6">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('details')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'details'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div 
+                className="p-3 rounded-lg" 
+                style={{ backgroundColor: `${getConnectorIcon(viewingConnector.connectorType).color}15` }}
               >
-                Details
-              </button>
-              {viewingConnector.connectorType === 'rest' && (
-                <button
-                  onClick={() => setActiveTab('specification')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'specification'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Specification
-                </button>
-              )}
-              <button
-                onClick={() => setActiveTab('actions')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'actions'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Actions
-                {viewingConnector._count?.connectorActions !== undefined && (
-                  <span className="ml-2 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs">
-                    {viewingConnector._count.connectorActions}
+                {React.createElement(getConnectorIcon(viewingConnector.connectorType).icon, {
+                  className: "w-8 h-8",
+                  style: { color: getConnectorIcon(viewingConnector.connectorType).color }
+                })}
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  {viewingConnector.name}
+                </h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant={viewingConnector.isActive ? 'success' : 'default'}>
+                    {viewingConnector.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {getConnectorIcon(viewingConnector.connectorType).label}
                   </span>
-                )}
-              </button>
-              {/* Stores Tab - for all non-REST connectors */}
-              {viewingConnector.connectorType !== 'rest' && (
-                <button
-                  onClick={() => setActiveTab('stores')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === 'stores'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                </div>
+              </div>
+            </div>
+            
+            {!(viewingConnector.isAutoCreated || viewingConnector.category === 'System') && (
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleEdit(viewingConnector)}
+                  className="flex items-center gap-2"
                 >
-                  Stores
-                  {connectorStores.length > 0 && (
-                    <span className="ml-2 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs">
-                      {connectorStores.length}
-                    </span>
-                  )}
-                </button>
-              )}
-            </nav>
+                  <Edit className="w-4 h-4" />
+                  Edit
+                </Button>
+                <Button
+                  onClick={() => handleDelete(viewingConnector)}
+                  variant="ghost"
+                  className="flex items-center gap-2 text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </Button>
+              </div>
+            )}
           </div>
 
-          {/* Tab Content */}
-          {activeTab === 'details' && renderDetailsTab()}
-          {activeTab === 'specification' && renderSpecificationTab()}
-          {activeTab === 'actions' && renderActionsTab()}
-          {activeTab === 'stores' && renderStoresTab()}
-        </div>
+          {/* Connector Details */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Type</label>
+                <p className="text-gray-900 dark:text-gray-100 capitalize">{viewingConnector.connectorType}</p>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Created By</label>
+                <p className="text-gray-900 dark:text-gray-100">
+                  {viewingConnector.creator.firstName} {viewingConnector.creator.lastName}
+                </p>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Created At</label>
+                <p className="text-gray-900 dark:text-gray-100">
+                  {new Date(viewingConnector.createdAt).toLocaleString()}
+                </p>
+              </div>
+              
+              {viewingConnector._count?.connectorActions !== undefined && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Actions</label>
+                  <p className="text-gray-900 dark:text-gray-100">
+                    {viewingConnector._count.connectorActions} configured
+                  </p>
+                </div>
+              )}
+            </div>
 
-        <AlertDialog
-          isOpen={alertDialog.isOpen}
-          onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
-          title={alertDialog.title}
-          message={alertDialog.message}
-          type={alertDialog.type}
-        />
+            {/* Configuration Details */}
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Configuration</h3>
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-2">
+                {viewingConnector.connectorType === 'database' && (
+                  <>
+                    {viewingConnector.config?.host && (
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Host:</span>
+                        <span className="text-sm text-gray-900 dark:text-gray-100">
+                          {viewingConnector.config.host}:{viewingConnector.config.port || 5432}
+                        </span>
+                      </div>
+                    )}
+                    {viewingConnector.config?.database && (
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Database:</span>
+                        <span className="text-sm text-gray-900 dark:text-gray-100">{viewingConnector.config.database}</span>
+                      </div>
+                    )}
+                    {viewingConnector.config?.username && (
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Username:</span>
+                        <span className="text-sm text-gray-900 dark:text-gray-100">{viewingConnector.config.username}</span>
+                      </div>
+                    )}
+                    {viewingConnector.config?.ssl !== undefined && (
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">SSL:</span>
+                        <span className="text-sm text-gray-900 dark:text-gray-100">
+                          {viewingConnector.config.ssl ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+                
+                {viewingConnector.connectorType === 'rest' && viewingConnector.config?.baseUrl && (
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Base URL:</span>
+                    <span className="text-sm text-gray-900 dark:text-gray-100">{viewingConnector.config.baseUrl}</span>
+                  </div>
+                )}
+                
+                {viewingConnector.connectorType === 'inference' && (
+                  <>
+                    {viewingConnector.config?.baseUrl && (
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Base URL:</span>
+                        <span className="text-sm text-gray-900 dark:text-gray-100">{viewingConnector.config.baseUrl}</span>
+                      </div>
+                    )}
+                    {viewingConnector.config?.modelId && (
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Model ID:</span>
+                        <span className="text-sm text-gray-900 dark:text-gray-100">{viewingConnector.config.modelId}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  // Connectors list view
+  // Main connectors list view
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-between items-center mb-6">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Connectors</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage external service connections</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Manage connections to external services and databases
+          </p>
         </div>
         <Button
           onClick={handleCreateConnector}
-          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white"
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
         >
           <Plus className="w-5 h-5" />
-          <span>New Connector</span>
+          New Connector
         </Button>
       </div>
 
       {connectors.length === 0 ? (
-        <Card className="text-center py-12">
-          <p className="text-gray-600 mb-4">No connectors found. Create your first connector to get started.</p>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
+          <AlertCircle className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            No connectors found
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Create your first connector to connect to external services
+          </p>
           <Button
             onClick={handleCreateConnector}
             className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -986,228 +585,61 @@ export const Connectors: React.FC = () => {
             <Plus className="w-5 h-5 mr-2" />
             Create Connector
           </Button>
-        </Card>
+        </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {connectors.map(renderConnectorCard)}
-        </div>
-      )}
-
-      {/* Create/Edit Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">
-                {editingConnector ? 'Edit Connector' : 'Create New Connector'}
-              </h2>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Connector Type</label>
-                  <select
-                    value={formData.connectorType}
-                    onChange={(e) => setFormData({ ...formData, connectorType: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <div className="space-y-8">
+          {Object.entries(groupedConnectors).map(([type, typeConnectors]) => {
+            const { icon: IconComponent, color, label } = getConnectorIcon(type);
+            
+            return (
+              <div key={type}>
+                {/* Group Header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div 
+                    className="p-2 rounded-lg" 
+                    style={{ backgroundColor: `${color}15` }}
                   >
-                    <option value="rest">REST API</option>
-                    <option value="database">Database</option>
-                    <option value="inference">AI / Inference</option>
-                    <option value="s3">S3 Storage</option>
-                    <option value="ftp">FTP/SFTP</option>
-                    <option value="file">File System</option>
-                  </select>
+                    <IconComponent className="w-5 h-5" style={{ color }} />
+                  </div>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    {label}
+                  </h2>
+                  <Badge variant="default">{typeConnectors.length}</Badge>
                 </div>
-
-                <IconUpload
-                  currentIcon={formData.iconUrl || undefined}
-                  onIconChange={(iconUrl) => setFormData({ ...formData, iconUrl })}
-                  label="Custom Icon (Optional)"
-                  helpText="Upload a custom icon for this connector (PNG, JPG, SVG - max 512KB)"
-                />
-
-                {formData.connectorType === 'rest' && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Base URL</label>
-                      <input
-                        type="text"
-                        value={formData.config.baseUrl}
-                        onChange={(e) => setFormData({ ...formData, config: { ...formData.config, baseUrl: e.target.value } })}
-                        placeholder="https://api.example.com"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Authentication Type</label>
-                      <select
-                        value={formData.authType}
-                        onChange={(e) => setFormData({ ...formData, authType: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="none">None</option>
-                        <option value="basic">Basic Auth</option>
-                        <option value="bearer">Bearer Token</option>
-                        <option value="api_key">API Key</option>
-                      </select>
-                    </div>
-
-                    {formData.authType === 'basic' && (
-                      <>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                          <input
-                            type="text"
-                            value={formData.config.username}
-                            onChange={(e) => setFormData({ ...formData, config: { ...formData.config, username: e.target.value } })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                          <input
-                            type="password"
-                            value={formData.config.password}
-                            onChange={(e) => setFormData({ ...formData, config: { ...formData.config, password: e.target.value } })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {formData.authType === 'bearer' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Bearer Token</label>
-                        <input
-                          type="password"
-                          value={formData.config.token}
-                          onChange={(e) => setFormData({ ...formData, config: { ...formData.config, token: e.target.value } })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    )}
-
-                    {formData.authType === 'api_key' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-                        <input
-                          type="password"
-                          value={formData.config.apiKey}
-                          onChange={(e) => setFormData({ ...formData, config: { ...formData.config, apiKey: e.target.value } })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    )}
-                  </>
-                )}
-
-                <div className="flex justify-end space-x-3 mt-6">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setShowModal(false);
-                      resetForm();
-                    }}
-                    className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    {editingConnector ? 'Update' : 'Create'} Connector
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* OpenAPI Import Modal */}
-      {showOpenApiModal && selectedConnector && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-2xl font-bold mb-4">
-                Import OpenAPI Spec for {selectedConnector.name}
-              </h2>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    OpenAPI Spec URL
-                  </label>
-                  <input
-                    type="text"
-                    value={openApiUrl}
-                    onChange={(e) => setOpenApiUrl(e.target.value)}
-                    placeholder="https://api.example.com/openapi.json"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Provide a URL to fetch the OpenAPI spec from
-                  </p>
-                </div>
-
-                <div className="text-center text-gray-500 font-medium">OR</div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Paste OpenAPI Spec (JSON/YAML)
-                  </label>
-                  <textarea
-                    value={openApiSpec}
-                    onChange={(e) => setOpenApiSpec(e.target.value)}
-                    placeholder="Paste your OpenAPI 3.0 specification here..."
-                    rows={12}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Paste your OpenAPI 3.0 specification here (JSON or YAML format supported)
-                  </p>
+                
+                {/* Connectors List */}
+                <div className="space-y-2">
+                  {typeConnectors.map(renderConnectorRow)}
                 </div>
               </div>
-
-              <div className="flex justify-end space-x-3 mt-6">
-                <Button
-                  onClick={() => {
-                    setShowOpenApiModal(false);
-                    setOpenApiSpec('');
-                    setOpenApiUrl('');
-                    setSelectedConnector(null);
-                  }}
-                  className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleImportOpenApi}
-                  disabled={importingOpenApi}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  {importingOpenApi ? 'Importing...' : 'Import'}
-                </Button>
-              </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
       )}
 
+      {/* Type Selection Modal */}
+      <ConnectorTypeSelectionModal
+        isOpen={showTypeSelectionModal}
+        onClose={() => setShowTypeSelectionModal(false)}
+        onSelectType={handleTypeSelected}
+      />
+
+      {/* Database Config Modal */}
+      <DatabaseConnectorConfigModal
+        isOpen={showDatabaseConfigModal}
+        onClose={() => {
+          setShowDatabaseConfigModal(false);
+          setEditingConnector(null);
+        }}
+        onSave={() => {
+          setShowDatabaseConfigModal(false);
+          setEditingConnector(null);
+          loadConnectors();
+        }}
+        editingConnector={editingConnector}
+      />
+
+      {/* Dialogs */}
       <AlertDialog
         isOpen={alertDialog.isOpen}
         onClose={() => setAlertDialog({ ...alertDialog, isOpen: false })}
@@ -1219,24 +651,12 @@ export const Connectors: React.FC = () => {
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
         onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-        onConfirm={confirmDialog.onConfirm}
+        onConfirm={() => {
+          confirmDialog.onConfirm();
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+        }}
         title={confirmDialog.title}
         message={confirmDialog.message}
-      />
-
-      {/* Connector Type Selection Modal */}
-      <ConnectorTypeSelectionModal
-        isOpen={showTypeSelectionModal}
-        onClose={() => setShowTypeSelectionModal(false)}
-        onSelectType={handleConnectorTypeSelected}
-      />
-
-      {/* Database Connector Config Modal */}
-      <DatabaseConnectorConfigModal
-        isOpen={showDatabaseConfigModal}
-        onClose={() => setShowDatabaseConfigModal(false)}
-        onSave={handleDatabaseConnectorSave}
-        editingConnector={editingConnector}
       />
     </div>
   );
