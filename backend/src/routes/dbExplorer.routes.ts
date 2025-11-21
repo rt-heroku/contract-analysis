@@ -33,6 +33,9 @@ router.get('/:connectorId/schemas/:schemaName/tables/:tableName/policies', dbExp
 router.get('/:connectorId/schemas/:schemaName/tables/:tableName/rules', dbExplorerController.getRules);
 router.get('/:connectorId/schemas/:schemaName/tables/:tableName/ddl', dbExplorerController.getTableDDL);
 router.get('/:connectorId/schemas/:schemaName/tables/:tableName/data', dbExplorerController.getTableData);
+router.get('/:connectorId/schemas/:schemaName/tables/:tableName/stats', dbExplorerController.getTableStats);
+router.get('/:connectorId/schemas/:schemaName/tables/:tableName/dependencies', dbExplorerController.getTableDependencies);
+router.get('/:connectorId/schemas/:schemaName/tables/:tableName/performance', dbExplorerController.getTablePerformance);
 
 // Schema ERD
 router.get('/:connectorId/schemas/:schemaName/erd', dbExplorerController.getSchemaERD);

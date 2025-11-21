@@ -1189,6 +1189,189 @@ The user can provide additional details in follow-up messages. Keep the conversa
     const result = await this.executeQuery(connectorId, userId, query);
     return result.rows[0];
   }
+
+  /**
+   * Get detailed table statistics
+   */
+  async getTableStats(connectorId: number, userId: number, schemaName: string, tableName: string) {
+    const query = `
+      SELECT
+        schemaname,
+        tablename,
+        (SELECT count(*) FROM "${schemaName}"."${tableName}") as row_count,
+        pg_size_pretty(pg_total_relation_size('"${schemaName}"."${tableName}"')) as total_size,
+        pg_size_pretty(pg_relation_size('"${schemaName}"."${tableName}"')) as table_size,
+        pg_size_pretty(pg_indexes_size('"${schemaName}"."${tableName}"')) as index_size,
+        (SELECT count(*) FROM pg_indexes WHERE schemaname = '${schemaName}' AND tablename = '${tableName}') as index_count,
+        n_live_tup as live_tuples,
+        n_dead_tup as dead_tuples,
+        n_tup_ins as inserts,
+        n_tup_upd as updates,
+        n_tup_del as deletes,
+        last_vacuum,
+        last_autovacuum,
+        last_analyze,
+        last_autoanalyze,
+        vacuum_count,
+        autovacuum_count,
+        analyze_count,
+        autoanalyze_count
+      FROM pg_stat_user_tables
+      WHERE schemaname = '${schemaName}' AND tablename = '${tableName}';
+    `;
+
+    const result = await this.executeQuery(connectorId, userId, query);
+    return result.rows[0] || {};
+  }
+
+  /**
+   * Get table dependencies (views, functions that depend on this table)
+   */
+  async getTableDependencies(connectorId: number, userId: number, schemaName: string, tableName: string) {
+    const query = `
+      SELECT DISTINCT
+        dependent_ns.nspname as dependent_schema,
+        dependent_view.relname as dependent_view,
+        dependent_view.relkind as dependent_type
+      FROM pg_depend
+      JOIN pg_rewrite ON pg_depend.objid = pg_rewrite.oid
+      JOIN pg_class as dependent_view ON pg_rewrite.ev_class = dependent_view.oid
+      JOIN pg_class as source_table ON pg_depend.refobjid = source_table.oid
+      JOIN pg_namespace dependent_ns ON dependent_view.relnamespace = dependent_ns.oid
+      JOIN pg_namespace source_ns ON source_table.relnamespace = source_ns.oid
+      WHERE source_ns.nspname = '${schemaName}'
+        AND source_table.relname = '${tableName}'
+        AND source_table.relkind = 'r'
+        AND pg_depend.deptype = 'n'
+      ORDER BY dependent_schema, dependent_view;
+    `;
+
+    const result = await this.executeQuery(connectorId, userId, query);
+    
+    // Also get functions that reference this table
+    const funcQuery = `
+      SELECT 
+        n.nspname as schema_name,
+        p.proname as function_name,
+        pg_get_functiondef(p.oid) as definition
+      FROM pg_proc p
+      JOIN pg_namespace n ON p.pronamespace = n.oid
+      WHERE pg_get_functiondef(p.oid) LIKE '%${tableName}%'
+        AND n.nspname NOT IN ('pg_catalog', 'information_schema');
+    `;
+
+    const funcResult = await this.executeQuery(connectorId, userId, funcQuery);
+
+    return {
+      views: result.rows.filter(r => r.dependent_type === 'v'),
+      materializedViews: result.rows.filter(r => r.dependent_type === 'm'),
+      functions: funcResult.rows,
+    };
+  }
+
+  /**
+   * Get table performance metrics
+   */
+  async getTablePerformance(connectorId: number, userId: number, schemaName: string, tableName: string) {
+    const query = `
+      SELECT 
+        schemaname,
+        tablename,
+        seq_scan,
+        seq_tup_read,
+        CASE WHEN seq_scan > 0 THEN seq_tup_read::float / seq_scan ELSE 0 END as avg_seq_read,
+        idx_scan,
+        idx_tup_fetch,
+        CASE WHEN idx_scan > 0 THEN idx_tup_fetch::float / idx_scan ELSE 0 END as avg_idx_fetch,
+        n_tup_ins as inserts_per_sec,
+        n_tup_upd as updates_per_sec,
+        n_tup_del as deletes_per_sec,
+        n_tup_hot_upd as hot_updates,
+        n_live_tup as live_rows,
+        n_dead_tup as dead_rows,
+        CASE WHEN n_live_tup > 0 THEN (n_dead_tup::float / n_live_tup * 100) ELSE 0 END as bloat_ratio
+      FROM pg_stat_user_tables
+      WHERE schemaname = '${schemaName}' AND tablename = '${tableName}';
+    `;
+
+    const statsResult = await this.executeQuery(connectorId, userId, query);
+
+    // Get index usage stats
+    const indexQuery = `
+      SELECT
+        indexrelname as index_name,
+        idx_scan as scans,
+        idx_tup_read as tuples_read,
+        idx_tup_fetch as tuples_fetched,
+        pg_size_pretty(pg_relation_size(indexrelid)) as index_size
+      FROM pg_stat_user_indexes
+      WHERE schemaname = '${schemaName}' AND tablename = '${tableName}'
+      ORDER BY idx_scan DESC;
+    `;
+
+    const indexResult = await this.executeQuery(connectorId, userId, indexQuery);
+
+    // Get table bloat estimate
+    const bloatQuery = `
+      SELECT 
+        current_database() as db,
+        schemaname,
+        tablename,
+        ROUND(CASE WHEN otta=0 OR sml.relpages=0 THEN 0.0 
+          ELSE sml.relpages/otta::numeric END,1) AS tbloat,
+        CASE WHEN relpages < otta THEN 0 
+          ELSE relpages::bigint - otta END AS wastedbytes,
+        pg_size_pretty((CASE WHEN relpages < otta THEN 0 
+          ELSE relpages::bigint - otta END * bs)::bigint) AS wastedsize
+      FROM (
+        SELECT
+          schemaname, tablename, cc.reltuples, cc.relpages, bs,
+          CEIL((cc.reltuples*((datahdr+ma-
+            (CASE WHEN datahdr%ma=0 THEN ma ELSE datahdr%ma END))+nullhdr2+4))/(bs-20::float)) AS otta
+        FROM (
+          SELECT
+            ma,bs,schemaname,tablename,
+            (datawidth+(hdr+ma-(case when hdr%ma=0 THEN ma ELSE hdr%ma END)))::numeric AS datahdr,
+            (maxfracsum*(nullhdr+ma-(case when nullhdr%ma=0 THEN ma ELSE nullhdr%ma END))) AS nullhdr2
+          FROM (
+            SELECT
+              schemaname, tablename, hdr, ma, bs,
+              SUM((1-null_frac)*avg_width) AS datawidth,
+              MAX(null_frac) AS maxfracsum,
+              hdr+(
+                SELECT 1+count(*)/8
+                FROM pg_stats s2
+                WHERE null_frac<>0 AND s2.schemaname = s.schemaname AND s2.tablename = s.tablename
+              ) AS nullhdr
+            FROM pg_stats s, (
+              SELECT
+                (SELECT current_setting('block_size')::numeric) AS bs,
+                CASE WHEN SUBSTRING(v,12,3) IN ('8.0','8.1','8.2') THEN 27 ELSE 23 END AS hdr,
+                CASE WHEN v ~ 'mingw32' THEN 8 ELSE 4 END AS ma
+              FROM (SELECT version() AS v) AS foo
+            ) AS constants
+            GROUP BY 1,2,3,4,5
+          ) AS foo
+        ) AS rs
+        JOIN pg_class cc ON cc.relname = rs.tablename
+        JOIN pg_namespace nn ON cc.relnamespace = nn.oid AND nn.nspname = rs.schemaname AND nn.nspname <> 'information_schema'
+      ) AS sml
+      WHERE schemaname = '${schemaName}' AND tablename = '${tableName}';
+    `;
+
+    let bloatResult;
+    try {
+      bloatResult = await this.executeQuery(connectorId, userId, bloatQuery);
+    } catch (error) {
+      bloatResult = { rows: [] };
+    }
+
+    return {
+      stats: statsResult.rows[0] || {},
+      indexes: indexResult.rows || [],
+      bloat: bloatResult.rows[0] || {},
+    };
+  }
 }
 
 export default new DatabaseExplorerService();

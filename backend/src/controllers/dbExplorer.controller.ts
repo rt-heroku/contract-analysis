@@ -732,3 +732,57 @@ export const explainQuery = async (req: AuthenticatedRequest, res: Response) => 
   }
 };
 
+/**
+ * Get table statistics
+ */
+export const getTableStats = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const { schemaName, tableName } = req.params;
+    const userId = req.user!.id;
+
+    const stats = await dbExplorerService.getTableStats(connectorId, userId, schemaName, tableName);
+
+    res.json(stats);
+  } catch (error: any) {
+    logger.error('Get table stats error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get table stats' });
+  }
+};
+
+/**
+ * Get table dependencies
+ */
+export const getTableDependencies = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const { schemaName, tableName } = req.params;
+    const userId = req.user!.id;
+
+    const dependencies = await dbExplorerService.getTableDependencies(connectorId, userId, schemaName, tableName);
+
+    res.json(dependencies);
+  } catch (error: any) {
+    logger.error('Get table dependencies error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get table dependencies' });
+  }
+};
+
+/**
+ * Get table performance metrics
+ */
+export const getTablePerformance = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const { schemaName, tableName } = req.params;
+    const userId = req.user!.id;
+
+    const performance = await dbExplorerService.getTablePerformance(connectorId, userId, schemaName, tableName);
+
+    res.json(performance);
+  } catch (error: any) {
+    logger.error('Get table performance error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get table performance' });
+  }
+};
+
