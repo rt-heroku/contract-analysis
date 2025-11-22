@@ -88,6 +88,7 @@ router.post('/:connectorId/data/update', dbDataOperations.updateRows);
 router.post('/:connectorId/data/delete', dbDataOperations.deleteRows);
 router.post('/:connectorId/data/bulk-insert', dbDataOperations.bulkInsert);
 router.post('/:connectorId/data/bulk-delete', dbDataOperations.bulkDelete);
+router.post('/:connectorId/data/import', dbDataOperations.importData);
 
 // Index operations
 router.post('/:connectorId/indexes/create', dbIndexOperations.createIndex);

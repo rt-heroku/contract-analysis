@@ -596,6 +596,7 @@ export const DbTree: React.FC<DbTreeProps> = ({
         },
         () => onTableAction?.('export', tableName, schemaName),
         () => onTableAction?.('export-ddl', tableName, schemaName),
+        () => onTableAction?.('import', tableName, schemaName),
         () => onTableAction?.('alter', tableName, schemaName),
         () => onTableAction?.('manage-indexes', tableName, schemaName),
         () => onTableAction?.('truncate', tableName, schemaName),

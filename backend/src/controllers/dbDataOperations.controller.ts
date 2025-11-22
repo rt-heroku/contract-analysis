@@ -269,3 +269,108 @@ export const bulkDelete = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
+/**
+ * Import data from CSV/JSON
+ */
+export const importData = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName, tableName, data, options } = req.body;
+
+    if (!schemaName || !tableName || !data || !Array.isArray(data)) {
+      return res.status(400).json({ error: 'Schema name, table name, and data array are required' });
+    }
+
+    const {
+      conflictResolution = 'insert',
+      batchSize = 100,
+      validateData = true,
+    } = options || {};
+
+    let insertedRows = 0;
+    let updatedRows = 0;
+    let skippedRows = 0;
+    const errors: Array<{ row: number; error: string }> = [];
+
+    // Process in batches
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batch = data.slice(i, i + batchSize);
+
+      for (let j = 0; j < batch.length; j++) {
+        const rowData = batch[j];
+        const rowNumber = i + j + 1;
+
+        try {
+          const columns = Object.keys(rowData);
+          const values = Object.values(rowData);
+
+          if (columns.length === 0) {
+            errors.push({ row: rowNumber, error: 'Empty row' });
+            skippedRows++;
+            continue;
+          }
+
+          const columnNames = columns.map(col => `"${col}"`).join(', ');
+          const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
+
+          let query: string;
+          
+          if (conflictResolution === 'insert') {
+            // Simple insert
+            query = `INSERT INTO "${schemaName}"."${tableName}" (${columnNames}) VALUES (${placeholders});`;
+          } else if (conflictResolution === 'update') {
+            // Upsert (INSERT ... ON CONFLICT ... UPDATE)
+            const updateSet = columns.map(col => `"${col}" = EXCLUDED."${col}"`).join(', ');
+            query = `INSERT INTO "${schemaName}"."${tableName}" (${columnNames}) VALUES (${placeholders}) 
+                     ON CONFLICT DO UPDATE SET ${updateSet};`;
+          } else {
+            // Skip on conflict
+            query = `INSERT INTO "${schemaName}"."${tableName}" (${columnNames}) VALUES (${placeholders}) 
+                     ON CONFLICT DO NOTHING;`;
+          }
+
+          const result = await dbExplorerService.executeQuery(connectorId, userId, query, values);
+
+          if (result.rowCount && result.rowCount > 0) {
+            if (conflictResolution === 'update' && result.rowCount === 2) {
+              updatedRows++;
+            } else {
+              insertedRows++;
+            }
+          } else {
+            skippedRows++;
+          }
+        } catch (error: any) {
+          errors.push({
+            row: rowNumber,
+            error: error.message || 'Unknown error',
+          });
+          skippedRows++;
+        }
+      }
+    }
+
+    // Log activity
+    await loggingService.logActivity({
+      userId,
+      actionType: 'database.import_data',
+      actionDescription: `Imported ${insertedRows} rows into table: ${schemaName}.${tableName}`,
+      ipAddress: getClientIp(req),
+      userAgent: getUserAgent(req),
+    });
+
+    res.json({
+      success: errors.length === 0,
+      totalRows: data.length,
+      insertedRows,
+      updatedRows,
+      skippedRows,
+      errors,
+    });
+  } catch (error: any) {
+    logger.error('Import data error:', error);
+    res.status(500).json({ error: error.message || 'Failed to import data' });
+  }
+};
+

@@ -23,6 +23,7 @@ import { SQLFileLoaderDialog } from '@/components/db-explorer/SQLFileLoaderDialo
 import { ViewCodeDialog } from '@/components/db-explorer/ViewCodeDialog';
 import { ModifyColumnDialog } from '@/components/db-explorer/ModifyColumnDialog';
 import { DeleteColumnDialog } from '@/components/db-explorer/DeleteColumnDialog';
+import { DataImportDialog } from '@/components/db-explorer/DataImportDialog';
 import api from '@/lib/api';
 import { cn } from '@/utils/helpers';
 
@@ -172,6 +173,19 @@ export const DatabaseExplorer: React.FC = () => {
     tableName: '',
     schemaName: '',
     columnName: '',
+  });
+
+  // Data Import Dialog
+  const [importDialog, setImportDialog] = useState<{
+    isOpen: boolean;
+    tableName: string;
+    schemaName: string;
+    columns: any[];
+  }>({
+    isOpen: false,
+    tableName: '',
+    schemaName: '',
+    columns: [],
   });
 
   const [currentTableContext, setCurrentTableContext] = useState<{
@@ -386,6 +400,10 @@ export const DatabaseExplorer: React.FC = () => {
         await handleExportDDL('table', tableName, schemaName);
         break;
 
+      case 'import':
+        await handleImportData(tableName, schemaName);
+        break;
+
       case 'alter':
         await handleAlterTable(tableName, schemaName);
         break;
@@ -534,6 +552,32 @@ export const DatabaseExplorer: React.FC = () => {
           onConfirm: () => handleDropFunction(schemaName, functionName),
         });
         break;
+    }
+  };
+
+  const handleImportData = async (tableName: string, schemaName: string) => {
+    if (!selectedConnector) return;
+
+    try {
+      // Fetch table columns
+      const response = await api.get(
+        `/db-explorer/${selectedConnector.id}/schemas/${schemaName}/tables/${tableName}/columns`
+      );
+      const columns = response.data;
+
+      setImportDialog({
+        isOpen: true,
+        tableName,
+        schemaName,
+        columns,
+      });
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to load table columns',
+        type: 'error',
+      });
     }
   };
 
@@ -1815,6 +1859,16 @@ export const DatabaseExplorer: React.FC = () => {
         tableName={deleteColumnDialog.tableName}
         schemaName={deleteColumnDialog.schemaName}
         isLoading={dialogLoading}
+      />
+
+      {/* Data Import Dialog */}
+      <DataImportDialog
+        isOpen={importDialog.isOpen}
+        onClose={() => setImportDialog({ ...importDialog, isOpen: false })}
+        connectorId={selectedConnector?.id || 0}
+        schemaName={importDialog.schemaName}
+        tableName={importDialog.tableName}
+        columns={importDialog.columns}
       />
 
       {/* Connector Selector Modal */}

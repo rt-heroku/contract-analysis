@@ -4,6 +4,7 @@ import {
   Trash, 
   Copy, 
   Download, 
+  Upload,
   Plus, 
   RefreshCw,
   Scissors,
@@ -125,6 +126,7 @@ export const getTableContextMenuItems = (
   onCopyName: () => void,
   onExport: () => void,
   onExportDDL: () => void,
+  onImport: () => void,
   onAlter: () => void,
   onManageIndexes: () => void,
   onTruncate: () => void,
@@ -150,6 +152,11 @@ export const getTableContextMenuItems = (
     label: 'Export DDL',
     icon: <FileText className="w-4 h-4" />,
     onClick: onExportDDL,
+  },
+  {
+    label: 'Import Data',
+    icon: <Upload className="w-4 h-4" />,
+    onClick: onImport,
   },
   { divider: true } as ContextMenuItem,
   {
