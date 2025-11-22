@@ -786,3 +786,30 @@ export const getTablePerformance = async (req: AuthenticatedRequest, res: Respon
   }
 };
 
+/**
+ * Execute SQL file with transaction support
+ */
+export const executeSQLFile = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { sqlContent, useTransaction = true, stopOnError = true } = req.body;
+
+    if (!sqlContent || typeof sqlContent !== 'string') {
+      return res.status(400).json({ error: 'SQL content is required' });
+    }
+
+    logger.info(`Executing SQL file for connector ${connectorId}`);
+
+    const result = await dbExplorerService.executeSQLFile(connectorId, userId, sqlContent, {
+      useTransaction,
+      stopOnError,
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    logger.error('Execute SQL file error:', error);
+    res.status(500).json({ error: error.message || 'Failed to execute SQL file' });
+  }
+};
+

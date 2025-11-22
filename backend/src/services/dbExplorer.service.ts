@@ -1532,6 +1532,209 @@ The user can provide additional details in follow-up messages. Keep the conversa
       };
     }
   }
+
+  /**
+   * Execute SQL file with transaction support
+   */
+  async executeSQLFile(
+    connectorId: number,
+    userId: number,
+    sqlContent: string,
+    options: {
+      useTransaction: boolean;
+      stopOnError: boolean;
+    }
+  ): Promise<{
+    success: boolean;
+    totalStatements: number;
+    successfulStatements: number;
+    failedStatements: number;
+    errors: Array<{
+      statement: string;
+      statementNumber: number;
+      lineNumber: number;
+      error: string;
+    }>;
+    results: any[];
+  }> {
+    const pool = await this.getPool(connectorId, userId);
+
+    try {
+      // Parse SQL into statements
+      const statements = this.parseSQLStatements(sqlContent);
+      const results: any[] = [];
+      const errors: any[] = [];
+      let successfulStatements = 0;
+      let failedStatements = 0;
+
+      if (options.useTransaction) {
+        // Execute in transaction
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+
+          for (let i = 0; i < statements.length; i++) {
+            const stmt = statements[i];
+            try {
+              const result = await client.query(stmt.sql);
+              results.push(result);
+              successfulStatements++;
+            } catch (error: any) {
+              failedStatements++;
+              errors.push({
+                statement: stmt.sql,
+                statementNumber: i + 1,
+                lineNumber: stmt.lineNumber,
+                error: error.message,
+              });
+
+              if (options.stopOnError) {
+                throw error; // Will rollback
+              }
+            }
+          }
+
+          // Commit if no errors or continuing despite errors
+          if (errors.length === 0 || !options.stopOnError) {
+            await client.query('COMMIT');
+          } else {
+            await client.query('ROLLBACK');
+          }
+        } catch (error) {
+          await client.query('ROLLBACK');
+          throw error;
+        } finally {
+          client.release();
+        }
+      } else {
+        // Execute without transaction
+        for (let i = 0; i < statements.length; i++) {
+          const stmt = statements[i];
+          try {
+            const result = await pool.query(stmt.sql);
+            results.push(result);
+            successfulStatements++;
+          } catch (error: any) {
+            failedStatements++;
+            errors.push({
+              statement: stmt.sql,
+              statementNumber: i + 1,
+              lineNumber: stmt.lineNumber,
+              error: error.message,
+            });
+
+            if (options.stopOnError) {
+              break;
+            }
+          }
+        }
+      }
+
+      return {
+        success: errors.length === 0,
+        totalStatements: statements.length,
+        successfulStatements,
+        failedStatements,
+        errors,
+        results,
+      };
+    } catch (error: any) {
+      logger.error('Failed to execute SQL file:', error);
+      throw new Error(`SQL file execution failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Parse SQL content into individual statements
+   */
+  private parseSQLStatements(sql: string): Array<{ sql: string; lineNumber: number }> {
+    const statements: Array<{ sql: string; lineNumber: number }> = [];
+    let currentStatement = '';
+    let currentLineNumber = 1;
+    let statementStartLine = 1;
+    let inString = false;
+    let inComment = false;
+    let inBlockComment = false;
+    let stringDelimiter = '';
+
+    const lines = sql.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      currentLineNumber = i + 1;
+
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        const nextChar = line[j + 1];
+
+        // Handle block comments
+        if (!inString && char === '/' && nextChar === '*') {
+          inBlockComment = true;
+          j++; // Skip next char
+          continue;
+        }
+        if (inBlockComment && char === '*' && nextChar === '/') {
+          inBlockComment = false;
+          j++; // Skip next char
+          continue;
+        }
+        if (inBlockComment) continue;
+
+        // Handle line comments
+        if (!inString && char === '-' && nextChar === '-') {
+          inComment = true;
+          break; // Rest of line is comment
+        }
+
+        // Handle strings
+        if (!inComment && (char === "'" || char === '"')) {
+          if (!inString) {
+            inString = true;
+            stringDelimiter = char;
+          } else if (char === stringDelimiter) {
+            // Check for escaped quote
+            if (nextChar === stringDelimiter) {
+              currentStatement += char + nextChar;
+              j++; // Skip next char
+              continue;
+            }
+            inString = false;
+          }
+        }
+
+        // Add character to current statement
+        currentStatement += char;
+
+        // Check for statement terminator
+        if (!inString && !inComment && char === ';') {
+          const trimmed = currentStatement.trim();
+          if (trimmed && trimmed !== ';') {
+            statements.push({
+              sql: trimmed,
+              lineNumber: statementStartLine,
+            });
+          }
+          currentStatement = '';
+          statementStartLine = currentLineNumber + 1;
+        }
+      }
+
+      // Reset line comment flag
+      inComment = false;
+      currentStatement += '\n';
+    }
+
+    // Add last statement if exists
+    const trimmed = currentStatement.trim();
+    if (trimmed) {
+      statements.push({
+        sql: trimmed,
+        lineNumber: statementStartLine,
+      });
+    }
+
+    return statements;
+  }
 }
 
 export default new DatabaseExplorerService();

@@ -47,6 +47,7 @@ router.post('/:connectorId/ai-generate', dbExplorerController.generateAISQL);
 // Query execution
 router.post('/:connectorId/query', dbExplorerController.executeQuery);
 router.post('/:connectorId/explain', dbExplorerController.explainQuery);
+router.post('/:connectorId/execute-file', dbExplorerController.executeSQLFile);
 
 // Query history and favorites
 router.get('/queries/history', dbExplorerController.getQueryHistory);
