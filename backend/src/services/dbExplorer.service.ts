@@ -71,6 +71,12 @@ interface ForeignKeyInfo {
   referencedColumnName: string;
   onDelete: string;
   onUpdate: string;
+  direction?: 'outgoing' | 'incoming';
+  // Aliases for frontend compatibility
+  constraint_name?: string;
+  foreign_table_name?: string;
+  foreign_table_schema?: string;
+  foreign_column_name?: string;
 }
 
 interface FunctionInfo {

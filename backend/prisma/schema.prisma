@@ -59,6 +59,7 @@ model User {
   dbConnections    DbConnection[]     @relation("UserDbConnections")
   systemPromptsCreated SystemPrompt[]  @relation("SystemPromptCreator")
   systemPromptsUpdated SystemPrompt[]  @relation("SystemPromptUpdater")
+  dbAnalysisResults DbAnalysisResult[] @relation("AnalysisExecutor")
 
   @@map("users")
 }
@@ -414,6 +415,32 @@ model SystemPrompt {
   @@map("system_prompts")
 }
 
+model DbAnalysisResult {
+  id               Int       @id @default(autoincrement())
+  connectorId      Int       @map("connector_id")
+  schemaName       String    @map("schema_name") @db.VarChar(255)
+  tableName        String    @map("table_name") @db.VarChar(255)
+  analysisType     String    @map("analysis_type") @db.VarChar(50)
+  scenarioDetected String?   @map("scenario_detected") @db.VarChar(50)
+  healthScore      Int?      @map("health_score")
+  tableContext     Json      @map("table_context")
+  aiAnalysis       String    @map("ai_analysis") @db.Text
+  recommendations  Json?
+  actionsTaken     Json?     @map("actions_taken")
+  executedBy       Int?      @map("executed_by")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  connector Connector @relation("AnalysisResults", fields: [connectorId], references: [id], onDelete: Cascade)
+  executor  User?     @relation("AnalysisExecutor", fields: [executedBy], references: [id], onDelete: SetNull)
+
+  @@index([connectorId])
+  @@index([schemaName, tableName])
+  @@index([analysisType])
+  @@index([createdAt(sort: Desc)])
+  @@map("db_analysis_results")
+}
+
 model Flow {
   id          Int      @id @default(autoincrement())
   name        String   @db.VarChar(200)
@@ -649,8 +676,9 @@ model Connector {
   connectorActions ConnectorAction[]
   actions          Action[]          @relation("ConnectorActions")
   stores           Store[]
-  dbQueries        DbQuery[]         @relation("ConnectorQueries")
-  dbConnections    DbConnection[]    @relation("ConnectorConnections")
+  dbQueries        DbQuery[]            @relation("ConnectorQueries")
+  dbConnections    DbConnection[]       @relation("ConnectorConnections")
+  analysisResults  DbAnalysisResult[]   @relation("AnalysisResults")
 
   @@index([createdBy])
   @@index([connectorType])
