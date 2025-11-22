@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Check, X, AlertTriangle, Play, Loader2, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Play, Loader2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/common/Button';
-import { Checkbox } from '@/components/craft/Checkbox';
 import api from '@/lib/api';
 
 interface Recommendation {
@@ -67,19 +66,6 @@ export const RecommendationChecklist: React.FC<RecommendationChecklistProps> = (
     }
   };
 
-  const getPriorityColor = (priority?: string) => {
-    switch (priority) {
-      case 'high':
-        return 'text-red-600 dark:text-red-400';
-      case 'medium':
-        return 'text-orange-600 dark:text-orange-400';
-      case 'low':
-        return 'text-blue-600 dark:text-blue-400';
-      default:
-        return 'text-gray-600 dark:text-gray-400';
-    }
-  };
-
   const getPriorityBadge = (priority?: string) => {
     switch (priority) {
       case 'high':
@@ -140,9 +126,11 @@ export const RecommendationChecklist: React.FC<RecommendationChecklistProps> = (
                   {isExecuted ? (
                     <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
                   ) : (
-                    <Checkbox
+                    <input
+                      type="checkbox"
                       checked={isSelected}
-                      onCheckedChange={() => handleToggleItem(index)}
+                      onChange={() => handleToggleItem(index)}
+                      className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 cursor-pointer"
                     />
                   )}
                 </div>

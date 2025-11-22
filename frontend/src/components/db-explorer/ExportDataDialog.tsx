@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Download, Copy, CheckCircle } from 'lucide-react';
+import { Download, Copy, CheckCircle } from 'lucide-react';
 import { Modal } from '@/components/common/Modal';
 import { Button } from '@/components/common/Button';
 import { exportToCSV, exportToJSON, exportToSQL, exportToExcel, copyToClipboard } from '@/utils/dataExport';

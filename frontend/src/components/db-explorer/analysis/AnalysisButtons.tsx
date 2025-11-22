@@ -84,7 +84,7 @@ export const AnalysisButtons: React.FC<AnalysisButtonsProps> = ({
           onClick={handleGetPerformanceTips}
           disabled={healthLoading || tipsLoading}
           className="flex items-center gap-2"
-          variant="default"
+          variant="secondary"
         >
           {tipsLoading ? (
             <Loader2 className="w-4 h-4 animate-spin" />

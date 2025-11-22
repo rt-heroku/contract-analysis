@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, Zap, AlertCircle, TrendingUp, Clock, X } from 'lucide-react';
+import { Activity, Zap, AlertCircle, TrendingUp, Clock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { RecommendationChecklist } from './RecommendationChecklist';
