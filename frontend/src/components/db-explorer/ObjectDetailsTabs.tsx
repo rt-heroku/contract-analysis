@@ -218,7 +218,7 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col h-full">
         <TabsList className="border-b border-gray-200 dark:border-gray-700 px-4">
           <TabsTrigger value="overview">
             <Eye className="w-4 h-4 mr-2" />
