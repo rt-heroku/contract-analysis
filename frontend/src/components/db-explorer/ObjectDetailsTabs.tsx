@@ -71,7 +71,12 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
   const [foreignKeys, setForeignKeys] = useState<any[]>([]);
   const [indexes, setIndexes] = useState<any[]>([]);
   const [triggers, setTriggers] = useState<any[]>([]);
+  const [constraints, setConstraints] = useState<any[]>([]);
+  const [policies, setPolicies] = useState<any[]>([]);
+  const [rules, setRules] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [dependencies, setDependencies] = useState<any>({ views: [], materializedViews: [], functions: [] });
+  const [performance, setPerformance] = useState<any>({ table: {}, indexes: [] });
   
   const [columnSearch, setColumnSearch] = useState('');
 
@@ -87,6 +92,12 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
     }
   }, [activeTab, dataLimit, object, connectorId]);
 
+  useEffect(() => {
+    if (object && activeTab === 'more') {
+      loadMoreDetails();
+    }
+  }, [activeTab, object, connectorId]);
+
   const loadTableDetails = async () => {
     if (!object || object.type !== 'table') return;
 
@@ -99,17 +110,23 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
         fkRes,
         indexesRes,
         statsRes,
+        depsRes,
+        perfRes,
       ] = await Promise.all([
         api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/columns`),
         api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/foreign-keys`),
         api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/indexes`),
         api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/stats`),
+        api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/dependencies`),
+        api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/performance`),
       ]);
 
       setColumns(Array.isArray(columnsRes.data.columns) ? columnsRes.data.columns : []);
       setForeignKeys(Array.isArray(fkRes.data.foreignKeys) ? fkRes.data.foreignKeys : []);
       setIndexes(Array.isArray(indexesRes.data.indexes) ? indexesRes.data.indexes : []);
       setStats(statsRes.data || null);
+      setDependencies(depsRes.data || { views: [], materializedViews: [], functions: [] });
+      setPerformance(perfRes.data || { table: {}, indexes: [] });
     } catch (error) {
       console.error('Failed to load table details:', error);
       // Reset to defaults on error
@@ -117,6 +134,8 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
       setForeignKeys([]);
       setIndexes([]);
       setStats(null);
+      setDependencies({ views: [], materializedViews: [], functions: [] });
+      setPerformance({ table: {}, indexes: [] });
     } finally {
       setLoading(false);
     }
@@ -145,11 +164,17 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
     if (!object || object.type !== 'table') return;
 
     try {
-      const [triggersRes] = await Promise.all([
+      const [triggersRes, constraintsRes, policiesRes, rulesRes] = await Promise.all([
         api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/triggers`),
+        api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/constraints`),
+        api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/policies`),
+        api.get(`/db-explorer/${connectorId}/schemas/${object.schemaName}/tables/${object.name}/rules`),
       ]);
 
-      setTriggers(Array.isArray(triggersRes.data) ? triggersRes.data : []);
+      setTriggers(Array.isArray(triggersRes.data.triggers) ? triggersRes.data.triggers : []);
+      setConstraints(Array.isArray(constraintsRes.data.constraints) ? constraintsRes.data.constraints : []);
+      setPolicies(Array.isArray(policiesRes.data.policies) ? policiesRes.data.policies : []);
+      setRules(Array.isArray(rulesRes.data.rules) ? rulesRes.data.rules : []);
     } catch (error) {
       console.error('Failed to load additional details:', error);
       setTriggers([]);
@@ -643,33 +668,234 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
           {/* More Tab - Placeholder for now */}
           <TabsContent value="more" className="p-4">
             <div className="space-y-6">
+              {/* Triggers */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Triggers</h3>
-                <p className="text-gray-500 dark:text-gray-400">Triggers will be displayed here</p>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  Triggers ({triggers.length})
+                </h3>
+                {triggers.length > 0 ? (
+                  <div className="space-y-2">
+                    {triggers.map((trigger: any, idx: number) => (
+                      <div key={idx} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="font-mono font-semibold">{trigger.triggerName || trigger.trigger_name}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          <span className="font-medium">Event:</span> {trigger.eventManipulation || trigger.event_manipulation || 'N/A'}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          <span className="font-medium">Timing:</span> {trigger.actionTiming || trigger.action_timing || 'N/A'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400">No triggers found</p>
+                )}
               </div>
+
+              {/* Constraints */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Constraints</h3>
-                <p className="text-gray-500 dark:text-gray-400">Constraints will be displayed here</p>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Key className="w-5 h-5" />
+                  Constraints ({constraints.length})
+                </h3>
+                {constraints.length > 0 ? (
+                  <div className="space-y-2">
+                    {constraints.map((constraint: any, idx: number) => (
+                      <div key={idx} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="font-mono font-semibold">{constraint.constraintName || constraint.constraint_name}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          <span className="font-medium">Type:</span> {constraint.constraintType || constraint.constraint_type || 'N/A'}
+                        </div>
+                        {(constraint.definition || constraint.constraint_definition) && (
+                          <pre className="text-xs mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded overflow-x-auto">
+                            {constraint.definition || constraint.constraint_definition}
+                          </pre>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400">No constraints found</p>
+                )}
               </div>
+
+              {/* Policies */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Policies</h3>
-                <p className="text-gray-500 dark:text-gray-400">Policies will be displayed here</p>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5" />
+                  Policies ({policies.length})
+                </h3>
+                {policies.length > 0 ? (
+                  <div className="space-y-2">
+                    {policies.map((policy: any, idx: number) => (
+                      <div key={idx} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="font-mono font-semibold">{policy.policyName || policy.policy_name}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          <span className="font-medium">Command:</span> {policy.cmd || 'N/A'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400">No policies found</p>
+                )}
               </div>
+
+              {/* Rules */}
               <div>
-                <h3 className="text-lg font-semibold mb-3">Rules</h3>
-                <p className="text-gray-500 dark:text-gray-400">Rules will be displayed here</p>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <List className="w-5 h-5" />
+                  Rules ({rules.length})
+                </h3>
+                {rules.length > 0 ? (
+                  <div className="space-y-2">
+                    {rules.map((rule: any, idx: number) => (
+                      <div key={idx} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="font-mono font-semibold">{rule.ruleName || rule.rule_name}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          <span className="font-medium">Event:</span> {rule.eventType || rule.event_type || 'N/A'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400">No rules found</p>
+                )}
               </div>
             </div>
           </TabsContent>
 
-          {/* Dependencies Tab - Placeholder */}
+          {/* Dependencies Tab */}
           <TabsContent value="dependencies" className="p-4">
-            <p className="text-gray-500 dark:text-gray-400">Dependencies will be displayed here</p>
+            <div className="space-y-6">
+              {/* Views */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Views ({dependencies.views?.length || 0})</h3>
+                {dependencies.views && dependencies.views.length > 0 ? (
+                  <div className="space-y-2">
+                    {dependencies.views.map((view: any, idx: number) => (
+                      <div key={idx} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="font-mono">{view.dependent_schema}.{view.dependent_view}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No views depend on this table</p>
+                )}
+              </div>
+
+              {/* Materialized Views */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Materialized Views ({dependencies.materializedViews?.length || 0})</h3>
+                {dependencies.materializedViews && dependencies.materializedViews.length > 0 ? (
+                  <div className="space-y-2">
+                    {dependencies.materializedViews.map((view: any, idx: number) => (
+                      <div key={idx} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="font-mono">{view.dependent_schema}.{view.dependent_view}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No materialized views depend on this table</p>
+                )}
+              </div>
+
+              {/* Functions */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Functions ({dependencies.functions?.length || 0})</h3>
+                {dependencies.functions && dependencies.functions.length > 0 ? (
+                  <div className="space-y-2">
+                    {dependencies.functions.map((func: any, idx: number) => (
+                      <div key={idx} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="font-mono">{func.schema_name}.{func.function_name}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No functions depend on this table</p>
+                )}
+              </div>
+            </div>
           </TabsContent>
 
-          {/* Performance Tab - Placeholder */}
+          {/* Performance Tab */}
           <TabsContent value="performance" className="p-4">
-            <p className="text-gray-500 dark:text-gray-400">Performance metrics will be displayed here</p>
+            <div className="space-y-6">
+              {/* Table Performance */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Table Performance
+                </h3>
+                {performance.table && Object.keys(performance.table).length > 0 ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Sequential Scans</div>
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        {performance.table.seq_scan?.toLocaleString() || 0}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Index Scans</div>
+                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                        {performance.table.idx_scan?.toLocaleString() || 0}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Live Rows</div>
+                      <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                        {performance.table.live_rows?.toLocaleString() || 0}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">Dead Rows</div>
+                      <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                        {performance.table.dead_rows?.toLocaleString() || 0}
+                      </div>
+                    </div>
+                    {performance.table.bloat_ratio !== undefined && (
+                      <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Bloat Ratio</div>
+                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                          {performance.table.bloat_ratio?.toFixed(2)}%
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No performance data available</p>
+                )}
+              </div>
+
+              {/* Index Performance */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  Index Performance ({performance.indexes?.length || 0})
+                </h3>
+                {performance.indexes && performance.indexes.length > 0 ? (
+                  <div className="space-y-2">
+                    {performance.indexes.map((index: any, idx: number) => (
+                      <div key={idx} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-mono font-semibold">{index.index_name}</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              Scans: {index.scans?.toLocaleString() || 0} | 
+                              Tuples Read: {index.tuples_read?.toLocaleString() || 0} | 
+                              Size: {index.index_size || 'N/A'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No index performance data available</p>
+                )}
+              </div>
+            </div>
           </TabsContent>
 
           {/* Relationships Tab */}
