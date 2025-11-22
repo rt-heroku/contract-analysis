@@ -414,10 +414,11 @@ class DatabaseExplorerService {
   }
 
   /**
-   * Get foreign keys for a table
+   * Get foreign keys for a table (both outgoing and incoming)
    */
   async getForeignKeys(connectorId: number, userId: number, schemaName: string, tableName: string): Promise<ForeignKeyInfo[]> {
-    const query = `
+    // Get outgoing foreign keys (this table references other tables)
+    const outgoingQuery = `
       SELECT
         tc.constraint_name,
         tc.table_name,
@@ -427,7 +428,8 @@ class DatabaseExplorerService {
         ccu.table_schema AS referenced_schema_name,
         ccu.column_name AS referenced_column_name,
         rc.delete_rule as on_delete,
-        rc.update_rule as on_update
+        rc.update_rule as on_update,
+        'outgoing' as direction
       FROM information_schema.table_constraints AS tc 
       JOIN information_schema.key_column_usage AS kcu
         ON tc.constraint_name = kcu.constraint_name
@@ -444,17 +446,64 @@ class DatabaseExplorerService {
       ORDER BY tc.constraint_name;
     `;
 
-    const result = await this.executeQuery(connectorId, userId, query, [schemaName, tableName]);
-    return result.rows.map((row: any) => ({
+    // Get incoming foreign keys (other tables reference this table)
+    const incomingQuery = `
+      SELECT
+        tc.constraint_name,
+        ccu.table_name,
+        ccu.table_schema as schema_name,
+        ccu.column_name,
+        tc.table_name AS referenced_table_name,
+        tc.table_schema AS referenced_schema_name,
+        kcu.column_name AS referenced_column_name,
+        rc.delete_rule as on_delete,
+        rc.update_rule as on_update,
+        'incoming' as direction
+      FROM information_schema.table_constraints AS tc 
+      JOIN information_schema.key_column_usage AS kcu
+        ON tc.constraint_name = kcu.constraint_name
+        AND tc.table_schema = kcu.table_schema
+      JOIN information_schema.constraint_column_usage AS ccu
+        ON ccu.constraint_name = tc.constraint_name
+        AND ccu.table_schema = tc.table_schema
+      JOIN information_schema.referential_constraints AS rc
+        ON tc.constraint_name = rc.constraint_name
+        AND tc.table_schema = rc.constraint_schema
+      WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND ccu.table_schema = $1
+        AND ccu.table_name = $2
+      ORDER BY tc.constraint_name;
+    `;
+
+    const outgoingResult = await this.executeQuery(connectorId, userId, outgoingQuery, [schemaName, tableName]);
+    const incomingResult = await this.executeQuery(connectorId, userId, incomingQuery, [schemaName, tableName]);
+    
+    const allFKs = [...outgoingResult.rows, ...incomingResult.rows];
+    
+    return allFKs.map((row: any) => ({
+      // Return both snake_case and camelCase for compatibility
+      constraint_name: row.constraint_name,
       constraintName: row.constraint_name,
+      table_name: row.table_name,
       tableName: row.table_name,
+      schema_name: row.schema_name,
       schemaName: row.schema_name,
+      column_name: row.column_name,
       columnName: row.column_name,
+      referenced_table_name: row.referenced_table_name,
       referencedTableName: row.referenced_table_name,
+      foreign_table_name: row.referenced_table_name, // Alias for frontend
+      referenced_schema_name: row.referenced_schema_name,
       referencedSchemaName: row.referenced_schema_name,
+      foreign_table_schema: row.referenced_schema_name, // Alias for frontend
+      referenced_column_name: row.referenced_column_name,
       referencedColumnName: row.referenced_column_name,
+      foreign_column_name: row.referenced_column_name, // Alias for frontend
+      on_delete: row.on_delete,
       onDelete: row.on_delete,
+      on_update: row.on_update,
       onUpdate: row.on_update,
+      direction: row.direction, // 'outgoing' or 'incoming'
     }));
   }
 
