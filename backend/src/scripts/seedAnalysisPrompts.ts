@@ -74,8 +74,9 @@ async function main() {
 5. **Optimization Opportunities** - Improvements
 6. **Actionable Recommendations** - Specific SQL commands
 
-**Return a JSON object in this EXACT structure:**
-\`\`\`json
+**CRITICAL: Return ONLY a raw JSON object. Do NOT wrap it in markdown code blocks or backticks. Do NOT include any text before or after the JSON.**
+
+**JSON structure to return:**
 {
   "health_score": 85,
   "summary": "Brief overall assessment",
@@ -106,7 +107,6 @@ async function main() {
     }
   ]
 }
-\`\`\`
 
 **IMPORTANT:** 
 - Return ONLY valid JSON, no markdown, no explanations
@@ -165,8 +165,9 @@ async function main() {
 **Write Activity:**
 - Database Uptime: {{db_uptime_days}} days
 
-**Provide immediate bloat resolution plan as JSON:**
-\`\`\`json
+**CRITICAL: Return ONLY a raw JSON object. Do NOT wrap it in markdown code blocks or backticks. Do NOT include any text before or after the JSON.**
+
+**JSON structure to return:**
 {
   "health_score": 30,
   "summary": "Critical bloat requires immediate action",
@@ -252,8 +253,9 @@ async function main() {
 **Current Indexes:**
 {{indexes_list}}
 
-**Provide index recommendations as JSON:**
-\`\`\`json
+**CRITICAL: Return ONLY a raw JSON object. Do NOT wrap it in markdown code blocks or backticks. Do NOT include any text before or after the JSON.**
+
+**JSON structure to return:**
 {
   "health_score": 45,
   "summary": "High sequential scans indicate missing indexes",
@@ -342,8 +344,9 @@ async function main() {
 - Size: {{table_size}}
 - Rows: {{live_rows}}
 
-**Provide optimization plan as JSON:**
-\`\`\`json
+**CRITICAL: Return ONLY a raw JSON object. Do NOT wrap it in markdown code blocks or backticks. Do NOT include any text before or after the JSON.**
+
+**JSON structure to return:**
 {
   "health_score": 40,
   "summary": "Slow queries detected requiring optimization",
@@ -423,8 +426,9 @@ async function main() {
 
 **This pattern suggests potential for caching optimization.**
 
-**Provide caching strategy as JSON:**
-\`\`\`json
+**CRITICAL: Return ONLY a raw JSON object. Do NOT wrap it in markdown code blocks or backticks. Do NOT include any text before or after the JSON.**
+
+**JSON structure to return:**
 {
   "health_score": 60,
   "summary": "Small table with high activity - good caching candidate",
@@ -511,8 +515,9 @@ async function main() {
 **Current Indexes:**
 {{indexes_list}}
 
-**Provide large table optimization plan as JSON:**
-\`\`\`json
+**CRITICAL: Return ONLY a raw JSON object. Do NOT wrap it in markdown code blocks or backticks. Do NOT include any text before or after the JSON.**
+
+**JSON structure to return:**
 {
   "health_score": 55,
   "summary": "Large table requires special optimization strategies",

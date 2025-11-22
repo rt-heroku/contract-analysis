@@ -99,10 +99,13 @@ class AIAnalysisService {
     // Parse AI response to extract summary and recommendations
     let parsedResponse: any = {};
     try {
-      parsedResponse = typeof aiResponse === 'string' ? JSON.parse(aiResponse) : aiResponse;
+      // First, try to extract JSON from markdown code blocks if present
+      const cleanedResponse = this.extractJsonFromMarkdown(aiResponse);
+      parsedResponse = typeof cleanedResponse === 'string' ? JSON.parse(cleanedResponse) : cleanedResponse;
       logger.info('Parsed AI response:', JSON.stringify(parsedResponse, null, 2));
     } catch (e) {
       logger.error('Failed to parse AI response as JSON:', e);
+      logger.error('Raw AI response:', aiResponse.substring(0, 500));
       parsedResponse = { raw: aiResponse };
     }
 
@@ -124,6 +127,33 @@ class AIAnalysisService {
   }
 
   /**
+   * Extract JSON from markdown code blocks if present
+   */
+  private extractJsonFromMarkdown(text: string): string {
+    // If it starts with {, it's already JSON
+    if (text.trim().startsWith('{')) {
+      return text;
+    }
+
+    // Try to extract from markdown code block
+    const jsonBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (jsonBlockMatch && jsonBlockMatch[1]) {
+      logger.info('Extracted JSON from markdown code block');
+      return jsonBlockMatch[1].trim();
+    }
+
+    // Try to find JSON object in the text
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      logger.info('Extracted JSON object from text');
+      return jsonMatch[0];
+    }
+
+    // Return as-is and let JSON.parse fail
+    return text;
+  }
+
+  /**
    * Call AI API using connector configuration
    */
   private async callAI(
@@ -142,8 +172,12 @@ class AIAnalysisService {
     
     logger.info(`Calling AI API: ${apiUrl} with model: ${config.modelId || 'gpt-4'}`);
 
-    // Build messages
+    // Build messages with system message to enforce JSON output
     const messages = [
+      {
+        role: 'system',
+        content: 'You are a PostgreSQL database performance expert. You must respond ONLY with valid JSON. Do not include markdown formatting, code blocks, or any text outside the JSON object. Your response must be parseable by JSON.parse().',
+      },
       {
         role: 'user',
         content: prompt,
