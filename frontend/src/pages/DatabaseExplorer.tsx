@@ -17,6 +17,8 @@ import { IndexManagementDialog } from '@/components/db-explorer/IndexManagementD
 import { AISQLGeneratorDialog } from '@/components/db-explorer/AISQLGeneratorDialog';
 import { DatabaseERD } from '@/components/db-explorer/DatabaseERD';
 import { ConnectorSelectorModal } from '@/components/db-explorer/ConnectorSelectorModal';
+import { ExportDataDialog } from '@/components/db-explorer/ExportDataDialog';
+import { DeleteRowsDialog } from '@/components/db-explorer/DeleteRowsDialog';
 import api from '@/lib/api';
 import { cn } from '@/utils/helpers';
 
@@ -143,6 +145,34 @@ export const DatabaseExplorer: React.FC = () => {
   });
 
   const [dialogLoading, setDialogLoading] = useState(false);
+
+  // Export dialog
+  const [exportDialog, setExportDialog] = useState<{
+    isOpen: boolean;
+    data: any[];
+    tableName: string;
+    schemaName: string;
+    selectedRowsCount: number;
+  }>({
+    isOpen: false,
+    data: [],
+    tableName: '',
+    schemaName: '',
+    selectedRowsCount: 0,
+  });
+
+  // Delete rows dialog
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    rows: any[];
+    tableName: string;
+    schemaName: string;
+  }>({
+    isOpen: false,
+    rows: [],
+    tableName: '',
+    schemaName: '',
+  });
 
   // Alert dialog
   const [alertDialog, setAlertDialog] = useState<{
@@ -792,16 +822,56 @@ export const DatabaseExplorer: React.FC = () => {
     }
   };
 
+  const handleExport = (selectedRows: any[]) => {
+    if (!currentTableContext) return;
+
+    setExportDialog({
+      isOpen: true,
+      data: selectedRows,
+      tableName: currentTableContext.tableName,
+      schemaName: currentTableContext.schemaName,
+      selectedRowsCount: selectedRows.length,
+    });
+  };
+
   const handleBulkDelete = async (rows: any[]) => {
     if (!selectedConnector || !currentTableContext) return;
 
-    setConfirmDialog({
+    setDeleteDialog({
       isOpen: true,
-      title: 'Delete Multiple Rows',
-      message: `Are you sure you want to delete ${rows.length} row(s)? This action cannot be undone.`,
-      danger: true,
-      onConfirm: () => executeBulkDelete(rows),
+      rows,
+      tableName: currentTableContext.tableName,
+      schemaName: currentTableContext.schemaName,
     });
+  };
+
+  const confirmBulkDelete = async () => {
+    if (!selectedConnector || !currentTableContext) return;
+    
+    try {
+      await executeBulkDelete(deleteDialog.rows);
+      setDeleteDialog({ ...deleteDialog, isOpen: false });
+      
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Successfully deleted ${deleteDialog.rows.length} row(s)`,
+        type: 'success',
+      });
+      
+      // Refresh query results
+      const activeTab = queryTabs.find(t => t.id === activeTabId);
+      if (activeTab?.query) {
+        executeQuery(activeTab.query, false);
+      }
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to delete rows',
+        type: 'error',
+      });
+    }
   };
 
   const executeBulkDelete = async (rows: any[]) => {
@@ -1290,6 +1360,9 @@ export const DatabaseExplorer: React.FC = () => {
                     onDelete={currentTableContext ? handleDeleteRow : undefined}
                     onAdd={currentTableContext ? handleAddRow : undefined}
                     onBulkDelete={currentTableContext ? handleBulkDelete : undefined}
+                    onExport={currentTableContext ? handleExport : undefined}
+                    tableName={currentTableContext?.tableName}
+                    schemaName={currentTableContext?.schemaName}
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
@@ -1402,6 +1475,26 @@ export const DatabaseExplorer: React.FC = () => {
         title={alertDialog.title}
         message={alertDialog.message}
         type={alertDialog.type}
+      />
+
+      {/* Export Data Dialog */}
+      <ExportDataDialog
+        isOpen={exportDialog.isOpen}
+        onClose={() => setExportDialog({ ...exportDialog, isOpen: false })}
+        data={exportDialog.data}
+        tableName={exportDialog.tableName}
+        schemaName={exportDialog.schemaName}
+        selectedRowsCount={exportDialog.selectedRowsCount}
+      />
+
+      {/* Delete Rows Dialog */}
+      <DeleteRowsDialog
+        isOpen={deleteDialog.isOpen}
+        onClose={() => setDeleteDialog({ ...deleteDialog, isOpen: false })}
+        onConfirm={confirmBulkDelete}
+        rowCount={deleteDialog.rows.length}
+        tableName={deleteDialog.tableName}
+        schemaName={deleteDialog.schemaName}
       />
 
       {/* Connector Selector Modal */}

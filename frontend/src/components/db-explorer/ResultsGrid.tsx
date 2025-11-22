@@ -14,7 +14,10 @@ interface ResultsGridProps {
   onDelete?: (row: any, rowIndex: number) => void;
   onBulkDelete?: (rows: any[]) => void;
   onAdd?: () => void;
+  onExport?: (selectedRows: any[]) => void;
   showActions?: boolean;
+  tableName?: string;
+  schemaName?: string;
 }
 
 export const ResultsGrid: React.FC<ResultsGridProps> = ({
@@ -28,7 +31,10 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
   onDelete,
   onBulkDelete,
   onAdd,
+  onExport,
   showActions = false,
+  tableName: _tableName,
+  schemaName: _schemaName,
 }) => {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -119,38 +125,6 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
     setTimeout(() => setCopiedCell(null), 2000);
   };
 
-  const exportToCSV = () => {
-    const headers = columns.join(',');
-    const rows = data.map(row => 
-      columns.map(col => {
-        const value = row[col];
-        const formatted = formatCellValue(value);
-        // Escape quotes and wrap in quotes if contains comma
-        return formatted.includes(',') ? `"${formatted.replace(/"/g, '""')}"` : formatted;
-      }).join(',')
-    );
-    
-    const csv = [headers, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `query-results-${new Date().toISOString()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const exportToJSON = () => {
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `query-results-${new Date().toISOString()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const toggleRowSelection = (rowIndex: number) => {
     const newSelection = new Set(selectedRows);
     if (newSelection.has(rowIndex)) {
@@ -213,6 +187,22 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
               Add Row
             </Button>
           )}
+          {onExport && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                const selectedData = selectedRows.size > 0 
+                  ? data.filter((_, idx) => selectedRows.has(idx))
+                  : data;
+                onExport(selectedData);
+              }}
+              className="gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export {selectedRows.size > 0 ? `(${selectedRows.size})` : ''}
+            </Button>
+          )}
           {selectedRows.size > 0 && onBulkDelete && (
             <Button
               size="sm"
@@ -224,24 +214,6 @@ export const ResultsGrid: React.FC<ResultsGridProps> = ({
               Delete Selected ({selectedRows.size})
             </Button>
           )}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={exportToCSV}
-            className="gap-2"
-          >
-            <Download className="w-4 h-4" />
-            CSV
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={exportToJSON}
-            className="gap-2"
-          >
-            <Download className="w-4 h-4" />
-            JSON
-          </Button>
         </div>
       </div>
 
