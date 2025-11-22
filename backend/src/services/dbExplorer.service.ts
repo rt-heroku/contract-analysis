@@ -1197,6 +1197,41 @@ The user can provide additional details in follow-up messages. Keep the conversa
    */
   async getTableStats(connectorId: number, userId: number, schemaName: string, tableName: string) {
     try {
+      // First check if table exists
+      const existsQuery = `
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = '${schemaName}' 
+          AND table_name = '${tableName}'
+        ) as table_exists;
+      `;
+      
+      const existsResult = await this.executeQuery(connectorId, userId, existsQuery);
+      
+      if (!existsResult.rows[0]?.table_exists) {
+        // Table doesn't exist, return default stats
+        return {
+          rowCount: 0,
+          totalSize: '0 bytes',
+          tableSize: '0 bytes',
+          indexSize: '0 bytes',
+          indexCount: 0,
+          liveTuples: 0,
+          deadTuples: 0,
+          inserts: 0,
+          updates: 0,
+          deletes: 0,
+          lastVacuum: null,
+          lastAutovacuum: null,
+          lastAnalyze: null,
+          lastAutoanalyze: null,
+          vacuumCount: 0,
+          autovacuumCount: 0,
+          analyzeCount: 0,
+          autoanalyzeCount: 0,
+        };
+      }
+
       const query = `
         SELECT
           COALESCE((SELECT count(*) FROM "${schemaName}"."${tableName}"), 0) as row_count,
@@ -1296,6 +1331,7 @@ The user can provide additional details in follow-up messages. Keep the conversa
     const result = await this.executeQuery(connectorId, userId, query);
     
     // Also get functions that reference this table
+    // Exclude aggregate functions (prokind = 'a') since pg_get_functiondef doesn't work on them
     const funcQuery = `
       SELECT 
         n.nspname as schema_name,
@@ -1303,16 +1339,24 @@ The user can provide additional details in follow-up messages. Keep the conversa
         pg_get_functiondef(p.oid) as definition
       FROM pg_proc p
       JOIN pg_namespace n ON p.pronamespace = n.oid
-      WHERE pg_get_functiondef(p.oid) LIKE '%${tableName}%'
-        AND n.nspname NOT IN ('pg_catalog', 'information_schema');
+      WHERE p.prokind != 'a'
+        AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+        AND pg_get_functiondef(p.oid) LIKE '%${tableName}%';
     `;
 
-    const funcResult = await this.executeQuery(connectorId, userId, funcQuery);
+    let functions = [];
+    try {
+      const funcResult = await this.executeQuery(connectorId, userId, funcQuery);
+      functions = funcResult.rows;
+    } catch (error) {
+      // If function query fails, just return empty array for functions
+      console.warn('Failed to get table functions:', error);
+    }
 
     return {
       views: result.rows.filter(r => r.dependent_type === 'v'),
       materializedViews: result.rows.filter(r => r.dependent_type === 'm'),
-      functions: funcResult.rows,
+      functions,
     };
   }
 
@@ -1320,28 +1364,29 @@ The user can provide additional details in follow-up messages. Keep the conversa
    * Get table performance metrics
    */
   async getTablePerformance(connectorId: number, userId: number, schemaName: string, tableName: string) {
-    const query = `
-      SELECT 
-        schemaname,
-        relname as tablename,
-        seq_scan,
-        seq_tup_read,
-        CASE WHEN seq_scan > 0 THEN seq_tup_read::float / seq_scan ELSE 0 END as avg_seq_read,
-        idx_scan,
-        idx_tup_fetch,
-        CASE WHEN idx_scan > 0 THEN idx_tup_fetch::float / idx_scan ELSE 0 END as avg_idx_fetch,
-        n_tup_ins as inserts_per_sec,
-        n_tup_upd as updates_per_sec,
-        n_tup_del as deletes_per_sec,
-        n_tup_hot_upd as hot_updates,
-        n_live_tup as live_rows,
-        n_dead_tup as dead_rows,
-        CASE WHEN n_live_tup > 0 THEN (n_dead_tup::float / n_live_tup * 100) ELSE 0 END as bloat_ratio
-      FROM pg_stat_user_tables
-      WHERE schemaname = '${schemaName}' AND relname = '${tableName}';
-    `;
+    try {
+      const query = `
+        SELECT 
+          schemaname,
+          relname as tablename,
+          seq_scan,
+          seq_tup_read,
+          CASE WHEN seq_scan > 0 THEN seq_tup_read::float / seq_scan ELSE 0 END as avg_seq_read,
+          idx_scan,
+          idx_tup_fetch,
+          CASE WHEN idx_scan > 0 THEN idx_tup_fetch::float / idx_scan ELSE 0 END as avg_idx_fetch,
+          n_tup_ins as inserts_per_sec,
+          n_tup_upd as updates_per_sec,
+          n_tup_del as deletes_per_sec,
+          n_tup_hot_upd as hot_updates,
+          n_live_tup as live_rows,
+          n_dead_tup as dead_rows,
+          CASE WHEN n_live_tup > 0 THEN (n_dead_tup::float / n_live_tup * 100) ELSE 0 END as bloat_ratio
+        FROM pg_stat_user_tables
+        WHERE schemaname = '${schemaName}' AND relname = '${tableName}';
+      `;
 
-    const statsResult = await this.executeQuery(connectorId, userId, query);
+      const statsResult = await this.executeQuery(connectorId, userId, query);
 
     // Get index usage stats
     const indexQuery = `
@@ -1406,18 +1451,27 @@ The user can provide additional details in follow-up messages. Keep the conversa
       WHERE schemaname = '${schemaName}' AND tablename = '${tableName}';
     `;
 
-    let bloatResult;
-    try {
-      bloatResult = await this.executeQuery(connectorId, userId, bloatQuery);
-    } catch (error) {
-      bloatResult = { rows: [] };
-    }
+      let bloatResult;
+      try {
+        bloatResult = await this.executeQuery(connectorId, userId, bloatQuery);
+      } catch (error) {
+        bloatResult = { rows: [] };
+      }
 
-    return {
-      stats: statsResult.rows[0] || {},
-      indexes: indexResult.rows || [],
-      bloat: bloatResult.rows[0] || {},
-    };
+      return {
+        table: statsResult.rows[0] || {},
+        indexes: indexResult.rows || [],
+        bloat: bloatResult.rows[0] || {},
+      };
+    } catch (error) {
+      console.error('Failed to get table performance:', error);
+      // Return default performance data on error
+      return {
+        table: {},
+        indexes: [],
+        bloat: {},
+      };
+    }
   }
 }
 
