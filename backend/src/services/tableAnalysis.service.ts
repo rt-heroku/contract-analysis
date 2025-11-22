@@ -4,7 +4,7 @@ import systemPromptService from './systemPrompt.service';
 
 const prisma = new PrismaClient();
 
-interface TableContext {
+export interface TableContext {
   table_name: string;
   schema_name: string;
   sequential_scans: number;
