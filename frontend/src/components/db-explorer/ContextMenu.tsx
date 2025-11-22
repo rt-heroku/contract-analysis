@@ -124,6 +124,7 @@ export const getTableContextMenuItems = (
   onViewData: () => void,
   onCopyName: () => void,
   onExport: () => void,
+  onExportDDL: () => void,
   onAlter: () => void,
   onManageIndexes: () => void,
   onTruncate: () => void,
@@ -145,10 +146,15 @@ export const getTableContextMenuItems = (
     icon: <Download className="w-4 h-4" />,
     onClick: onExport,
   },
+  {
+    label: 'Export DDL',
+    icon: <FileText className="w-4 h-4" />,
+    onClick: onExportDDL,
+  },
   { divider: true } as ContextMenuItem,
   {
     label: 'Alter Table',
-    icon: <FileText className="w-4 h-4" />,
+    icon: <Edit className="w-4 h-4" />,
     onClick: onAlter,
   },
   {
@@ -239,6 +245,7 @@ export const getViewContextMenuItems = (
   _viewName: string,
   onViewDefinition: () => void,
   onCopyName: () => void,
+  onExportDDL: () => void,
   onDrop: () => void
 ): ContextMenuItem[] => [
   {
@@ -251,9 +258,45 @@ export const getViewContextMenuItems = (
     icon: <Copy className="w-4 h-4" />,
     onClick: onCopyName,
   },
+  {
+    label: 'Export DDL',
+    icon: <Download className="w-4 h-4" />,
+    onClick: onExportDDL,
+  },
   { divider: true } as ContextMenuItem,
   {
     label: 'Drop View',
+    icon: <Trash className="w-4 h-4" />,
+    onClick: onDrop,
+    danger: true,
+  },
+];
+
+export const getFunctionContextMenuItems = (
+  _functionName: string,
+  onViewCode: () => void,
+  onCopyName: () => void,
+  onExportDDL: () => void,
+  onDrop: () => void
+): ContextMenuItem[] => [
+  {
+    label: 'View Code',
+    icon: <Eye className="w-4 h-4" />,
+    onClick: onViewCode,
+  },
+  {
+    label: 'Copy Name',
+    icon: <Copy className="w-4 h-4" />,
+    onClick: onCopyName,
+  },
+  {
+    label: 'Export DDL',
+    icon: <Download className="w-4 h-4" />,
+    onClick: onExportDDL,
+  },
+  { divider: true } as ContextMenuItem,
+  {
+    label: 'Drop Function',
     icon: <Trash className="w-4 h-4" />,
     onClick: onDrop,
     danger: true,

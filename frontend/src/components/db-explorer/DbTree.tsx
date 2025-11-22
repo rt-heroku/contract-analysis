@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, Database, Table, Eye, FileCode, Zap, List, Hash, Key, Loader, Link, Shield, AlertCircle, FileWarning } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import api from '@/lib/api';
-import { ContextMenu, getTableContextMenuItems, getColumnContextMenuItems, getSchemaContextMenuItems, getViewContextMenuItems } from './ContextMenu';
+import { ContextMenu, getTableContextMenuItems, getColumnContextMenuItems, getSchemaContextMenuItems, getViewContextMenuItems, getFunctionContextMenuItems } from './ContextMenu';
 
 interface DbTreeProps {
   connectorId: number;
@@ -10,6 +10,7 @@ interface DbTreeProps {
   onDoubleClickTable?: (tableName: string, schemaName: string) => void;
   onTableAction?: (action: string, tableName: string, schemaName: string) => void;
   onViewAction?: (action: string, viewName: string, schemaName: string) => void;
+  onFunctionAction?: (action: string, functionName: string, schemaName: string) => void;
   onSchemaAction?: (action: string, schemaName: string) => void;
   onColumnAction?: (action: string, columnName: string, tableName: string, schemaName: string) => void;
   className?: string;
@@ -40,6 +41,7 @@ export const DbTree: React.FC<DbTreeProps> = ({
   onDoubleClickTable,
   onTableAction,
   onViewAction,
+  onFunctionAction,
   onSchemaAction,
   onColumnAction,
   className 
@@ -593,6 +595,7 @@ export const DbTree: React.FC<DbTreeProps> = ({
           navigator.clipboard.writeText(tableName);
         },
         () => onTableAction?.('export', tableName, schemaName),
+        () => onTableAction?.('export-ddl', tableName, schemaName),
         () => onTableAction?.('alter', tableName, schemaName),
         () => onTableAction?.('manage-indexes', tableName, schemaName),
         () => onTableAction?.('truncate', tableName, schemaName),
@@ -608,7 +611,20 @@ export const DbTree: React.FC<DbTreeProps> = ({
         () => {
           navigator.clipboard.writeText(node.label);
         },
+        () => onViewAction?.('export-ddl', node.label, schemaName),
         () => onViewAction?.('drop', node.label, schemaName)
+      );
+    }
+    // Function context menu
+    else if (node.type === 'function') {
+      menuItems = getFunctionContextMenuItems(
+        node.label,
+        () => onFunctionAction?.('view-code', node.label, schemaName),
+        () => {
+          navigator.clipboard.writeText(node.label);
+        },
+        () => onFunctionAction?.('export-ddl', node.label, schemaName),
+        () => onFunctionAction?.('drop', node.label, schemaName)
       );
     }
     // Column context menu (if we add column nodes in the future)
