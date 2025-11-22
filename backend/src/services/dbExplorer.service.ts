@@ -1196,34 +1196,79 @@ The user can provide additional details in follow-up messages. Keep the conversa
    * Get detailed table statistics
    */
   async getTableStats(connectorId: number, userId: number, schemaName: string, tableName: string) {
-    const query = `
-      SELECT
-        schemaname,
-        relname as tablename,
-        (SELECT count(*) FROM "${schemaName}"."${tableName}") as row_count,
-        pg_size_pretty(pg_total_relation_size('"${schemaName}"."${tableName}"')) as total_size,
-        pg_size_pretty(pg_relation_size('"${schemaName}"."${tableName}"')) as table_size,
-        pg_size_pretty(pg_indexes_size('"${schemaName}"."${tableName}"')) as index_size,
-        (SELECT count(*) FROM pg_indexes WHERE schemaname = '${schemaName}' AND tablename = '${tableName}') as index_count,
-        n_live_tup as live_tuples,
-        n_dead_tup as dead_tuples,
-        n_tup_ins as inserts,
-        n_tup_upd as updates,
-        n_tup_del as deletes,
-        last_vacuum,
-        last_autovacuum,
-        last_analyze,
-        last_autoanalyze,
-        vacuum_count,
-        autovacuum_count,
-        analyze_count,
-        autoanalyze_count
-      FROM pg_stat_user_tables
-      WHERE schemaname = '${schemaName}' AND relname = '${tableName}';
-    `;
+    try {
+      const query = `
+        SELECT
+          COALESCE((SELECT count(*) FROM "${schemaName}"."${tableName}"), 0) as row_count,
+          pg_size_pretty(pg_total_relation_size('"${schemaName}"."${tableName}"')) as total_size,
+          pg_size_pretty(pg_relation_size('"${schemaName}"."${tableName}"')) as table_size,
+          pg_size_pretty(pg_indexes_size('"${schemaName}"."${tableName}"')) as index_size,
+          (SELECT count(*) FROM pg_indexes WHERE schemaname = '${schemaName}' AND tablename = '${tableName}') as index_count,
+          COALESCE(n_live_tup, 0) as live_tuples,
+          COALESCE(n_dead_tup, 0) as dead_tuples,
+          COALESCE(n_tup_ins, 0) as inserts,
+          COALESCE(n_tup_upd, 0) as updates,
+          COALESCE(n_tup_del, 0) as deletes,
+          last_vacuum,
+          last_autovacuum,
+          last_analyze,
+          last_autoanalyze,
+          COALESCE(vacuum_count, 0) as vacuum_count,
+          COALESCE(autovacuum_count, 0) as autovacuum_count,
+          COALESCE(analyze_count, 0) as analyze_count,
+          COALESCE(autoanalyze_count, 0) as autoanalyze_count
+        FROM pg_stat_user_tables
+        WHERE schemaname = '${schemaName}' AND relname = '${tableName}';
+      `;
 
-    const result = await this.executeQuery(connectorId, userId, query);
-    return result.rows[0] || {};
+      const result = await this.executeQuery(connectorId, userId, query);
+      const row = result.rows[0] || {};
+
+      // Convert snake_case to camelCase for frontend
+      return {
+        rowCount: row.row_count || 0,
+        totalSize: row.total_size || '0 bytes',
+        tableSize: row.table_size || '0 bytes',
+        indexSize: row.index_size || '0 bytes',
+        indexCount: row.index_count || 0,
+        liveTuples: row.live_tuples || 0,
+        deadTuples: row.dead_tuples || 0,
+        inserts: row.inserts || 0,
+        updates: row.updates || 0,
+        deletes: row.deletes || 0,
+        lastVacuum: row.last_vacuum,
+        lastAutovacuum: row.last_autovacuum,
+        lastAnalyze: row.last_analyze,
+        lastAutoanalyze: row.last_autoanalyze,
+        vacuumCount: row.vacuum_count || 0,
+        autovacuumCount: row.autovacuum_count || 0,
+        analyzeCount: row.analyze_count || 0,
+        autoanalyzeCount: row.autoanalyze_count || 0,
+      };
+    } catch (error) {
+      logger.error(`Error getting table stats for ${schemaName}.${tableName}:`, error);
+      // Return default stats if query fails
+      return {
+        rowCount: 0,
+        totalSize: '0 bytes',
+        tableSize: '0 bytes',
+        indexSize: '0 bytes',
+        indexCount: 0,
+        liveTuples: 0,
+        deadTuples: 0,
+        inserts: 0,
+        updates: 0,
+        deletes: 0,
+        lastVacuum: null,
+        lastAutovacuum: null,
+        lastAnalyze: null,
+        lastAutoanalyze: null,
+        vacuumCount: 0,
+        autovacuumCount: 0,
+        analyzeCount: 0,
+        autoanalyzeCount: 0,
+      };
+    }
   }
 
   /**
