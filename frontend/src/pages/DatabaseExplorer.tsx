@@ -20,6 +20,9 @@ import { ConnectorSelectorModal } from '@/components/db-explorer/ConnectorSelect
 import { ExportDataDialog } from '@/components/db-explorer/ExportDataDialog';
 import { DeleteRowsDialog } from '@/components/db-explorer/DeleteRowsDialog';
 import { SQLFileLoaderDialog } from '@/components/db-explorer/SQLFileLoaderDialog';
+import { ViewCodeDialog } from '@/components/db-explorer/ViewCodeDialog';
+import { ModifyColumnDialog } from '@/components/db-explorer/ModifyColumnDialog';
+import { DeleteColumnDialog } from '@/components/db-explorer/DeleteColumnDialog';
 import api from '@/lib/api';
 import { cn } from '@/utils/helpers';
 
@@ -126,6 +129,50 @@ export const DatabaseExplorer: React.FC = () => {
 
   const [aiDialog, setAiDialog] = useState(false);
   const [sqlFileDialog, setSqlFileDialog] = useState(false);
+
+  // View Code Dialog
+  const [viewCodeDialog, setViewCodeDialog] = useState<{
+    isOpen: boolean;
+    objectName: string;
+    schemaName: string;
+    objectType: 'view' | 'function';
+  }>({
+    isOpen: false,
+    objectName: '',
+    schemaName: '',
+    objectType: 'view',
+  });
+
+  // Modify Column Dialog
+  const [modifyColumnDialog, setModifyColumnDialog] = useState<{
+    isOpen: boolean;
+    tableName: string;
+    schemaName: string;
+    column: {
+      name: string;
+      dataType: string;
+      nullable: boolean;
+      defaultValue?: string;
+    } | null;
+  }>({
+    isOpen: false,
+    tableName: '',
+    schemaName: '',
+    column: null,
+  });
+
+  // Delete Column Dialog
+  const [deleteColumnDialog, setDeleteColumnDialog] = useState<{
+    isOpen: boolean;
+    tableName: string;
+    schemaName: string;
+    columnName: string;
+  }>({
+    isOpen: false,
+    tableName: '',
+    schemaName: '',
+    columnName: '',
+  });
 
   const [currentTableContext, setCurrentTableContext] = useState<{
     tableName: string;
@@ -335,6 +382,10 @@ export const DatabaseExplorer: React.FC = () => {
         });
         break;
 
+      case 'export-ddl':
+        await handleExportDDL('table', tableName, schemaName);
+        break;
+
       case 'alter':
         await handleAlterTable(tableName, schemaName);
         break;
@@ -433,22 +484,221 @@ export const DatabaseExplorer: React.FC = () => {
 
     switch (action) {
       case 'view-definition':
-        // Select the view object to show its definition
-        setSelectedObject({
-          type: 'view',
-          name: viewName,
+        setViewCodeDialog({
+          isOpen: true,
+          objectName: viewName,
           schemaName: schemaName,
+          objectType: 'view',
         });
         break;
 
+      case 'export-ddl':
+        await handleExportDDL('view', viewName, schemaName);
+        break;
+
       case 'drop':
-        setAlertDialog({
+        setConfirmDialog({
           isOpen: true,
           title: 'Drop View',
-          message: `Are you sure you want to drop view "${schemaName}"."${viewName}"?`,
-          type: 'warning',
+          message: `Are you sure you want to drop view "${schemaName}"."${viewName}"? This action cannot be undone.`,
+          danger: true,
+          onConfirm: () => handleDropView(schemaName, viewName),
         });
         break;
+    }
+  };
+
+  const handleFunctionAction = async (action: string, functionName: string, schemaName: string) => {
+    if (!selectedConnector) return;
+
+    switch (action) {
+      case 'view-code':
+        setViewCodeDialog({
+          isOpen: true,
+          objectName: functionName,
+          schemaName: schemaName,
+          objectType: 'function',
+        });
+        break;
+
+      case 'export-ddl':
+        await handleExportDDL('function', functionName, schemaName);
+        break;
+
+      case 'drop':
+        setConfirmDialog({
+          isOpen: true,
+          title: 'Drop Function',
+          message: `Are you sure you want to drop function "${schemaName}"."${functionName}"? This action cannot be undone.`,
+          danger: true,
+          onConfirm: () => handleDropFunction(schemaName, functionName),
+        });
+        break;
+    }
+  };
+
+  const handleExportDDL = async (objectType: 'table' | 'view' | 'function', objectName: string, schemaName: string) => {
+    if (!selectedConnector) return;
+
+    try {
+      let endpoint = '';
+      if (objectType === 'table') {
+        endpoint = `/db-explorer/${selectedConnector.id}/schemas/${schemaName}/tables/${objectName}/ddl`;
+      } else if (objectType === 'view') {
+        endpoint = `/db-explorer/${selectedConnector.id}/schemas/${schemaName}/views/${objectName}/ddl`;
+      } else {
+        endpoint = `/db-explorer/${selectedConnector.id}/schemas/${schemaName}/functions/${objectName}/ddl`;
+      }
+
+      const response = await api.get(endpoint);
+      const ddl = response.data.ddl;
+
+      // Download as SQL file
+      const blob = new Blob([ddl], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${schemaName}.${objectName}.sql`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `DDL exported successfully`,
+        type: 'success',
+      });
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to export DDL',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleDropView = async (schemaName: string, viewName: string) => {
+    if (!selectedConnector) return;
+
+    try {
+      setDialogLoading(true);
+      await api.delete(`/db-explorer/${selectedConnector.id}/schemas/${schemaName}/views/${viewName}`);
+
+      setConfirmDialog({ ...confirmDialog, isOpen: false });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `View "${viewName}" dropped successfully`,
+        type: 'success',
+      });
+
+      loadConnectors();
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to drop view',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
+    }
+  };
+
+  const handleDropFunction = async (schemaName: string, functionName: string) => {
+    if (!selectedConnector) return;
+
+    try {
+      setDialogLoading(true);
+      await api.delete(`/db-explorer/${selectedConnector.id}/schemas/${schemaName}/functions/${functionName}`);
+
+      setConfirmDialog({ ...confirmDialog, isOpen: false });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Function "${functionName}" dropped successfully`,
+        type: 'success',
+      });
+
+      loadConnectors();
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to drop function',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
+    }
+  };
+
+  const handleModifyColumn = async (modifications: any) => {
+    if (!selectedConnector || !modifyColumnDialog.column) return;
+
+    try {
+      setDialogLoading(true);
+      await api.put(
+        `/db-explorer/${selectedConnector.id}/schemas/${modifyColumnDialog.schemaName}/tables/${modifyColumnDialog.tableName}/columns/${modifyColumnDialog.column.name}`,
+        modifications
+      );
+
+      setModifyColumnDialog({ ...modifyColumnDialog, isOpen: false });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Column modified successfully`,
+        type: 'success',
+      });
+
+      // Refresh selected object if it's the same table
+      if (selectedObject?.type === 'table' && selectedObject.name === modifyColumnDialog.tableName) {
+        setSelectedObject({ ...selectedObject });
+      }
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to modify column',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
+    }
+  };
+
+  const handleDeleteColumn = async (cascade: boolean) => {
+    if (!selectedConnector) return;
+
+    try {
+      setDialogLoading(true);
+      await api.delete(
+        `/db-explorer/${selectedConnector.id}/schemas/${deleteColumnDialog.schemaName}/tables/${deleteColumnDialog.tableName}/columns/${deleteColumnDialog.columnName}`,
+        { data: { cascade } }
+      );
+
+      setDeleteColumnDialog({ ...deleteColumnDialog, isOpen: false });
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Column "${deleteColumnDialog.columnName}" deleted successfully`,
+        type: 'success',
+      });
+
+      // Refresh selected object if it's the same table
+      if (selectedObject?.type === 'table' && selectedObject.name === deleteColumnDialog.tableName) {
+        setSelectedObject({ ...selectedObject });
+      }
+    } catch (error: any) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.error || 'Failed to delete column',
+        type: 'error',
+      });
+    } finally {
+      setDialogLoading(false);
     }
   };
 
@@ -1239,6 +1489,7 @@ export const DatabaseExplorer: React.FC = () => {
                   onDoubleClickTable={handleDoubleClickTable}
                   onTableAction={handleTableAction}
                   onViewAction={handleViewAction}
+                  onFunctionAction={handleFunctionAction}
                   onSchemaAction={handleSchemaAction}
                   onColumnAction={handleColumnAction}
                 />
@@ -1534,6 +1785,36 @@ export const DatabaseExplorer: React.FC = () => {
         isOpen={sqlFileDialog}
         onClose={() => setSqlFileDialog(false)}
         onExecute={handleExecuteSQLFile}
+      />
+
+      {/* View Code Dialog */}
+      <ViewCodeDialog
+        isOpen={viewCodeDialog.isOpen}
+        onClose={() => setViewCodeDialog({ ...viewCodeDialog, isOpen: false })}
+        connectorId={selectedConnector?.id || 0}
+        schemaName={viewCodeDialog.schemaName}
+        objectName={viewCodeDialog.objectName}
+        objectType={viewCodeDialog.objectType}
+      />
+
+      {/* Modify Column Dialog */}
+      <ModifyColumnDialog
+        isOpen={modifyColumnDialog.isOpen}
+        onClose={() => setModifyColumnDialog({ ...modifyColumnDialog, isOpen: false })}
+        onSubmit={handleModifyColumn}
+        column={modifyColumnDialog.column}
+        isLoading={dialogLoading}
+      />
+
+      {/* Delete Column Dialog */}
+      <DeleteColumnDialog
+        isOpen={deleteColumnDialog.isOpen}
+        onClose={() => setDeleteColumnDialog({ ...deleteColumnDialog, isOpen: false })}
+        onConfirm={handleDeleteColumn}
+        columnName={deleteColumnDialog.columnName}
+        tableName={deleteColumnDialog.tableName}
+        schemaName={deleteColumnDialog.schemaName}
+        isLoading={dialogLoading}
       />
 
       {/* Connector Selector Modal */}
