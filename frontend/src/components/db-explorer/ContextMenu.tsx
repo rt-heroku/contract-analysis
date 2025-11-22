@@ -10,7 +10,13 @@ import {
   FileText,
   Key,
   Edit,
-  Eye
+  Eye,
+  Code,
+  Database,
+  Zap,
+  Save,
+  Play,
+  Sparkles
 } from 'lucide-react';
 
 export interface ContextMenuItem {
