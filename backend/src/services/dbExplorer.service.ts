@@ -519,10 +519,12 @@ class DatabaseExplorerService {
   async getFunctions(connectorId: number, userId: number, schemaName: string): Promise<FunctionInfo[]> {
     const query = `
       SELECT 
+        p.oid as function_oid,
         p.proname as function_name,
         n.nspname as schema_name,
         pg_get_function_result(p.oid) as return_type,
         pg_get_function_arguments(p.oid) as arguments,
+        pg_get_function_identity_arguments(p.oid) as identity_arguments,
         l.lanname as language,
         p.prosrc as definition,
         d.description
@@ -531,15 +533,17 @@ class DatabaseExplorerService {
       JOIN pg_language l ON p.prolang = l.oid
       LEFT JOIN pg_description d ON p.oid = d.objoid
       WHERE n.nspname = $1
-      ORDER BY p.proname;
+      ORDER BY p.proname, p.oid;
     `;
 
     const result = await this.executeQuery(connectorId, userId, query, [schemaName]);
     return result.rows.map((row: any) => ({
+      functionOid: row.function_oid,
       functionName: row.function_name,
       schemaName: row.schema_name,
       returnType: row.return_type,
       arguments: row.arguments,
+      identityArguments: row.identity_arguments,
       language: row.language,
       definition: row.definition,
       description: row.description,

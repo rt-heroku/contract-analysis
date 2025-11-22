@@ -351,13 +351,14 @@ export const DbTree: React.FC<DbTreeProps> = ({
         const response = await api.get(`/db-explorer/${connectorId}/schemas/${schemaName}/functions`);
         const functions = response.data.functions || [];
         return functions.map((func: any) => ({
-          id: `function-${schemaName}-${func.functionName}`,
+          id: `function-${schemaName}-${func.functionOid || func.functionName}`,
           label: `${func.functionName}(${func.arguments || ''})`,
           icon: FileCode,
           type: 'function',
           metadata: {
             schemaName,
             functionName: func.functionName,
+            functionOid: func.functionOid,
             ...func,
           },
         }));
