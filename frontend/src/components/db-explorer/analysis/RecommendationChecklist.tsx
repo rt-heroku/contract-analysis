@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Check, X, AlertTriangle, Play, Loader2, CheckCircle2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { api } from '@/lib/api';
+import { Button } from '@/components/common/Button';
+import { Checkbox } from '@/components/craft/Checkbox';
+import api from '@/lib/api';
 
 interface Recommendation {
   title: string;

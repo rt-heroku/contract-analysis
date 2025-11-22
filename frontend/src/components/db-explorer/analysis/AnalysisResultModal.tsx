@@ -1,14 +1,8 @@
 import React from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Activity, Zap, AlertCircle, TrendingUp, Clock } from 'lucide-react';
+import { Activity, Zap, AlertCircle, TrendingUp, Clock, X } from 'lucide-react';
 import { RecommendationChecklist } from './RecommendationChecklist';
 import { formatDistanceToNow } from 'date-fns';
+import { Modal } from '@/components/common/Modal';
 
 interface AnalysisResult {
   id: number;
@@ -68,9 +62,10 @@ export const AnalysisResultModal: React.FC<AnalysisResultModalProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+    <Modal isOpen={isOpen} onClose={onClose} size="xl">
+      <div className="max-h-[80vh] overflow-y-auto">
+        {/* Header */}
+        <div className="mb-6">
           <div className="flex items-center gap-3">
             {isHealthCheck ? (
               <Activity className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -78,16 +73,16 @@ export const AnalysisResultModal: React.FC<AnalysisResultModalProps> = ({
               <Zap className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             )}
             <div>
-              <DialogTitle className="text-xl">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 {isHealthCheck ? 'Table Health Analysis' : 'Performance Optimization Tips'}
-              </DialogTitle>
-              <DialogDescription className="flex items-center gap-2 mt-1">
+              </h2>
+              <div className="flex items-center gap-2 mt-1 text-sm text-gray-600 dark:text-gray-400">
                 <Clock className="w-3 h-3" />
                 Analyzed {formatDistanceToNow(new Date(analysis.createdAt), { addSuffix: true })}
-              </DialogDescription>
+              </div>
             </div>
           </div>
-        </DialogHeader>
+        </div>
 
         <div className="space-y-6 mt-4">
           {/* Health Score (for health checks only) */}
@@ -187,8 +182,8 @@ export const AnalysisResultModal: React.FC<AnalysisResultModalProps> = ({
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </Modal>
   );
 };
 

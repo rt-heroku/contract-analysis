@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Activity, Zap, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
+import { Button } from '@/components/common/Button';
+import api from '@/lib/api';
 
 interface AnalysisButtonsProps {
   connectorId: number;

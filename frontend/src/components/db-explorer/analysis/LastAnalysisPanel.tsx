@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Clock, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
+import { Button } from '@/components/common/Button';
+import api from '@/lib/api';
 import { formatDistanceToNow } from 'date-fns';
 
 interface LastAnalysisPanelProps {
