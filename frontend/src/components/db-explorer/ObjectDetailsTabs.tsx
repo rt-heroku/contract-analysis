@@ -26,6 +26,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/common/Ta
 import { DbObject } from './DbTree';
 import { MiniERD } from './MiniERD';
 import { CellValueModal } from './CellValueModal';
+import { AnalysisButtons, AnalysisResultModal, LastAnalysisPanel } from './analysis';
 import api from '@/lib/api';
 
 interface ObjectDetailsTabsProps {
@@ -57,6 +58,11 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
   const [cellModalOpen, setCellModalOpen] = useState(false);
   const [selectedCellValue, setSelectedCellValue] = useState<any>(null);
   const [selectedColumnName, setSelectedColumnName] = useState('');
+
+  // Analysis modal
+  const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
+  const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
+  const [analysisRefreshTrigger, setAnalysisRefreshTrigger] = useState(0);
 
   // Update active tab when object changes with a target tab
   useEffect(() => {
@@ -179,6 +185,24 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
       console.error('Failed to load additional details:', error);
       setTriggers([]);
     }
+  };
+
+  // Analysis handlers
+  const handleAnalysisComplete = (analysis: any) => {
+    setCurrentAnalysis(analysis);
+    setAnalysisModalOpen(true);
+    // Trigger refresh of last analysis panel
+    setAnalysisRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleViewAnalysisDetails = (analysis: any) => {
+    setCurrentAnalysis(analysis);
+    setAnalysisModalOpen(true);
+  };
+
+  const handleActionExecuted = (recommendation: any) => {
+    console.log('Action executed:', recommendation);
+    // Could add toast notification here
   };
 
   useEffect(() => {
@@ -822,6 +846,32 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
           {/* Performance Tab */}
           <TabsContent value="performance" className="p-4">
             <div className="space-y-6">
+              {/* AI Database Optimizer */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  AI Database Optimizer
+                </h3>
+                <div className="space-y-4">
+                  {/* Analysis Buttons */}
+                  <AnalysisButtons
+                    connectorId={connectorId}
+                    schema={object?.schemaName || ''}
+                    table={object?.name || ''}
+                    onAnalysisComplete={handleAnalysisComplete}
+                  />
+                  
+                  {/* Last Analysis Panel */}
+                  <LastAnalysisPanel
+                    connectorId={connectorId}
+                    schema={object?.schemaName || ''}
+                    table={object?.name || ''}
+                    onViewDetails={handleViewAnalysisDetails}
+                    refreshTrigger={analysisRefreshTrigger}
+                  />
+                </div>
+              </div>
+
               {/* Table Performance */}
               <div>
                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
@@ -917,6 +967,14 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
         onClose={() => setCellModalOpen(false)}
         value={selectedCellValue}
         columnName={selectedColumnName}
+      />
+
+      {/* Analysis Result Modal */}
+      <AnalysisResultModal
+        analysis={currentAnalysis}
+        isOpen={analysisModalOpen}
+        onClose={() => setAnalysisModalOpen(false)}
+        onActionExecuted={handleActionExecuted}
       />
     </div>
   );
