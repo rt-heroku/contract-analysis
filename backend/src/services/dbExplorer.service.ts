@@ -714,6 +714,178 @@ class DatabaseExplorerService {
   }
 
   /**
+   * Get View DDL (CREATE VIEW statement)
+   */
+  async getViewDDL(connectorId: number, userId: number, schemaName: string, viewName: string): Promise<string> {
+    const query = `
+      SELECT pg_get_viewdef($1::regclass, true) as definition;
+    `;
+    
+    const result = await this.executeQuery(connectorId, userId, query, [`"${schemaName}"."${viewName}"`]);
+    
+    if (result.rows.length === 0) {
+      throw new Error(`View ${schemaName}.${viewName} not found`);
+    }
+
+    const definition = result.rows[0].definition;
+    return `CREATE VIEW "${schemaName}"."${viewName}" AS\n${definition}`;
+  }
+
+  /**
+   * Get Function DDL (CREATE FUNCTION statement)
+   */
+  async getFunctionDDL(connectorId: number, userId: number, schemaName: string, functionName: string): Promise<string> {
+    const query = `
+      SELECT pg_get_functiondef(p.oid) as definition
+      FROM pg_proc p
+      JOIN pg_namespace n ON p.pronamespace = n.oid
+      WHERE n.nspname = $1 AND p.proname = $2
+      LIMIT 1;
+    `;
+    
+    const result = await this.executeQuery(connectorId, userId, query, [schemaName, functionName]);
+    
+    if (result.rows.length === 0) {
+      throw new Error(`Function ${schemaName}.${functionName} not found`);
+    }
+
+    return result.rows[0].definition;
+  }
+
+  /**
+   * Drop a view
+   */
+  async dropView(connectorId: number, userId: number, schemaName: string, viewName: string): Promise<void> {
+    const query = `DROP VIEW IF EXISTS "${schemaName}"."${viewName}" CASCADE;`;
+    await this.executeQuery(connectorId, userId, query);
+    logger.info(`Dropped view ${schemaName}.${viewName}`);
+  }
+
+  /**
+   * Drop a function
+   */
+  async dropFunction(connectorId: number, userId: number, schemaName: string, functionName: string): Promise<void> {
+    const query = `DROP FUNCTION IF EXISTS "${schemaName}"."${functionName}" CASCADE;`;
+    await this.executeQuery(connectorId, userId, query);
+    logger.info(`Dropped function ${schemaName}.${functionName}`);
+  }
+
+  /**
+   * Add a column to a table
+   */
+  async addColumn(
+    connectorId: number,
+    userId: number,
+    schemaName: string,
+    tableName: string,
+    columnDefinition: {
+      name: string;
+      dataType: string;
+      nullable: boolean;
+      defaultValue?: string;
+      isPrimaryKey?: boolean;
+      isUnique?: boolean;
+    }
+  ): Promise<void> {
+    let query = `ALTER TABLE "${schemaName}"."${tableName}" ADD COLUMN "${columnDefinition.name}" ${columnDefinition.dataType}`;
+    
+    if (!columnDefinition.nullable) {
+      query += ' NOT NULL';
+    }
+    
+    if (columnDefinition.defaultValue) {
+      query += ` DEFAULT ${columnDefinition.defaultValue}`;
+    }
+    
+    if (columnDefinition.isUnique) {
+      query += ' UNIQUE';
+    }
+    
+    query += ';';
+    
+    await this.executeQuery(connectorId, userId, query);
+    
+    // Add primary key constraint if needed
+    if (columnDefinition.isPrimaryKey) {
+      const pkQuery = `ALTER TABLE "${schemaName}"."${tableName}" ADD PRIMARY KEY ("${columnDefinition.name}");`;
+      await this.executeQuery(connectorId, userId, pkQuery);
+    }
+    
+    logger.info(`Added column ${columnDefinition.name} to ${schemaName}.${tableName}`);
+  }
+
+  /**
+   * Modify a column
+   */
+  async modifyColumn(
+    connectorId: number,
+    userId: number,
+    schemaName: string,
+    tableName: string,
+    columnName: string,
+    modifications: {
+      newName?: string;
+      dataType?: string;
+      nullable?: boolean;
+      defaultValue?: string | null;
+    }
+  ): Promise<void> {
+    const queries: string[] = [];
+    
+    // Rename column
+    if (modifications.newName) {
+      queries.push(`ALTER TABLE "${schemaName}"."${tableName}" RENAME COLUMN "${columnName}" TO "${modifications.newName}";`);
+      columnName = modifications.newName; // Use new name for subsequent operations
+    }
+    
+    // Change data type
+    if (modifications.dataType) {
+      queries.push(`ALTER TABLE "${schemaName}"."${tableName}" ALTER COLUMN "${columnName}" TYPE ${modifications.dataType};`);
+    }
+    
+    // Change nullable
+    if (modifications.nullable !== undefined) {
+      if (modifications.nullable) {
+        queries.push(`ALTER TABLE "${schemaName}"."${tableName}" ALTER COLUMN "${columnName}" DROP NOT NULL;`);
+      } else {
+        queries.push(`ALTER TABLE "${schemaName}"."${tableName}" ALTER COLUMN "${columnName}" SET NOT NULL;`);
+      }
+    }
+    
+    // Change default value
+    if (modifications.defaultValue !== undefined) {
+      if (modifications.defaultValue === null) {
+        queries.push(`ALTER TABLE "${schemaName}"."${tableName}" ALTER COLUMN "${columnName}" DROP DEFAULT;`);
+      } else {
+        queries.push(`ALTER TABLE "${schemaName}"."${tableName}" ALTER COLUMN "${columnName}" SET DEFAULT ${modifications.defaultValue};`);
+      }
+    }
+    
+    // Execute all modifications
+    for (const query of queries) {
+      await this.executeQuery(connectorId, userId, query);
+    }
+    
+    logger.info(`Modified column ${columnName} in ${schemaName}.${tableName}`);
+  }
+
+  /**
+   * Drop a column
+   */
+  async dropColumn(
+    connectorId: number,
+    userId: number,
+    schemaName: string,
+    tableName: string,
+    columnName: string,
+    cascade: boolean = false
+  ): Promise<void> {
+    const query = `ALTER TABLE "${schemaName}"."${tableName}" DROP COLUMN "${columnName}"${cascade ? ' CASCADE' : ''};`;
+    await this.executeQuery(connectorId, userId, query);
+    logger.info(`Dropped column ${columnName} from ${schemaName}.${tableName}`);
+  }
+
+  /**
    * Test database connection
    */
   async testConnection(config: ConnectionConfig): Promise<{ success: boolean; message: string; version?: string }> {

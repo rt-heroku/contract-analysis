@@ -813,3 +813,129 @@ export const executeSQLFile = async (req: AuthenticatedRequest, res: Response) =
   }
 };
 
+/**
+ * Get View DDL
+ */
+export const getViewDDL = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName, viewName } = req.params;
+
+    const ddl = await dbExplorerService.getViewDDL(connectorId, userId, schemaName, viewName);
+    res.json({ ddl });
+  } catch (error: any) {
+    logger.error('Get view DDL error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get view DDL' });
+  }
+};
+
+/**
+ * Get Function DDL
+ */
+export const getFunctionDDL = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName, functionName } = req.params;
+
+    const ddl = await dbExplorerService.getFunctionDDL(connectorId, userId, schemaName, functionName);
+    res.json({ ddl });
+  } catch (error: any) {
+    logger.error('Get function DDL error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get function DDL' });
+  }
+};
+
+/**
+ * Drop a view
+ */
+export const dropView = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName, viewName } = req.params;
+
+    await dbExplorerService.dropView(connectorId, userId, schemaName, viewName);
+    res.json({ success: true, message: `View ${schemaName}.${viewName} dropped successfully` });
+  } catch (error: any) {
+    logger.error('Drop view error:', error);
+    res.status(500).json({ error: error.message || 'Failed to drop view' });
+  }
+};
+
+/**
+ * Drop a function
+ */
+export const dropFunction = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName, functionName } = req.params;
+
+    await dbExplorerService.dropFunction(connectorId, userId, schemaName, functionName);
+    res.json({ success: true, message: `Function ${schemaName}.${functionName} dropped successfully` });
+  } catch (error: any) {
+    logger.error('Drop function error:', error);
+    res.status(500).json({ error: error.message || 'Failed to drop function' });
+  }
+};
+
+/**
+ * Add a column to a table
+ */
+export const addColumn = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName, tableName } = req.params;
+    const columnDefinition = req.body;
+
+    if (!columnDefinition.name || !columnDefinition.dataType) {
+      return res.status(400).json({ error: 'Column name and data type are required' });
+    }
+
+    await dbExplorerService.addColumn(connectorId, userId, schemaName, tableName, columnDefinition);
+    res.json({ success: true, message: `Column ${columnDefinition.name} added successfully` });
+  } catch (error: any) {
+    logger.error('Add column error:', error);
+    res.status(500).json({ error: error.message || 'Failed to add column' });
+  }
+};
+
+/**
+ * Modify a column
+ */
+export const modifyColumn = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName, tableName, columnName } = req.params;
+    const modifications = req.body;
+
+    await dbExplorerService.modifyColumn(connectorId, userId, schemaName, tableName, columnName, modifications);
+    res.json({ success: true, message: `Column ${columnName} modified successfully` });
+  } catch (error: any) {
+    logger.error('Modify column error:', error);
+    res.status(500).json({ error: error.message || 'Failed to modify column' });
+  }
+};
+
+/**
+ * Drop a column
+ */
+export const dropColumn = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const connectorId = parseInt(req.params.connectorId);
+    const userId = req.user!.id;
+    const { schemaName, tableName, columnName } = req.params;
+    const { cascade = false } = req.body;
+
+    await dbExplorerService.dropColumn(connectorId, userId, schemaName, tableName, columnName, cascade);
+    res.json({ success: true, message: `Column ${columnName} dropped successfully` });
+  } catch (error: any) {
+    logger.error('Drop column error:', error);
+    res.status(500).json({ error: error.message || 'Failed to drop column' });
+  }
+};
+

@@ -40,6 +40,19 @@ router.get('/:connectorId/schemas/:schemaName/tables/:tableName/performance', db
 // Schema ERD
 router.get('/:connectorId/schemas/:schemaName/erd', dbExplorerController.getSchemaERD);
 
+// DDL Export
+router.get('/:connectorId/schemas/:schemaName/views/:viewName/ddl', dbExplorerController.getViewDDL);
+router.get('/:connectorId/schemas/:schemaName/functions/:functionName/ddl', dbExplorerController.getFunctionDDL);
+
+// Drop operations
+router.delete('/:connectorId/schemas/:schemaName/views/:viewName', dbExplorerController.dropView);
+router.delete('/:connectorId/schemas/:schemaName/functions/:functionName', dbExplorerController.dropFunction);
+
+// Column operations
+router.post('/:connectorId/schemas/:schemaName/tables/:tableName/columns', dbExplorerController.addColumn);
+router.put('/:connectorId/schemas/:schemaName/tables/:tableName/columns/:columnName', dbExplorerController.modifyColumn);
+router.delete('/:connectorId/schemas/:schemaName/tables/:tableName/columns/:columnName', dbExplorerController.dropColumn);
+
 // AI SQL Generation
 router.get('/ai-connector-info', dbExplorerController.getAIConnectorInfo);
 router.post('/:connectorId/ai-generate', dbExplorerController.generateAISQL);
