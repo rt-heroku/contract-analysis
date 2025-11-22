@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, RefreshCw, Plus, Code, X, List, Network, ChevronUp, ChevronDown } from 'lucide-react';
+import { Database, RefreshCw, Plus, Code, X, List, Network, ChevronUp, ChevronDown, Upload } from 'lucide-react';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Loading } from '@/components/common/Loading';
@@ -19,6 +19,7 @@ import { DatabaseERD } from '@/components/db-explorer/DatabaseERD';
 import { ConnectorSelectorModal } from '@/components/db-explorer/ConnectorSelectorModal';
 import { ExportDataDialog } from '@/components/db-explorer/ExportDataDialog';
 import { DeleteRowsDialog } from '@/components/db-explorer/DeleteRowsDialog';
+import { SQLFileLoaderDialog } from '@/components/db-explorer/SQLFileLoaderDialog';
 import api from '@/lib/api';
 import { cn } from '@/utils/helpers';
 
@@ -124,6 +125,7 @@ export const DatabaseExplorer: React.FC = () => {
   });
 
   const [aiDialog, setAiDialog] = useState(false);
+  const [sqlFileDialog, setSqlFileDialog] = useState(false);
 
   const [currentTableContext, setCurrentTableContext] = useState<{
     tableName: string;
@@ -834,6 +836,26 @@ export const DatabaseExplorer: React.FC = () => {
     });
   };
 
+  const handleExecuteSQLFile = async (
+    sqlContent: string,
+    options: { useTransaction: boolean; stopOnError: boolean }
+  ) => {
+    if (!selectedConnector) {
+      throw new Error('No connector selected');
+    }
+
+    const response = await api.post(
+      `/db-explorer/${selectedConnector.id}/execute-file`,
+      {
+        sqlContent,
+        useTransaction: options.useTransaction,
+        stopOnError: options.stopOnError,
+      }
+    );
+
+    return response.data;
+  };
+
   const handleBulkDelete = async (rows: any[]) => {
     if (!selectedConnector || !currentTableContext) return;
 
@@ -1183,6 +1205,16 @@ export const DatabaseExplorer: React.FC = () => {
           >
             <Code className="w-4 h-4" />
           </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSqlFileDialog(true)}
+            title="Load SQL File"
+            disabled={!selectedConnector}
+          >
+            <Upload className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
@@ -1495,6 +1527,13 @@ export const DatabaseExplorer: React.FC = () => {
         rowCount={deleteDialog.rows.length}
         tableName={deleteDialog.tableName}
         schemaName={deleteDialog.schemaName}
+      />
+
+      {/* SQL File Loader Dialog */}
+      <SQLFileLoaderDialog
+        isOpen={sqlFileDialog}
+        onClose={() => setSqlFileDialog(false)}
+        onExecute={handleExecuteSQLFile}
       />
 
       {/* Connector Selector Modal */}
