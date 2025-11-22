@@ -57,6 +57,9 @@ export const AlterTableDialog: React.FC<AlterTableDialogProps> = ({
   existingColumns,
   isLoading = false,
 }) => {
+  // Ensure existingColumns is always an array
+  const safeExistingColumns = Array.isArray(existingColumns) ? existingColumns : [];
+  
   const [activeTab, setActiveTab] = useState<'add' | 'drop'>('add');
   const [newColumn, setNewColumn] = useState({
     name: '',
@@ -105,7 +108,7 @@ export const AlterTableDialog: React.FC<AlterTableDialogProps> = ({
       newErrors.name = 'Column name is required';
     }
 
-    if (existingColumns.some(col => col.name.toLowerCase() === newColumn.name.toLowerCase())) {
+    if (safeExistingColumns.some(col => col.name.toLowerCase() === newColumn.name.toLowerCase())) {
       newErrors.name = 'Column name already exists';
     }
 
@@ -149,7 +152,7 @@ export const AlterTableDialog: React.FC<AlterTableDialogProps> = ({
       return;
     }
 
-    const column = existingColumns.find(c => c.name === selectedColumnToDrop);
+    const column = safeExistingColumns.find(c => c.name === selectedColumnToDrop);
     if (column?.isPrimaryKey) {
       setErrors({ drop: 'Cannot drop primary key column' });
       return;
@@ -364,7 +367,7 @@ export const AlterTableDialog: React.FC<AlterTableDialogProps> = ({
                   className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
                 >
                   <option value="">-- Select a column --</option>
-                  {existingColumns.map(col => (
+                  {safeExistingColumns.map(col => (
                     <option
                       key={col.name}
                       value={col.name}
@@ -382,7 +385,7 @@ export const AlterTableDialog: React.FC<AlterTableDialogProps> = ({
               {selectedColumnToDrop && (
                 <div className="p-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
                   {(() => {
-                    const col = existingColumns.find(c => c.name === selectedColumnToDrop);
+                    const col = safeExistingColumns.find(c => c.name === selectedColumnToDrop);
                     return col ? (
                       <div className="text-sm space-y-1">
                         <div><strong>Name:</strong> {col.name}</div>

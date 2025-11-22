@@ -473,7 +473,7 @@ export const DatabaseExplorer: React.FC = () => {
     try {
       // Fetch table columns
       const response = await api.get(`/db-explorer/${selectedConnector.id}/schemas/${schemaName}/tables/${tableName}/columns`);
-      const columns = response.data;
+      const columns = Array.isArray(response.data.columns) ? response.data.columns : [];
 
       setAlterTableDialog({
         isOpen: true,
