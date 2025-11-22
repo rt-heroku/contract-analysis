@@ -100,16 +100,24 @@ class AIAnalysisService {
     let parsedResponse: any = {};
     try {
       parsedResponse = typeof aiResponse === 'string' ? JSON.parse(aiResponse) : aiResponse;
+      logger.info('Parsed AI response:', JSON.stringify(parsedResponse, null, 2));
     } catch (e) {
+      logger.error('Failed to parse AI response as JSON:', e);
       parsedResponse = { raw: aiResponse };
     }
+
+    const healthScore = analysisResult.healthScore || parsedResponse.health_score;
+    const summary = parsedResponse.summary || parsedResponse.analysis || 'No summary available';
+    const recommendations = parsedResponse.recommendations || analysisResult.recommendations || [];
+
+    logger.info(`Analysis result: healthScore=${healthScore}, scenario=${scenario}, summary length=${summary.length}`);
 
     return {
       id: analysisResult.id,
       scenarioDetected: scenario,
-      healthScore: analysisResult.healthScore || parsedResponse.health_score,
-      summary: parsedResponse.summary || parsedResponse.analysis || 'No summary available',
-      recommendations: parsedResponse.recommendations || analysisResult.recommendations || [],
+      healthScore,
+      summary,
+      recommendations: Array.isArray(recommendations) ? recommendations : [],
       rawResponse: parsedResponse,
       createdAt: analysisResult.createdAt,
     };
