@@ -423,6 +423,7 @@ model DbAnalysisResult {
   analysisType     String    @map("analysis_type") @db.VarChar(50)
   scenarioDetected String?   @map("scenario_detected") @db.VarChar(50)
   healthScore      Int?      @map("health_score")
+  summary          String?   @db.Text
   tableContext     Json      @map("table_context")
   aiAnalysis       String    @map("ai_analysis") @db.Text
   recommendations  Json?

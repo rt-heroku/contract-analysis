@@ -96,13 +96,21 @@ class AIAnalysisService {
       aiResponse
     );
 
+    // Parse AI response to extract summary and recommendations
+    let parsedResponse: any = {};
+    try {
+      parsedResponse = typeof aiResponse === 'string' ? JSON.parse(aiResponse) : aiResponse;
+    } catch (e) {
+      parsedResponse = { raw: aiResponse };
+    }
+
     return {
       id: analysisResult.id,
-      scenario,
-      healthScore: analysisResult.healthScore,
-      analysis: aiResponse,
-      recommendations: analysisResult.recommendations,
-      context,
+      scenarioDetected: scenario,
+      healthScore: analysisResult.healthScore || parsedResponse.health_score,
+      summary: parsedResponse.summary || parsedResponse.analysis || 'No summary available',
+      recommendations: parsedResponse.recommendations || analysisResult.recommendations || [],
+      rawResponse: parsedResponse,
       createdAt: analysisResult.createdAt,
     };
   }

@@ -101,12 +101,26 @@ export const getLatestAnalysis = async (req: AuthenticatedRequest, res: Response
       return res.json(null);
     }
 
+    // Parse recommendations if they're stored as JSON
+    let parsedRecommendations = analysis.recommendations;
+    if (typeof parsedRecommendations === 'string') {
+      try {
+        parsedRecommendations = JSON.parse(parsedRecommendations);
+      } catch (e) {
+        // Keep as-is if not JSON
+      }
+    }
+
+    // Extract recommendations array if it's nested
+    const recommendations = parsedRecommendations?.recommendations || parsedRecommendations || [];
+
     res.json({
       id: analysis.id,
-      scenario: analysis.scenarioDetected,
+      scenarioDetected: analysis.scenarioDetected,
       healthScore: analysis.healthScore,
-      analysis: analysis.aiAnalysis,
-      recommendations: analysis.recommendations,
+      summary: analysis.summary || 'No summary available',
+      recommendations: Array.isArray(recommendations) ? recommendations : [],
+      rawResponse: parsedRecommendations,
       executedActions: analysis.actionsTaken,
       executor: analysis.executor,
       createdAt: analysis.createdAt,

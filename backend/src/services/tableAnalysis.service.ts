@@ -173,15 +173,18 @@ class TableAnalysisService {
     aiResponse: string,
     healthScore?: number
   ) {
-    // Parse AI response to extract recommendations
+    // Parse AI response to extract recommendations and summary
     let recommendations = null;
+    let summary = 'No summary available';
     try {
       const parsed = JSON.parse(aiResponse);
-      recommendations = parsed;
+      recommendations = parsed.recommendations || parsed;
+      summary = parsed.summary || parsed.analysis || 'No summary available';
       healthScore = parsed.health_score || healthScore;
     } catch (e) {
       // If not JSON, store as-is
       recommendations = { raw_response: aiResponse };
+      summary = aiResponse;
     }
     
     return prisma.dbAnalysisResult.create({
@@ -192,6 +195,7 @@ class TableAnalysisService {
         analysisType,
         scenarioDetected: scenario,
         healthScore,
+        summary,
         tableContext: context as any,
         aiAnalysis: aiResponse,
         recommendations,
