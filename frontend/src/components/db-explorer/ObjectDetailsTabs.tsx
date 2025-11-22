@@ -376,8 +376,8 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
           </TabsContent>
 
           {/* Data Tab */}
-          <TabsContent value="data" className="p-0">
-            <div className="border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-900">
+          <TabsContent value="data" className="p-0 h-full flex flex-col">
+            <div className="border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-900 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <Button size="sm" variant="outline" onClick={loadTableData}>
                   <RefreshCw className="w-4 h-4 mr-2" />
@@ -397,6 +397,9 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
                     <option value="10000">10,000</option>
                   </select>
                 </div>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Showing {tableData.length} row{tableData.length !== 1 ? 's' : ''}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 {onAddRow && (
@@ -416,15 +419,15 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
               </div>
             </div>
             
-            <div className="p-4">
+            <div className="flex-1 overflow-auto p-4">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader className="w-8 h-8 animate-spin" />
                 </div>
               ) : tableData.length > 0 ? (
-                <div className="overflow-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-auto h-full">
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0">
+                    <thead className="bg-gray-50 dark:bg-gray-900 sticky top-0 z-10">
                       <tr>
                         {Object.keys(tableData[0]).map(key => (
                           <th key={key} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -436,7 +439,7 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {tableData.map((row, idx) => (
                         <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                           {Object.entries(row).map(([key, value]: [string, any], vIdx) => (
@@ -479,8 +482,8 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
           </TabsContent>
 
           {/* Columns Tab */}
-          <TabsContent value="columns" className="p-0">
-            <div className="border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-900">
+          <TabsContent value="columns" className="p-0 h-full flex flex-col">
+            <div className="border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-900 flex-shrink-0">
               <div className="flex items-center gap-3 flex-1">
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -507,7 +510,7 @@ export const ObjectDetailsTabs: React.FC<ObjectDetailsTabsProps> = ({
               </div>
             </div>
 
-            <div className="p-4">
+            <div className="flex-1 overflow-auto p-4">
               <div className="space-y-2">
                 {filteredColumns.map((col, idx) => (
                   <div
