@@ -1,5 +1,7 @@
 import React from 'react';
 import { Activity, Zap, AlertCircle, TrendingUp, Clock, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { RecommendationChecklist } from './RecommendationChecklist';
 import { formatDistanceToNow } from 'date-fns';
 import { Modal } from '@/components/common/Modal';
@@ -12,6 +14,8 @@ interface AnalysisResult {
   summary: string;
   recommendations: any[];
   rawResponse: any;
+  isMarkdown?: boolean;
+  markdownContent?: string;
   createdAt: string;
 }
 
@@ -85,6 +89,36 @@ export const AnalysisResultModal: React.FC<AnalysisResultModalProps> = ({
         </div>
 
         <div className="space-y-6 mt-4">
+          {/* Markdown Report - Full screen */}
+          {analysis.isMarkdown && analysis.markdownContent && (
+            <div className="markdown-content prose prose-slate max-w-none
+                          prose-headings:text-gray-900 dark:prose-headings:text-gray-100
+                          prose-p:text-gray-700 dark:prose-p:text-gray-300
+                          prose-strong:text-gray-900 dark:prose-strong:text-gray-100
+                          prose-code:text-blue-600 dark:prose-code:text-blue-400
+                          prose-code:bg-gray-100 dark:prose-code:bg-gray-800
+                          prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                          prose-pre:bg-gray-900 dark:prose-pre:bg-gray-950
+                          prose-pre:text-gray-100
+                          prose-table:border-collapse prose-table:w-full prose-table:text-sm
+                          prose-thead:bg-gradient-to-r prose-thead:from-blue-500 prose-thead:to-indigo-600
+                          prose-th:text-white prose-th:font-semibold prose-th:p-3 prose-th:text-left prose-th:border prose-th:border-blue-400
+                          prose-td:p-3 prose-td:border prose-td:border-gray-300 dark:prose-td:border-gray-700
+                          prose-tr:even:bg-gray-50 dark:prose-tr:even:bg-gray-900/50
+                          prose-tr:hover:bg-blue-50 dark:prose-tr:hover:bg-blue-900/20
+                          prose-tr:transition-colors
+                          prose-ul:text-gray-700 dark:prose-ul:text-gray-300
+                          prose-ol:text-gray-700 dark:prose-ol:text-gray-300
+                          prose-li:text-gray-700 dark:prose-li:text-gray-300">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {analysis.markdownContent.replace(/\\n/g, '\n')}
+              </ReactMarkdown>
+            </div>
+          )}
+
+          {/* JSON/Structured Display */}
+          {!analysis.isMarkdown && (
+            <>
           {/* Health Score (for health checks only) */}
           {isHealthCheck && analysis.healthScore !== undefined && (
             <div
@@ -180,6 +214,8 @@ export const AnalysisResultModal: React.FC<AnalysisResultModalProps> = ({
                 </p>
               </div>
             </div>
+          )}
+            </>
           )}
         </div>
       </div>

@@ -113,6 +113,10 @@ export const getLatestAnalysis = async (req: AuthenticatedRequest, res: Response
 
     // Extract recommendations array if it's nested
     const recommendations = parsedRecommendations?.recommendations || parsedRecommendations || [];
+    
+    // Check if response is markdown
+    const isMarkdown = parsedRecommendations?.markdown || analysis.aiAnalysis?.startsWith('#') || analysis.aiAnalysis?.startsWith('##');
+    const markdownContent = isMarkdown ? (parsedRecommendations?.markdown || analysis.aiAnalysis) : null;
 
     res.json({
       id: analysis.id,
@@ -121,6 +125,8 @@ export const getLatestAnalysis = async (req: AuthenticatedRequest, res: Response
       summary: analysis.summary || 'No summary available',
       recommendations: Array.isArray(recommendations) ? recommendations : [],
       rawResponse: parsedRecommendations,
+      isMarkdown,
+      markdownContent,
       executedActions: analysis.actionsTaken,
       executor: analysis.executor,
       createdAt: analysis.createdAt,

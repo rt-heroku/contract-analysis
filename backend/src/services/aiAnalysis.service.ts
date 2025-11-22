@@ -98,22 +98,33 @@ class AIAnalysisService {
 
     // Parse AI response to extract summary and recommendations
     let parsedResponse: any = {};
+    let isMarkdown = false;
+    
     try {
       // First, try to extract JSON from markdown code blocks if present
       const cleanedResponse = this.extractJsonFromMarkdown(aiResponse);
       parsedResponse = typeof cleanedResponse === 'string' ? JSON.parse(cleanedResponse) : cleanedResponse;
-      logger.info('Parsed AI response:', JSON.stringify(parsedResponse, null, 2));
+      logger.info('Parsed AI response as JSON successfully');
     } catch (e) {
-      logger.error('Failed to parse AI response as JSON:', e);
-      logger.error('Raw AI response:', aiResponse.substring(0, 500));
-      parsedResponse = { raw: aiResponse };
+      // If parsing fails, treat as markdown
+      logger.warn('AI response is not JSON, treating as markdown');
+      logger.info('Raw AI response (first 500 chars):', aiResponse.substring(0, 500));
+      isMarkdown = true;
+      parsedResponse = { 
+        markdown: aiResponse,
+        raw: aiResponse 
+      };
     }
 
     const healthScore = analysisResult.healthScore || parsedResponse.health_score;
-    const summary = parsedResponse.summary || parsedResponse.analysis || 'No summary available';
-    const recommendations = parsedResponse.recommendations || analysisResult.recommendations || [];
+    const summary = isMarkdown 
+      ? 'View full markdown report below' 
+      : (parsedResponse.summary || parsedResponse.analysis || 'No summary available');
+    const recommendations = isMarkdown 
+      ? [] 
+      : (parsedResponse.recommendations || analysisResult.recommendations || []);
 
-    logger.info(`Analysis result: healthScore=${healthScore}, scenario=${scenario}, summary length=${summary.length}`);
+    logger.info(`Analysis result: isMarkdown=${isMarkdown}, healthScore=${healthScore}, scenario=${scenario}, summary length=${summary.length}`);
 
     return {
       id: analysisResult.id,
@@ -122,6 +133,8 @@ class AIAnalysisService {
       summary,
       recommendations: Array.isArray(recommendations) ? recommendations : [],
       rawResponse: parsedResponse,
+      isMarkdown,
+      markdownContent: isMarkdown ? aiResponse : null,
       createdAt: analysisResult.createdAt,
     };
   }
