@@ -57,6 +57,8 @@ model User {
   dynamicPagesModified DynamicPage[]  @relation("DynamicPageModifier")
   dbQueries        DbQuery[]          @relation("UserQueries")
   dbConnections    DbConnection[]     @relation("UserDbConnections")
+  systemPromptsCreated SystemPrompt[]  @relation("SystemPromptCreator")
+  systemPromptsUpdated SystemPrompt[]  @relation("SystemPromptUpdater")
 
   @@map("users")
 }
@@ -385,6 +387,31 @@ model PromptVariable {
 
   @@index([promptId])
   @@map("prompt_variables")
+}
+
+model SystemPrompt {
+  id                Int       @id @default(autoincrement())
+  name              String    @db.VarChar(255)
+  featureType       String    @map("feature_type") @db.VarChar(100)
+  description       String?   @db.Text
+  promptTemplate    String    @map("prompt_template") @db.Text
+  variables         Json?
+  processingConfig  Json?     @map("processing_config")
+  isActive          Boolean   @default(true) @map("is_active")
+  version           Int       @default(1)
+  metadata          Json?
+  createdBy         Int?      @map("created_by")
+  updatedBy         Int?      @map("updated_by")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  creator User? @relation("SystemPromptCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  updater User? @relation("SystemPromptUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@unique([featureType, version])
+  @@index([featureType])
+  @@index([isActive])
+  @@map("system_prompts")
 }
 
 model Flow {

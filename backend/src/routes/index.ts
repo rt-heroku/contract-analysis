@@ -24,6 +24,7 @@ import connectorRoutes from './connector.routes';
 import storeRoutes from './store.routes';
 import pagesRoutes from './pages.routes';
 import dbExplorerRoutes from './dbExplorer.routes';
+import systemPromptRoutes from './systemPrompt.routes';
 
 const router = Router();
 
@@ -52,6 +53,7 @@ router.use('/connectors', connectorRoutes);
 router.use('/stores', storeRoutes);
 router.use('/pages', pagesRoutes);
 router.use('/db-explorer', dbExplorerRoutes);
+router.use('/system-prompts', systemPromptRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {
