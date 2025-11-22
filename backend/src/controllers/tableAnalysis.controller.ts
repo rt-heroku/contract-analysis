@@ -32,7 +32,7 @@ export const analyzeTableHealth = async (req: AuthenticatedRequest, res: Respons
         connectorId,
         schemaName,
         tableName,
-        scenario: result.scenario,
+        scenario: result.scenarioDetected,
         healthScore: result.healthScore,
       },
     });
@@ -71,7 +71,7 @@ export const getPerformanceTips = async (req: AuthenticatedRequest, res: Respons
         connectorId,
         schemaName,
         tableName,
-        scenario: result.scenario,
+        scenario: result.scenarioDetected,
         healthScore: result.healthScore,
       },
     });
@@ -102,7 +102,7 @@ export const getLatestAnalysis = async (req: AuthenticatedRequest, res: Response
     }
 
     // Parse recommendations if they're stored as JSON
-    let parsedRecommendations = analysis.recommendations;
+    let parsedRecommendations: any = analysis.recommendations;
     if (typeof parsedRecommendations === 'string') {
       try {
         parsedRecommendations = JSON.parse(parsedRecommendations);
