@@ -108,15 +108,20 @@ export const idpExecutionController = {
       });
 
       // Return with decrypted credentials
-      const result = {
-        ...execution,
-        authClientId: encryption.decrypt(execution.authClientId),
-        authClientSecret: encryption.decrypt(execution.authClientSecret),
-        anypointUsername: execution.anypointUsername ? encryption.decrypt(execution.anypointUsername) : null,
-        anypointPassword: execution.anypointPassword ? encryption.decrypt(execution.anypointPassword) : null,
-      };
+      try {
+        const result = {
+          ...execution,
+          authClientId: encryption.decrypt(execution.authClientId),
+          authClientSecret: encryption.decrypt(execution.authClientSecret),
+          anypointUsername: execution.anypointUsername ? encryption.decrypt(execution.anypointUsername) : null,
+          anypointPassword: execution.anypointPassword ? encryption.decrypt(execution.anypointPassword) : null,
+        };
 
-      res.status(201).json({ execution: result });
+        res.status(201).json({ execution: result });
+      } catch (decryptError: any) {
+        console.error('Error decrypting newly created IDP execution:', decryptError);
+        res.status(500).json({ error: 'Failed to decrypt credentials after creation' });
+      }
     } catch (error: any) {
       console.error('Error creating IDP execution:', error);
       res.status(500).json({ error: error.message });

@@ -51,13 +51,23 @@ export const idpExecutionService = {
     });
 
     // Mask credentials for list view (even for owner)
-    return executions.map(exec => ({
-      ...exec,
-      authClientId: encryption.maskSecret(encryption.decrypt(exec.authClientId)),
-      authClientSecret: '********',
-      anypointUsername: exec.anypointUsername ? '********' : null,
-      anypointPassword: exec.anypointPassword ? '********' : null,
-    }));
+    return executions.map(exec => {
+      let maskedClientId = '********';
+      try {
+        maskedClientId = encryption.maskSecret(encryption.decrypt(exec.authClientId));
+      } catch (error) {
+        console.error(`Failed to decrypt authClientId for execution ${exec.id}:`, error);
+        maskedClientId = '[DECRYPTION_ERROR]';
+      }
+      
+      return {
+        ...exec,
+        authClientId: maskedClientId,
+        authClientSecret: '********',
+        anypointUsername: exec.anypointUsername ? '********' : null,
+        anypointPassword: exec.anypointPassword ? '********' : null,
+      };
+    });
   },
 
   /**
@@ -99,13 +109,23 @@ export const idpExecutionService = {
     });
 
     // Mask sensitive data for shared executions
-    return sharedExecutions.map(exec => ({
-      ...exec,
-      authClientId: encryption.maskSecret(encryption.decrypt(exec.authClientId)),
-      authClientSecret: '********',
-      anypointUsername: null,
-      anypointPassword: null,
-    }));
+    return sharedExecutions.map(exec => {
+      let maskedClientId = '********';
+      try {
+        maskedClientId = encryption.maskSecret(encryption.decrypt(exec.authClientId));
+      } catch (error) {
+        console.error(`Failed to decrypt authClientId for shared execution ${exec.id}:`, error);
+        maskedClientId = '[DECRYPTION_ERROR]';
+      }
+      
+      return {
+        ...exec,
+        authClientId: maskedClientId,
+        authClientSecret: '********',
+        anypointUsername: null,
+        anypointPassword: null,
+      };
+    });
   },
 
   /**
@@ -147,9 +167,17 @@ export const idpExecutionService = {
 
     // If shared (not owner), mask credentials
     if (execution.userId !== userId) {
+      let maskedClientId = '********';
+      try {
+        maskedClientId = encryption.maskSecret(encryption.decrypt(execution.authClientId));
+      } catch (error) {
+        console.error(`Failed to decrypt authClientId for execution ${execution.id}:`, error);
+        maskedClientId = '[DECRYPTION_ERROR]';
+      }
+      
       return {
         ...execution,
-        authClientId: encryption.maskSecret(encryption.decrypt(execution.authClientId)),
+        authClientId: maskedClientId,
         authClientSecret: '********',
         anypointUsername: null,
         anypointPassword: null,
@@ -157,13 +185,18 @@ export const idpExecutionService = {
     }
 
     // Owner gets decrypted credentials
-    return {
-      ...execution,
-      authClientId: encryption.decrypt(execution.authClientId),
-      authClientSecret: encryption.decrypt(execution.authClientSecret),
-      anypointUsername: execution.anypointUsername ? encryption.decrypt(execution.anypointUsername) : null,
-      anypointPassword: execution.anypointPassword ? encryption.decrypt(execution.anypointPassword) : null,
-    };
+    try {
+      return {
+        ...execution,
+        authClientId: encryption.decrypt(execution.authClientId),
+        authClientSecret: encryption.decrypt(execution.authClientSecret),
+        anypointUsername: execution.anypointUsername ? encryption.decrypt(execution.anypointUsername) : null,
+        anypointPassword: execution.anypointPassword ? encryption.decrypt(execution.anypointPassword) : null,
+      };
+    } catch (error) {
+      console.error(`Failed to decrypt credentials for execution ${execution.id}:`, error);
+      throw new Error('Failed to decrypt credentials. The encryption key may have changed.');
+    }
   },
 
   /**
@@ -233,18 +266,31 @@ export const idpExecutionService = {
     const isOwner = existing.userId === userId;
     
     if (isOwner) {
-      return {
-        ...updated,
-        authClientId: encryption.decrypt(updated.authClientId),
-        authClientSecret: encryption.decrypt(updated.authClientSecret),
-        anypointUsername: updated.anypointUsername ? encryption.decrypt(updated.anypointUsername) : null,
-        anypointPassword: updated.anypointPassword ? encryption.decrypt(updated.anypointPassword) : null,
-      };
+      try {
+        return {
+          ...updated,
+          authClientId: encryption.decrypt(updated.authClientId),
+          authClientSecret: encryption.decrypt(updated.authClientSecret),
+          anypointUsername: updated.anypointUsername ? encryption.decrypt(updated.anypointUsername) : null,
+          anypointPassword: updated.anypointPassword ? encryption.decrypt(updated.anypointPassword) : null,
+        };
+      } catch (error) {
+        console.error(`Failed to decrypt credentials for execution ${updated.id}:`, error);
+        throw new Error('Failed to decrypt credentials. The encryption key may have changed.');
+      }
     } else {
       // Admin editing someone else's execution - return masked
+      let maskedClientId = '********';
+      try {
+        maskedClientId = encryption.maskSecret(encryption.decrypt(updated.authClientId));
+      } catch (error) {
+        console.error(`Failed to decrypt authClientId for execution ${updated.id}:`, error);
+        maskedClientId = '[DECRYPTION_ERROR]';
+      }
+      
       return {
         ...updated,
-        authClientId: encryption.maskSecret(encryption.decrypt(updated.authClientId)),
+        authClientId: maskedClientId,
         authClientSecret: '********',
         anypointUsername: null,
         anypointPassword: null,
@@ -386,13 +432,23 @@ export const idpExecutionService = {
     });
 
     // Mask sensitive data
-    return otherExecutions.map(exec => ({
-      ...exec,
-      authClientId: encryption.maskSecret(encryption.decrypt(exec.authClientId)),
-      authClientSecret: '********',
-      anypointUsername: null,
-      anypointPassword: null,
-    }));
+    return otherExecutions.map(exec => {
+      let maskedClientId = '********';
+      try {
+        maskedClientId = encryption.maskSecret(encryption.decrypt(exec.authClientId));
+      } catch (error) {
+        console.error(`Failed to decrypt authClientId for other execution ${exec.id}:`, error);
+        maskedClientId = '[DECRYPTION_ERROR]';
+      }
+      
+      return {
+        ...exec,
+        authClientId: maskedClientId,
+        authClientSecret: '********',
+        anypointUsername: null,
+        anypointPassword: null,
+      };
+    });
   },
 
   /**
@@ -456,13 +512,18 @@ export const idpExecutionService = {
     }
 
     // Return with decrypted credentials
-    return {
-      ...execution,
-      authClientId: encryption.decrypt(execution.authClientId),
-      authClientSecret: encryption.decrypt(execution.authClientSecret),
-      anypointUsername: execution.anypointUsername ? encryption.decrypt(execution.anypointUsername) : null,
-      anypointPassword: execution.anypointPassword ? encryption.decrypt(execution.anypointPassword) : null,
-    };
+    try {
+      return {
+        ...execution,
+        authClientId: encryption.decrypt(execution.authClientId),
+        authClientSecret: encryption.decrypt(execution.authClientSecret),
+        anypointUsername: execution.anypointUsername ? encryption.decrypt(execution.anypointUsername) : null,
+        anypointPassword: execution.anypointPassword ? encryption.decrypt(execution.anypointPassword) : null,
+      };
+    } catch (error) {
+      console.error(`Failed to decrypt credentials for execution ${execution.id}:`, error);
+      throw new Error('Failed to decrypt credentials. The encryption key may have changed. Please re-enter your credentials.');
+    }
   },
 };
 
