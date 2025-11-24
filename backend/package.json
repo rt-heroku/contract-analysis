@@ -18,7 +18,11 @@
     "setup:demo": "prisma generate && prisma db push && npm run seed",
     "db:init": "psql $DATABASE_URL -f init-database.sql",
     "postdeploy": "npm run seed:once && node dist/utils/seedActions.js",
-    "users": "ts-node src/scripts/users.ts"
+    "users": "ts-node src/scripts/users.ts",
+    "encryption:test": "ts-node src/scripts/encryption-tool.ts test",
+    "encryption:encrypt": "ts-node src/scripts/encryption-tool.ts encrypt",
+    "encryption:list": "ts-node src/scripts/encryption-tool.ts list",
+    "encryption:migrate": "ts-node src/scripts/encryption-tool.ts migrate"
   },
   "keywords": [
     "document-processing",
