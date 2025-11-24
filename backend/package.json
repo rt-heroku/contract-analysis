@@ -22,7 +22,9 @@
     "encryption:test": "ts-node src/scripts/encryption-tool.ts test",
     "encryption:encrypt": "ts-node src/scripts/encryption-tool.ts encrypt",
     "encryption:list": "ts-node src/scripts/encryption-tool.ts list",
-    "encryption:migrate": "ts-node src/scripts/encryption-tool.ts migrate"
+    "encryption:migrate": "ts-node src/scripts/encryption-tool.ts migrate",
+    "encryption:inspect": "ts-node src/scripts/inspect-encrypted-data.ts",
+    "encryption:cleanup": "ts-node src/scripts/cleanup-empty-idp-executions.ts"
   },
   "keywords": [
     "document-processing",
