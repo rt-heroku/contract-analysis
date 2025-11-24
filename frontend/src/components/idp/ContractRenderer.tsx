@@ -11,6 +11,7 @@ import {
   Package,
   Users
 } from 'lucide-react';
+import { mergeMultiPageIDPResponse, isPaginatedIDPResponse } from '@/utils/idpMerger';
 
 interface ContractRendererProps {
   data: any;
@@ -21,17 +22,12 @@ export const ContractRenderer: React.FC<ContractRendererProps> = ({ data }) => {
     return <p className="text-gray-600">No contract data available.</p>;
   }
 
-  // Extract data from paginated or flat structure
-  const getFields = () => {
-    // If paginated format (pages array exists)
-    if (data.pages && Array.isArray(data.pages) && data.pages.length > 0) {
-      return data.pages[0].fields || {};
-    }
-    // Otherwise use root-level data (old format)
-    return data;
-  };
-
-  const fields = getFields();
+  // Merge multi-page data if needed
+  const isPaginated = isPaginatedIDPResponse(data);
+  const mergedData = isPaginated ? mergeMultiPageIDPResponse(data) : data;
+  
+  // Extract fields from merged data
+  const fields = mergedData.fields || (isPaginated ? {} : data);
   
   // Get document summary from either root level or fields
   const documentSummary = data.documentSummary || fields.documentSummary;

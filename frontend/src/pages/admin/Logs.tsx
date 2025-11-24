@@ -165,13 +165,13 @@ export const Logs: React.FC = () => {
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">System Logs</h1>
-        <p className="text-gray-600 mt-1">Monitor activity, API calls, and user sessions</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">System Logs</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Monitor activity, API calls, and user sessions</p>
       </div>
 
       {/* Tabs */}
       <Card>
-        <div className="border-b border-gray-200">
+        <div className="border-b border-gray-200 dark:border-gray-700">
           <nav className="flex -mb-px">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -181,8 +181,8 @@ export const Logs: React.FC = () => {
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`flex items-center gap-2 px-6 py-3 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
-                      ? 'border-primary-500 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                 >
                   <Icon className="w-5 h-5" />
@@ -199,7 +199,7 @@ export const Logs: React.FC = () => {
             {/* Search */}
             <div className="flex gap-4">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <Input
                   type="text"
                   placeholder="Search by user email or action..."
@@ -222,42 +222,42 @@ export const Logs: React.FC = () => {
             ) : activityLogs.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           User
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Action
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Description
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           IP Address
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Date
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {activityLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             {log.user?.email || `User #${log.userId}`}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Badge variant="default">{log.actionType}</Badge>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-700">
+                          <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                             {log.actionDescription}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {log.ipAddress}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {formatDate(log.createdAt)}
                           </td>
                         </tr>
@@ -268,8 +268,8 @@ export const Logs: React.FC = () => {
 
                 {/* Pagination */}
                 {totalPages(activityTotal) > 1 && (
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <p className="text-sm text-gray-600">
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Showing {((activityPage - 1) * limit) + 1} to {Math.min(activityPage * limit, activityTotal)} of {activityTotal} logs
                     </p>
                     <div className="flex gap-2">
@@ -280,7 +280,7 @@ export const Logs: React.FC = () => {
                       >
                         Previous
                       </Button>
-                      <span className="px-4 py-2 text-sm text-gray-600">
+                      <span className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
                         Page {activityPage} of {totalPages(activityTotal)}
                       </span>
                       <Button
@@ -295,8 +295,8 @@ export const Logs: React.FC = () => {
                 )}
               </>
             ) : (
-              <div className="text-center py-12 text-gray-500">
-                <Activity className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                <Activity className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                 <p>No activity logs found</p>
               </div>
             )}
@@ -309,7 +309,7 @@ export const Logs: React.FC = () => {
             {/* Search */}
             <div className="flex gap-4">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
                 <Input
                   type="text"
                   placeholder="Search by URL or job ID..."
@@ -332,39 +332,39 @@ export const Logs: React.FC = () => {
             ) : apiLogs.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           User
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Method
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           URL
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Status
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Time (ms)
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Date
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {apiLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             {log.user?.email || log.userId ? `User #${log.userId}` : 'Anonymous'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <Badge variant="default">{log.requestMethod}</Badge>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-700 max-w-md truncate">
+                          <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 max-w-md truncate">
                             {log.requestUrl}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -372,10 +372,10 @@ export const Logs: React.FC = () => {
                               {log.responseStatus}
                             </Badge>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {log.responseTimeMs}ms
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {formatDate(log.createdAt)}
                           </td>
                         </tr>
@@ -386,8 +386,8 @@ export const Logs: React.FC = () => {
 
                 {/* Pagination */}
                 {totalPages(apiTotal) > 1 && (
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <p className="text-sm text-gray-600">
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Showing {((apiPage - 1) * limit) + 1} to {Math.min(apiPage * limit, apiTotal)} of {apiTotal} logs
                     </p>
                     <div className="flex gap-2">
@@ -398,7 +398,7 @@ export const Logs: React.FC = () => {
                       >
                         Previous
                       </Button>
-                      <span className="px-4 py-2 text-sm text-gray-600">
+                      <span className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
                         Page {apiPage} of {totalPages(apiTotal)}
                       </span>
                       <Button
@@ -413,8 +413,8 @@ export const Logs: React.FC = () => {
                 )}
               </>
             ) : (
-              <div className="text-center py-12 text-gray-500">
-                <Database className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                <Database className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                 <p>No API logs found</p>
               </div>
             )}
@@ -431,42 +431,42 @@ export const Logs: React.FC = () => {
             ) : sessions.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Session ID
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           User
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           IP Address
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Created
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Expires
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {sessions.map((session) => (
-                        <tr key={session.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
+                        <tr key={session.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500 dark:text-gray-400">
                             {session.id.substring(0, 12)}...
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                             {session.user?.email || `User #${session.userId}`}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {session.ipAddress}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {formatDate(session.createdAt)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                             {formatDate(session.expiresAt)}
                           </td>
                         </tr>
@@ -477,8 +477,8 @@ export const Logs: React.FC = () => {
 
                 {/* Pagination */}
                 {totalPages(sessionsTotal) > 1 && (
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <p className="text-sm text-gray-600">
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Showing {((sessionsPage - 1) * limit) + 1} to {Math.min(sessionsPage * limit, sessionsTotal)} of {sessionsTotal} sessions
                     </p>
                     <div className="flex gap-2">
@@ -489,7 +489,7 @@ export const Logs: React.FC = () => {
                       >
                         Previous
                       </Button>
-                      <span className="px-4 py-2 text-sm text-gray-600">
+                      <span className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
                         Page {sessionsPage} of {totalPages(sessionsTotal)}
                       </span>
                       <Button
@@ -504,8 +504,8 @@ export const Logs: React.FC = () => {
                 )}
               </>
             ) : (
-              <div className="text-center py-12 text-gray-500">
-                <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                <Users className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
                 <p>No active sessions found</p>
               </div>
             )}

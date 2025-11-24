@@ -180,10 +180,18 @@ class MuleSoftService {
     analysisId?: number,
     contractResult?: MuleSoftContractResponse,
     prompt?: { id: number; name: string },
-    variables?: Record<string, any>
+    variables?: Record<string, any>,
+    flow?: { name: string; url: string; method: string }
   ): Promise<MuleSoftDataResponse> {
     const config = await getMuleSoftConfig();
-    const endpoint = config.endpoints.analyzeData;
+    // Use flow URL if provided, otherwise use default endpoint
+    const endpoint = flow?.url || config.endpoints.analyzeData;
+    
+    if (flow) {
+      logger.info(`Using custom flow endpoint: ${endpoint} (Flow: ${flow.name})`);
+    } else {
+      logger.info(`Using default endpoint: ${endpoint}`);
+    }
 
     // Build request body in new format
     const requestBody: any = {
@@ -201,10 +209,10 @@ class MuleSoftService {
     // Build variables array
     const variablesArray: Array<{ name: string; value: any }> = [];
     
-    // Add contract as a variable if provided
+    // Add IDP data as a variable if provided
     if (contractResult) {
       variablesArray.push({
-        name: 'contract',
+        name: 'idpData',
         value: contractResult,
       });
     }
@@ -212,8 +220,8 @@ class MuleSoftService {
     // Add additional variables if provided
     if (variables) {
       Object.entries(variables).forEach(([name, value]) => {
-        // Don't duplicate contract if already added
-        if (name !== 'contract' || !contractResult) {
+        // Don't duplicate idpData if already added
+        if (name !== 'idpData' || !contractResult) {
           variablesArray.push({ name, value });
         }
       });

@@ -7,6 +7,8 @@ import routes from './routes';
 import { errorHandler, notFound } from './middleware/errorHandler';
 import prisma from './config/database';
 import { setupStaticFiles } from './config/static';
+import { initializeSecrets } from './config/secrets';
+import { initializeAutoDetection } from './utils/autoDetectDatabases';
 
 const app: Express = express();
 
@@ -56,6 +58,12 @@ const startServer = async () => {
     // Test database connection
     await prisma.$connect();
     logger.info('Database connected successfully');
+
+    // Initialize secrets from database
+    await initializeSecrets();
+
+    // Auto-detect and create database connectors
+    await initializeAutoDetection();
 
     // Clean expired sessions on startup
     const cleanupInterval = setInterval(async () => {

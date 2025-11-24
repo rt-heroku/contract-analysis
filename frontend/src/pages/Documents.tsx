@@ -163,21 +163,21 @@ export const Documents: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Documents Library</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Documents Library</h1>
           <p className="text-gray-600 mt-1">Manage uploaded contracts and data files</p>
         </div>
         <div className="flex gap-2">
           <label className="inline-block cursor-pointer">
             <input
               type="file"
-              accept=".pdf"
+              accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif"
               onChange={(e) => handleUpload(e, 'contract')}
               className="hidden"
               disabled={uploadingFile}
             />
             <span className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white shadow-sm ${uploadingFile ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}>
               <Upload className="w-4 h-4 mr-2" />
-              Upload PDF
+              Upload Contract
             </span>
           </label>
           <label className="inline-block cursor-pointer">
@@ -270,7 +270,7 @@ export const Documents: React.FC = () => {
                       <div className="flex items-center">
                         {getFileIcon(doc.fileType)}
                         <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                             {doc.originalFilename}
                           </div>
                           <div className="text-xs text-gray-500">
@@ -279,13 +279,13 @@ export const Documents: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                       {formatFileSize(doc.fileSize)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                       {new Date(doc.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                       {doc.user.firstName || doc.user.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

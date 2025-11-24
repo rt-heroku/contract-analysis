@@ -73,20 +73,21 @@ export const AnalysisSetup: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [flowsRes, promptsRes, analysisRes] = await Promise.all([
-          api.get('/flows'),
-          api.get('/prompts'),
-          api.get(`/analysis/${analysisRecordId}`)
-        ]);
-        
-        setFlows(flowsRes.data.flows || []);
-        setPrompts(promptsRes.data.prompts || []);
-        
-        // Get jobId from analysis record
-        const recordJobId = analysisRes.data.analysisRecord?.jobId;
-        if (recordJobId) {
-          setJobId(recordJobId);
-          console.log('📋 Using jobId from analysis record:', recordJobId);
+      const [flowsRes, promptsRes, analysisRes] = await Promise.all([
+        api.get('/flows'),
+        api.get('/prompts'),
+        api.get(`/analysis/${analysisRecordId}`)
+      ]);
+      
+      setFlows(flowsRes.data.flows || []);
+      setPrompts(promptsRes.data.prompts || []);
+      
+      // Get jobId from analysis record
+      // Backend returns { analysis }, not { analysisRecord }
+      const recordJobId = analysisRes.data.analysis?.jobId;
+      if (recordJobId) {
+        setJobId(recordJobId);
+        console.log('📋 Using jobId from analysis record:', recordJobId);
           
           // Check for existing data uploads with this jobId
           try {
@@ -226,39 +227,18 @@ export const AnalysisSetup: React.FC = () => {
   };
 
   const handleAnalyze = async () => {
-    // Validation
-    if (!dataUploadId) {
-      setAlertDialog({
-        isOpen: true,
-        title: 'Missing Data',
-        message: 'Please upload an Excel or CSV data file',
-        type: 'warning',
-      });
-      return;
-    }
-
-    // Check mandatory variables
-    if (selectedPrompt) {
-      const mandatoryVars = selectedPrompt.variables?.filter(v => v.isRequired) || [];
-      const missingVars = mandatoryVars.filter(v => !variableValues[v.variableName]);
-      
-      if (missingVars.length > 0) {
-        setAlertDialog({
-          isOpen: true,
-          title: 'Missing Variables',
-          message: `Please provide values for: ${missingVars.map(v => v.displayName).join(', ')}`,
-          type: 'warning',
-        });
-        return;
-      }
-    }
+    // Data file is now optional - some flows/prompts may not require it
+    // Variables are also optional - they will be populated from files/JSON if not provided
 
     try {
       setAnalyzing(true);
 
-      const payload: any = {
-        dataUploadId,
-      };
+      const payload: any = {};
+
+      // Only include dataUploadId if file was uploaded
+      if (dataUploadId) {
+        payload.dataUploadId = dataUploadId;
+      }
 
       if (selectedFlow) {
         payload.flow = {
@@ -307,12 +287,19 @@ export const AnalysisSetup: React.FC = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Analysis Setup</h1>
         <p className="text-gray-600 mt-1">
-          Upload data file and configure analysis parameters
+          Configure analysis parameters (data file is optional)
+        </p>
+      </div>
+
+      {/* Informational Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-900">
+          <span className="font-semibold">ℹ️ Note:</span> Data file upload is optional. Some flows and prompts work with only the extracted contract data and don't require additional data files.
         </p>
       </div>
 
       {/* Step 1: Upload Data File */}
-      <Card title="Step 1: Upload Data File (Excel/CSV)">
+      <Card title="Step 1: Upload Data File (Optional)">
         {existingDataUpload && !dataFile ? (
           <div className="space-y-3">
             <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -357,6 +344,9 @@ export const AnalysisSetup: React.FC = () => {
                 </p>
                 <p className="text-sm text-gray-500">
                   Supports: Excel (.xls, .xlsx) and CSV (.csv)
+                </p>
+                <p className="text-xs text-blue-600 mt-2">
+                  Optional - Some flows and prompts may not require a data file
                 </p>
               </>
             )}
@@ -460,16 +450,20 @@ export const AnalysisSetup: React.FC = () => {
               <div className="space-y-3 mt-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                   <Database className="w-4 h-4" />
-                  <span>Variables</span>
+                  <span>Variables (Optional)</span>
+                </div>
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-3">
+                  <p className="text-xs text-blue-900">
+                    <span className="font-medium">ℹ️ Note:</span> Variables are optional. If left empty, they will be automatically populated from your uploaded files (contract PDF and data Excel/CSV).
+                  </p>
                 </div>
                 {selectedPrompt.variables.map(variable => (
                   <div key={variable.id}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {variable.displayName}
-                      {variable.isRequired && <span className="text-red-600 ml-1">*</span>}
                       {variable.isFlowVariable && (
                         <span className="ml-2 text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
-                          From Flow
+                          Auto-populated from files
                         </span>
                       )}
                     </label>
@@ -480,9 +474,9 @@ export const AnalysisSetup: React.FC = () => {
                         ...variableValues,
                         [variable.variableName]: e.target.value,
                       })}
-                      placeholder={variable.defaultValue || `Enter ${variable.displayName}`}
+                      placeholder={variable.defaultValue || `Optional - Leave empty to use file content`}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      disabled={analyzing || (variable.isFlowVariable && !variable.isRequired)}
+                      disabled={analyzing}
                     />
                   </div>
                 ))}
@@ -496,7 +490,7 @@ export const AnalysisSetup: React.FC = () => {
       <div className="flex gap-4">
         <Button
           onClick={handleAnalyze}
-          disabled={!dataUploadId || analyzing}
+          disabled={analyzing}
           isLoading={analyzing}
           size="lg"
           className="bg-primary-600 hover:bg-primary-700"

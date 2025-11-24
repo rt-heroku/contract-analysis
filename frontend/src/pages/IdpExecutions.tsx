@@ -34,6 +34,8 @@ interface IdpExecution {
   actionVersion: string;
   authClientId: string;
   authClientSecret: string;
+  anypointUsername?: string | null;
+  anypointPassword?: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -49,6 +51,7 @@ export const IdpExecutions: React.FC = () => {
   const { user } = useAuth();
   const [myExecutions, setMyExecutions] = useState<IdpExecution[]>([]);
   const [sharedExecutions, setSharedExecutions] = useState<IdpExecution[]>([]);
+  const [allOtherExecutions, setAllOtherExecutions] = useState<IdpExecution[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingExecution, setEditingExecution] = useState<IdpExecution | null>(null);
@@ -91,6 +94,8 @@ export const IdpExecutions: React.FC = () => {
     actionVersion: '',
     authClientId: '',
     authClientSecret: '',
+    anypointUsername: '',
+    anypointPassword: '',
   });
 
   const [parsing, setParsing] = useState(false);
@@ -106,6 +111,7 @@ export const IdpExecutions: React.FC = () => {
       const response = await api.get('/idp-executions');
       setMyExecutions(response.data.myExecutions || []);
       setSharedExecutions(response.data.sharedExecutions || []);
+      setAllOtherExecutions(response.data.allOtherExecutions || []);
     } catch (error: any) {
       console.error('Error fetching IDP executions:', error);
       setAlertDialog({
@@ -190,6 +196,8 @@ export const IdpExecutions: React.FC = () => {
         actionVersion: formData.actionVersion,
         authClientId: formData.authClientId,
         authClientSecret: formData.authClientSecret,
+        anypointUsername: formData.anypointUsername || undefined,
+        anypointPassword: formData.anypointPassword || undefined,
       };
 
       if (editingExecution) {
@@ -225,11 +233,15 @@ export const IdpExecutions: React.FC = () => {
 
   const handleEdit = async (execution: IdpExecution) => {
     try {
-      // Fetch the full details with decrypted credentials
+      // Fetch the full details with decrypted credentials (if owner) or masked (if shared)
       const response = await api.get(`/idp-executions/${execution.id}`);
       const fullExecution = response.data.execution;
 
       setEditingExecution(fullExecution);
+      
+      // Check if this is a shared/other execution (secrets are masked)
+      const isSharedOrOther = fullExecution.authClientSecret === '********';
+      
       setFormData({
         name: fullExecution.name,
         description: fullExecution.description || '',
@@ -240,8 +252,10 @@ export const IdpExecutions: React.FC = () => {
         orgId: fullExecution.orgId,
         actionId: fullExecution.actionId,
         actionVersion: fullExecution.actionVersion,
-        authClientId: fullExecution.authClientId,
-        authClientSecret: fullExecution.authClientSecret,
+        authClientId: isSharedOrOther ? '' : fullExecution.authClientId,
+        authClientSecret: isSharedOrOther ? '' : fullExecution.authClientSecret,
+        anypointUsername: isSharedOrOther ? '' : (fullExecution.anypointUsername || ''),
+        anypointPassword: isSharedOrOther ? '' : (fullExecution.anypointPassword || ''),
       });
       setShowForm(true);
     } catch (error: any) {
@@ -310,6 +324,8 @@ export const IdpExecutions: React.FC = () => {
       actionVersion: '',
       authClientId: '',
       authClientSecret: '',
+      anypointUsername: '',
+      anypointPassword: '',
     });
   };
 
@@ -321,112 +337,158 @@ export const IdpExecutions: React.FC = () => {
     setShowSecrets(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const ExecutionCard = ({ execution, isShared }: { execution: IdpExecution; isShared: boolean }) => {
+  const ExecutionCard = ({ execution, isShared, isOther }: { execution: IdpExecution; isShared: boolean; isOther?: boolean }) => {
     const isOwner = execution.userId === user?.id;
+    const isAdmin = user?.roles?.includes('admin') || user?.roles?.includes('Admin');
+    
+    // Non-admins: readonly for everything not owned by them
+    const isReadOnly = (isShared || isOther) && !isAdmin;
+    
+    // Check if Anypoint credentials are set (check if anypointUsername or anypointPassword are set)
+    const hasAnypointCreds = execution.anypointUsername !== null || execution.anypointPassword !== null;
 
     return (
-      <Card className="hover:shadow-md transition-shadow">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-lg font-semibold text-gray-900">{execution.name}</h3>
-              {isShared && (
-                <Badge variant="info">
-                  <UsersIcon className="w-3 h-3 mr-1" />
-                  Shared with me
-                </Badge>
+      <Card className="hover:shadow-sm transition-shadow py-3 px-4">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left section: Name and badges */}
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-gray-900 truncate">{execution.name}</h3>
+                {isShared && (
+                  <Badge variant="info">
+                    <UsersIcon className="w-3 h-3 mr-1" />
+                    <span className="text-xs">Shared</span>
+                  </Badge>
+                )}
+                {isOther && (
+                  <Badge variant="warning">
+                    <span className="text-xs">Admin</span>
+                  </Badge>
+                )}
+                {isReadOnly && (
+                  <Badge variant="default">
+                    <span className="text-xs">Read Only</span>
+                  </Badge>
+                )}
+              </div>
+              {execution.description && (
+                <p className="text-xs text-gray-500 truncate mt-0.5">{execution.description}</p>
               )}
             </div>
-
-            {execution.description && (
-              <p className="text-sm text-gray-600 mb-3">{execution.description}</p>
-            )}
-
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-700 font-medium">URL:</span>
-                <a 
-                  href={buildFullUrl(execution)} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary-600 hover:text-primary-700 flex items-center gap-1 truncate"
-                >
-                  <span className="truncate">{execution.host}</span>
-                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
-                </a>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <span className="text-gray-500">Protocol:</span>
-                  <span className="ml-2 font-medium">{execution.protocol}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Version:</span>
-                  <span className="ml-2 font-medium">{execution.actionVersion}</span>
-                </div>
-              </div>
-
-              {/* Credentials - masked for shared executions */}
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Key className="w-4 h-4 text-gray-400" />
-                  <span className="text-gray-700 font-medium">Credentials:</span>
-                </div>
-                <div className="space-y-1 pl-6">
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500 text-xs">Client ID:</span>
-                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                      {execution.authClientId}
-                    </code>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gray-500 text-xs">Client Secret:</span>
-                    <code className="text-xs bg-gray-100 px-2 py-1 rounded">
-                      {execution.authClientSecret}
-                    </code>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {execution.user && isShared && (
-              <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">
-                Owned by: {execution.user.firstName} {execution.user.lastName} ({execution.user.email})
-              </div>
-            )}
           </div>
 
-          {/* Action buttons - only for owned executions */}
-          {isOwner && (
-            <div className="flex flex-col gap-2 ml-4">
-              <Button
-                onClick={() => handleEdit(execution)}
-                variant="outline"
-                className="flex items-center gap-1"
+          {/* Middle section: URL and Protocol */}
+          <div className="hidden md:flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-1.5">
+              <Globe className="w-3.5 h-3.5 text-gray-400" />
+              <a 
+                href={buildFullUrl(execution)} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary-600 hover:text-primary-700 flex items-center gap-1"
               >
-                <Edit2 className="w-4 h-4" />
-                Edit
-              </Button>
-              <Button
-                onClick={() => handleShare(execution.id)}
-                variant="outline"
-                className="flex items-center gap-1"
-              >
-                <Share2 className="w-4 h-4" />
-                Share
-              </Button>
-              <Button
-                onClick={() => handleDelete(execution)}
-                variant="outline"
-                className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </Button>
+                <span className="max-w-[200px] truncate">{execution.host}</span>
+                <ExternalLink className="w-3 h-3 flex-shrink-0" />
+              </a>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-gray-500">Protocol:</span>
+              <span className="font-medium text-gray-700">{execution.protocol}</span>
+            </div>
+          </div>
+
+          {/* Credentials section - always masked */}
+          <div className="hidden lg:flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <Key className="w-3.5 h-3.5 text-gray-400" />
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-500">Client:</span>
+                  <code className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-500 rounded">
+                    {execution.authClientSecret}
+                  </code>
+                </div>
+                {hasAnypointCreds && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-gray-500">Anypoint:</span>
+                    <code className="text-xs px-1.5 py-0.5 bg-gray-200 text-gray-500 rounded">
+                      ********
+                    </code>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Owner info for shared/other executions */}
+          {execution.user && (isShared || isOther) && (
+            <div className="hidden xl:block text-xs text-gray-500">
+              <span className="font-medium">{execution.user.firstName} {execution.user.lastName}</span>
             </div>
           )}
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* Owner: Full access */}
+            {isOwner && (
+              <>
+                <Button
+                  onClick={() => handleEdit(execution)}
+                  variant="outline"
+                  className="h-8 px-2.5 text-xs"
+                >
+                  <Edit2 className="w-3.5 h-3.5 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  onClick={() => handleShare(execution.id)}
+                  variant="outline"
+                  className="h-8 px-2.5 text-xs"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  onClick={() => handleDelete(execution)}
+                  variant="outline"
+                  className="h-8 px-2.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            )}
+            
+            {/* Admin (not owner): Can edit, share, and delete shared/other executions */}
+            {!isOwner && isAdmin && (isShared || isOther) && (
+              <>
+                <Button
+                  onClick={() => handleEdit(execution)}
+                  variant="outline"
+                  className="h-8 px-2.5 text-xs"
+                  title="Admins can modify but cannot see secrets"
+                >
+                  <Edit2 className="w-3.5 h-3.5 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  onClick={() => handleShare(execution.id)}
+                  variant="outline"
+                  className="h-8 px-2.5 text-xs"
+                  title="Share this execution with other users"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  onClick={() => handleDelete(execution)}
+                  variant="outline"
+                  className="h-8 px-2.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                  title="Delete this execution"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </Card>
     );
@@ -464,17 +526,17 @@ export const IdpExecutions: React.FC = () => {
 
       {/* My IDP Executions */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">My IDP Executions</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">My IDP Executions</h2>
         {myExecutions.length === 0 ? (
           <Card>
-            <div className="text-center py-8 text-gray-500">
-              <p>No IDP executions yet. Create your first one!</p>
+            <div className="text-center py-6 text-gray-500">
+              <p className="text-sm">No IDP executions yet. Create your first one!</p>
             </div>
           </Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="space-y-2">
             {myExecutions.map((execution) => (
-              <ExecutionCard key={execution.id} execution={execution} isShared={false} />
+              <ExecutionCard key={execution.id} execution={execution} isShared={false} isOther={false} />
             ))}
           </div>
         )}
@@ -483,10 +545,27 @@ export const IdpExecutions: React.FC = () => {
       {/* Shared with Me */}
       {sharedExecutions.length > 0 && (
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Shared with Me</h2>
-          <div className="grid gap-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Shared with Me</h2>
+          <div className="space-y-2">
             {sharedExecutions.map((execution) => (
-              <ExecutionCard key={execution.id} execution={execution} isShared={true} />
+              <ExecutionCard key={execution.id} execution={execution} isShared={true} isOther={false} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* All Other Executions - Admin Only */}
+      {user?.roles?.includes('admin') && allOtherExecutions.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            All Other Executions
+            <Badge variant="warning">
+              <span className="text-xs">Admin Only</span>
+            </Badge>
+          </h2>
+          <div className="space-y-2">
+            {allOtherExecutions.map((execution) => (
+              <ExecutionCard key={execution.id} execution={execution} isShared={false} isOther={true} />
             ))}
           </div>
         </div>
@@ -509,6 +588,22 @@ export const IdpExecutions: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {/* Admin Edit Notice */}
+              {editingExecution && editingExecution.userId !== user?.id && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <Key className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-semibold text-yellow-800">Admin Edit Mode</h4>
+                      <p className="text-xs text-yellow-700 mt-1">
+                        You are editing another user's IDP execution. Secret values are hidden for security. 
+                        Leave credential fields empty to keep existing values, or provide new values to replace them.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* URL Parser */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -661,27 +756,29 @@ export const IdpExecutions: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Client ID <span className="text-red-500">*</span>
+                  Client ID {!editingExecution || editingExecution.userId === user?.id ? <span className="text-red-500">*</span> : null}
                 </label>
                 <input
                   type="text"
-                  required
+                  required={!editingExecution || editingExecution.userId === user?.id}
                   value={formData.authClientId}
                   onChange={(e) => setFormData(prev => ({ ...prev, authClientId: e.target.value }))}
+                  placeholder={editingExecution && editingExecution.userId !== user?.id ? 'Leave empty to keep current value, or enter new value' : ''}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Client Secret <span className="text-red-500">*</span>
+                  Client Secret {!editingExecution || editingExecution.userId === user?.id ? <span className="text-red-500">*</span> : null}
                 </label>
                 <div className="relative">
                   <input
                     type={showSecrets['form-secret'] ? 'text' : 'password'}
-                    required
+                    required={!editingExecution || editingExecution.userId === user?.id}
                     value={formData.authClientSecret}
                     onChange={(e) => setFormData(prev => ({ ...prev, authClientSecret: e.target.value }))}
+                    placeholder={editingExecution && editingExecution.userId !== user?.id ? 'Leave empty to keep current value, or enter new value' : ''}
                     className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                   <button
@@ -697,7 +794,63 @@ export const IdpExecutions: React.FC = () => {
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Credentials are encrypted and stored securely
+                  {editingExecution && editingExecution.userId !== user?.id 
+                    ? 'Current value is hidden. Leave empty to keep existing, or enter new value to replace.'
+                    : 'Connected Apps Client credentials for OAuth token generation'}
+                </p>
+              </div>
+
+              {/* Anypoint Platform Credentials */}
+              <div className="border-t border-gray-200 pt-4"></div>
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <Key className="w-4 h-4" />
+                Anypoint Platform User Credentials (Optional)
+              </h3>
+              <p className="text-xs text-gray-500 -mt-2">
+                Save your Anypoint username and password here to avoid entering them every time you review a document.
+              </p>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Anypoint Username
+                </label>
+                <input
+                  type="text"
+                  value={formData.anypointUsername}
+                  onChange={(e) => setFormData(prev => ({ ...prev, anypointUsername: e.target.value }))}
+                  placeholder={editingExecution && editingExecution.userId !== user?.id ? 'Leave empty to keep current value' : 'your.email@company.com'}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Anypoint Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showSecrets['form-anypoint-password'] ? 'text' : 'password'}
+                    value={formData.anypointPassword}
+                    onChange={(e) => setFormData(prev => ({ ...prev, anypointPassword: e.target.value }))}
+                    placeholder={editingExecution && editingExecution.userId !== user?.id ? 'Leave empty to keep current value' : 'Your Anypoint Platform password'}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleSecretVisibility('form-anypoint-password')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showSecrets['form-anypoint-password'] ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {editingExecution && editingExecution.userId !== user?.id
+                    ? 'Current value is hidden. Leave empty to keep existing, or enter new value to replace.'
+                    : 'These credentials are encrypted and used only for manual review approvals'}
                 </p>
               </div>
 

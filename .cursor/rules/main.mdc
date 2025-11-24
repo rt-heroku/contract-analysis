@@ -1,0 +1,273 @@
+---
+alwaysApply: true
+---
+refactor(permissions): Move permission checks to custom hook
+
+Extracted permission logic from components into usePermissions hook
+for better reusability and maintainability
+
+---
+
+docs(readme): Update installation instructions
+
+Added Docker setup instructions and troubleshooting section
+```
+
+### Branch Naming
+- `feature/description` - New features
+- `bugfix/description` - Bug fixes
+- `hotfix/description` - Urgent production fixes
+- `refactor/description` - Code improvements
+- `docs/description` - Documentation updates
+
+**Examples:**
+- `feature/role-management`
+- `bugfix/menu-permissions`
+- `hotfix/login-crash`
+- `refactor/api-logging`
+- `docs/api-documentation`
+
+### Pull Request Template
+```markdown
+## Description
+Brief description of changes
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Breaking change
+- [ ] Documentation update
+
+## Testing Checklist
+- [ ] Tested manually
+- [ ] Tested with different user roles
+- [ ] Checked for console errors
+- [ ] Verified activity logging
+- [ ] Tested edge cases
+
+## Screenshots (if applicable)
+[Add screenshots]
+
+## Related Issues
+Closes #issue_number
+```
+
+## Documentation
+
+### Keep README Updated
+When making significant changes:
+1. Update installation instructions if dependencies change
+2. Document new features and how to use them
+3. Add troubleshooting guides for common issues
+4. Update API documentation
+5. Include screenshots for new UI features
+
+### Code Comments
+```typescript
+// ✅ Comment WHY, not WHAT
+// Fetch from database first to check if already processed
+// This prevents duplicate MuleSoft API calls
+const existing = await prisma.analysis.findFirst({ where: { jobId } });
+
+// ✅ Document complex business logic
+/**
+ * Processes contract and data files through MuleSoft IDP
+ * 
+ * Flow:
+ * 1. Upload files to database
+ * 2. Call MuleSoft /process/document with jobId
+ * 3. Store IDP response in contract_analysis table
+ * 4. Call MuleSoft /analyze with IDP response as body
+ * 5. Store analysis in data_analysis table
+ * 6. Update analysis_record status
+ * 
+ * @param jobId - Unique identifier linking contract and data files
+ * @param userId - User initiating the analysis
+ */
+async processDocuments(jobId: string, userId: number) {
+  // Implementation
+}
+```
+
+## Performance Considerations
+
+### Frontend Optimization
+```typescript
+// ✅ Use React.memo for expensive components
+export const ExpensiveComponent = React.memo(({ data }) => {
+  return <div>{/* Render */}</div>;
+});
+
+// ✅ Debounce search inputs
+const debouncedSearch = useMemo(
+  () => debounce((term: string) => {
+    // Search logic
+  }, 300),
+  []
+);
+
+// ✅ Paginate large lists
+const [page, setPage] = useState(1);
+const [pageSize] = useState(20);
+
+// ✅ Use loading states for async operations
+const [loading, setLoading] = useState(false);
+
+// ✅ Cleanup subscriptions and timers
+useEffect(() => {
+  const timer = setInterval(() => { /* ... */ }, 5000);
+  return () => clearInterval(timer);
+}, []);
+```
+
+### Backend Optimization
+```typescript
+// ✅ Use database indexes
+@@index([userId])
+@@index([createdAt(sort: Desc)])
+@@index([status])
+
+// ✅ Limit returned fields
+const users = await prisma.user.findMany({
+  select: { id: true, email: true, firstName: true, lastName: true },
+});
+
+// ✅ Paginate queries
+const analyses = await prisma.analysisRecord.findMany({
+  where: { userId },
+  skip: (page - 1) * pageSize,
+  take: pageSize,
+  orderBy: { createdAt: 'desc' },
+});
+
+// ✅ Use Promise.all for parallel operations
+const [users, roles, permissions] = await Promise.all([
+  prisma.user.findMany(),
+  prisma.role.findMany(),
+  prisma.permission.findMany(),
+]);
+
+// ✅ Cache frequently accessed data
+const cache = new Map<string, any>();
+async function getCachedSettings(key: string) {
+  if (cache.has(key)) return cache.get(key);
+  const value = await getSettings(key);
+  cache.set(key, value);
+  return value;
+}
+```
+
+## Common Pitfalls to Avoid
+
+### ❌ Don't Do These
+```typescript
+// ❌ Don't use alert/confirm/prompt
+alert('Success!');
+
+// ❌ Don't call external APIs directly from frontend
+axios.post('http://mulesoft:8081/analyze', data);
+
+// ❌ Don't hardcode URLs or credentials
+const apiUrl = 'http://localhost:8081';
+
+// ❌ Don't expose sensitive data in frontend
+const apiKey = 'secret-key-123';
+
+// ❌ Don't skip error handling
+const data = await api.get('/endpoint'); // No try-catch!
+
+// ❌ Don't forget to log activities
+await createUser(data); // Missing activity log
+
+// ❌ Don't skip permission checks
+router.post('/admin/endpoint', controller.method); // Missing auth!
+
+// ❌ Don't use 'any' type
+function process(data: any) { } // Use specific types
+
+// ❌ Don't mutate state directly
+state.users.push(newUser); // Use setState
+
+// ❌ Don't forget loading states
+const data = await fetch(); // Show loading indicator!
+```
+
+### ✅ Do These Instead
+```typescript
+// ✅ Use styled dialogs
+setAlertDialog({ isOpen: true, title: 'Success', message: 'Operation completed', type: 'success' });
+
+// ✅ Proxy through backend
+await api.post('/analysis/process', data);
+
+// ✅ Use environment variables/database settings
+const apiUrl = await getSettings('mulesoft_api_url');
+
+// ✅ Keep secrets on backend
+const apiKey = process.env.MULESOFT_API_KEY;
+
+// ✅ Always handle errors
+try {
+  const data = await api.get('/endpoint');
+} catch (error: any) {
+  setAlertDialog({ isOpen: true, title: 'Error', message: error.response?.data?.error || 'Request failed', type: 'error' });
+}
+
+// ✅ Log all activities
+await createUser(data);
+await loggingService.logActivity({ userId, actionType: 'user.create', actionDescription: 'Created user' });
+
+// ✅ Always check permissions
+router.post('/admin/endpoint', authenticate, requireAdmin, controller.method);
+
+// ✅ Use specific types
+interface UserData { id: number; email: string; }
+function process(data: UserData) { }
+
+// ✅ Use setState properly
+setUsers([...users, newUser]);
+
+// ✅ Show loading states
+const [loading, setLoading] = useState(false);
+setLoading(true);
+const data = await fetch();
+setLoading(false);
+```
+
+## Production Readiness Checklist
+
+Before deploying to production:
+
+- [ ] All features tested manually
+- [ ] No console errors or warnings
+- [ ] All TypeScript errors resolved
+- [ ] Activity logging works for all actions
+- [ ] API logging works for all MuleSoft calls
+- [ ] Permissions checked and working for all roles
+- [ ] Error handling in place for all API calls
+- [ ] Loading states implemented
+- [ ] Styled dialogs used (no alert/confirm/prompt)
+- [ ] Database migrations run successfully
+- [ ] Environment variables configured
+- [ ] Sensitive data not exposed
+- [ ] All backend API calls go through backend (no direct frontend calls)
+- [ ] README updated with new features
+- [ ] Git history clean with descriptive commits
+
+## Remember
+
+1. **Security First**: Always validate, authenticate, and authorize
+2. **User Experience**: Show loading, handle errors, give feedback
+3. **Maintainability**: Write clean, documented, testable code
+4. **Logging**: Log everything for debugging and auditing
+5. **Permissions**: Control access at every level
+6. **Testing**: Test thoroughly before committing
+7. **Documentation**: Keep README and docs up to date, and all md files go into /docs folder
+
+---
+
+*This is a production-ready system. Always consider security, performance, and user experience in your implementations.*
+
+Keep going until the job is completely solved before ending your turn
+Use your tools, don't guess. If you're unsure about code or files, open them -- do not hallucinate
+Plan then reflect, Plan throughly before every tool call and reflect on the outcome after.

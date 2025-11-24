@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import prisma from '../config/database';
 import config from '../config/env';
+import { getJwtSecretSync } from '../config/secrets';
 import { RegisterData, LoginCredentials, JWTPayload } from '../types';
 import { JWT_EXPIRATION, JWT_REFRESH_EXPIRATION, ROLES } from '../utils/constants';
 
@@ -10,8 +11,9 @@ class AuthService {
 
   /**
    * Register a new user
+   * @param skipDefaultRole - If true, don't assign default viewer role (used for first admin)
    */
-  async register(data: RegisterData) {
+  async register(data: RegisterData, skipDefaultRole: boolean = false) {
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
       where: { email: data.email.toLowerCase() },
@@ -32,7 +34,7 @@ class AuthService {
           passwordHash,
           firstName: data.firstName,
           lastName: data.lastName,
-          defaultMenuItem: 'history', // Viewer role defaults to history page
+          defaultMenuItem: skipDefaultRole ? 'dashboard' : 'history', // Admins go to dashboard, viewers to history
         },
       });
 
@@ -43,18 +45,20 @@ class AuthService {
         },
       });
 
-      // Assign viewer role (default for new registrations)
-      const viewerRole = await tx.role.findUnique({
-        where: { name: ROLES.VIEWER },
-      });
-
-      if (viewerRole) {
-        await tx.userRole.create({
-          data: {
-            userId: newUser.id,
-            roleId: viewerRole.id,
-          },
+      // Assign viewer role (default for new registrations) unless skipped
+      if (!skipDefaultRole) {
+        const viewerRole = await tx.role.findUnique({
+          where: { name: ROLES.VIEWER },
         });
+
+        if (viewerRole) {
+          await tx.userRole.create({
+            data: {
+              userId: newUser.id,
+              roleId: viewerRole.id,
+            },
+          });
+        }
       }
 
       return newUser;
@@ -66,7 +70,7 @@ class AuthService {
       firstName: user.firstName,
       lastName: user.lastName,
       defaultMenuItem: user.defaultMenuItem,
-      roles: [ROLES.VIEWER], // New users are viewers by default
+      roles: skipDefaultRole ? [] : [ROLES.VIEWER], // Return appropriate roles
     };
   }
 
@@ -214,7 +218,8 @@ class AuthService {
    */
   generateToken(payload: JWTPayload, longExpiration: boolean = false): string {
     const expiration = longExpiration ? config.jwtRefreshExpiration : config.jwtExpiration;
-    return jwt.sign(payload, config.jwtSecret, { expiresIn: expiration } as jwt.SignOptions);
+    const jwtSecret = getJwtSecretSync();
+    return jwt.sign(payload, jwtSecret, { expiresIn: expiration } as jwt.SignOptions);
   }
 
   /**
@@ -222,7 +227,8 @@ class AuthService {
    */
   verifyToken(token: string): JWTPayload {
     try {
-      return jwt.verify(token, config.jwtSecret) as JWTPayload;
+      const jwtSecret = getJwtSecretSync();
+      return jwt.verify(token, jwtSecret) as JWTPayload;
     } catch (error) {
       throw new Error('Invalid or expired token');
     }

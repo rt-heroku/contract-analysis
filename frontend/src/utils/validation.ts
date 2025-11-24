@@ -58,8 +58,16 @@ export const validateFileType = (
   type: 'contract' | 'data'
 ): { isValid: boolean; error?: string } => {
   if (type === 'contract') {
-    if (file.type !== 'application/pdf') {
-      return { isValid: false, error: 'Only PDF files are allowed for contracts' };
+    const validTypes = [
+      'application/pdf',
+      'image/png',
+      'image/jpeg',
+      'image/jpg',
+      'image/tiff',
+      'image/tif'
+    ];
+    if (!validTypes.includes(file.type)) {
+      return { isValid: false, error: 'Only PDF, PNG, JPG, or TIFF files are allowed for contracts' };
     }
   } else {
     const validTypes = [

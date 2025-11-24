@@ -99,12 +99,30 @@ class DocumentService {
       }
 
       // Extract executionId from MuleSoft response (id, execution_id, or executionId)
+      // If not found, use jobId as fallback since it uniquely identifies the document
+      logger.info(`MuleSoft response fields for jobId ${jobId}:`, {
+        hasId: contractResult.id != null,
+        idValue: contractResult.id,
+        hasExecutionId: !!contractResult.execution_id,
+        hasExecutionIdCamelCase: !!contractResult.executionId,
+        documentName: contractResult.documentName,
+        status: contractResult.status
+      });
+      
       const executionId =
         contractResult.id != null
           ? String(contractResult.id)
-          : contractResult.execution_id || contractResult.executionId || null;
+          : contractResult.execution_id || contractResult.executionId || jobId;
+      
       if (executionId) {
-        logger.info(`Extracted executionId: ${executionId} for jobId: ${jobId}`);
+        const source = contractResult.id != null 
+          ? 'MuleSoft response.id' 
+          : contractResult.execution_id 
+            ? 'MuleSoft response.execution_id'
+            : contractResult.executionId
+              ? 'MuleSoft response.executionId'
+              : 'jobId fallback';
+        logger.info(`✓ Extracted executionId: ${executionId} from ${source} for jobId: ${jobId}`);
       } else {
         logger.warn(`No executionId found in MuleSoft response for jobId: ${jobId}`);
       }
@@ -280,10 +298,31 @@ class DocumentService {
         throw error;
       }
 
-      // Extract executionId from MuleSoft response
-      const executionId = contractResult.execution_id || contractResult.executionId || null;
+      // Extract executionId from MuleSoft response (id, execution_id, or executionId)
+      // If not found, use jobId as fallback since it uniquely identifies the document
+      logger.info(`MuleSoft response fields for jobId ${jobId}:`, {
+        hasId: contractResult.id != null,
+        idValue: contractResult.id,
+        hasExecutionId: !!contractResult.execution_id,
+        hasExecutionIdCamelCase: !!contractResult.executionId,
+        documentName: contractResult.documentName,
+        status: contractResult.status
+      });
+      
+      const executionId =
+        contractResult.id != null
+          ? String(contractResult.id)
+          : contractResult.execution_id || contractResult.executionId || jobId;
+      
       if (executionId) {
-        logger.info(`Extracted executionId: ${executionId} for jobId: ${jobId}`);
+        const source = contractResult.id != null 
+          ? 'MuleSoft response.id' 
+          : contractResult.execution_id 
+            ? 'MuleSoft response.execution_id'
+            : contractResult.executionId
+              ? 'MuleSoft response.executionId'
+              : 'jobId fallback';
+        logger.info(`✓ Extracted executionId: ${executionId} from ${source} for jobId: ${jobId}`);
       } else {
         logger.warn(`No executionId found in MuleSoft response for jobId: ${jobId}`);
       }
@@ -369,7 +408,8 @@ class DocumentService {
     analysisRecordId: number,
     dataUploadId?: number,
     prompt?: { id: number; name: string },
-    variables?: Record<string, any>
+    variables?: Record<string, any>,
+    flow?: { name: string; url: string; method: string }
   ): Promise<ProcessingResult> {
     try {
       // Get the analysis record
@@ -408,7 +448,8 @@ class DocumentService {
         analysisRecord.contractAnalysis.mulesoftResponse,
         dataUploadId,
         prompt,
-        variables
+        variables,
+        flow
       ).catch((error) => {
         logger.error('Analysis failed:', error);
       });
@@ -437,12 +478,17 @@ class DocumentService {
     contractResult: any,
     dataUploadId?: number,
     prompt?: { id: number; name: string },
-    variables?: Record<string, any>
+    variables?: Record<string, any>,
+    flow?: { name: string; url: string; method: string }
   ): Promise<void> {
     try {
       // Step 2: Analyze data with contract context
       logger.info(`[Step 2/2] Running final analysis for jobId: ${jobId}`);
-      logger.info(`Passing contract result to /analyze endpoint`);
+      if (flow) {
+        logger.info(`Using flow: ${flow.name} (URL: ${flow.url})`);
+      } else {
+        logger.info(`Using default /analyze endpoint`);
+      }
       if (prompt) {
         logger.info(`Using prompt: ${prompt.name} (ID: ${prompt.id})`);
       }
@@ -455,7 +501,8 @@ class DocumentService {
           contractAnalysisId,
           contractResult,
           prompt,
-          variables
+          variables,
+          flow
         );
         logger.info(`[Step 2/2] Analysis successful for jobId: ${jobId}`);
       } catch (error: any) {

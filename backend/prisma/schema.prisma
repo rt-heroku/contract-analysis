@@ -35,18 +35,31 @@ model User {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  profile         UserProfile?
-  userRoles       UserRole[]
-  sessions        Session[]
-  activityLogs    ActivityLog[]
-  uploads         Upload[]
-  analysisRecords AnalysisRecord[]
-  notifications   Notification[]
-  apiLogs         ApiLog[]
-  deletedRecords  AnalysisRecord[] @relation("DeletedBy")
-  prompts         Prompt[]
-  flows           Flow[]
-  idpExecutions   IdpExecution[]
+  profile          UserProfile?
+  userRoles        UserRole[]
+  sessions         Session[]
+  activityLogs     ActivityLog[]
+  uploads          Upload[]
+  analysisRecords  AnalysisRecord[]
+  notifications    Notification[]
+  apiLogs          ApiLog[]
+  deletedRecords   AnalysisRecord[]   @relation("DeletedBy")
+  prompts          Prompt[]
+  flows            Flow[]
+  idpExecutions    IdpExecution[]
+  actions          Action[]           @relation("ActionCreator")
+  processes        Process[]          @relation("ProcessCreator")
+  modifiedProcesses Process[]         @relation("ProcessModifier")
+  processExecutions ProcessExecution[] @relation("ProcessExecutionUser")
+  connectors       Connector[]        @relation("ConnectorCreator")
+  stores           Store[]            @relation("StoreCreator")
+  dynamicPagesCreated DynamicPage[]   @relation("DynamicPageCreator")
+  dynamicPagesModified DynamicPage[]  @relation("DynamicPageModifier")
+  dbQueries        DbQuery[]          @relation("UserQueries")
+  dbConnections    DbConnection[]     @relation("UserDbConnections")
+  systemPromptsCreated SystemPrompt[]  @relation("SystemPromptCreator")
+  systemPromptsUpdated SystemPrompt[]  @relation("SystemPromptUpdater")
+  dbAnalysisResults DbAnalysisResult[] @relation("AnalysisExecutor")
 
   @@map("users")
 }
@@ -98,6 +111,9 @@ model ActivityLog {
   id                Int      @id @default(autoincrement())
   userId            Int?     @map("user_id")
   jobId             String?  @map("job_id") @db.VarChar(100)
+  processId         Int?     @map("process_id") // For process-related logs
+  actionId          Int?     @map("action_id") // For action-related logs
+  logLevel          String?  @map("log_level") @db.VarChar(20) // 'debug', 'info', 'warn', 'error'
   actionType        String   @map("action_type") @db.VarChar(100)
   actionDescription String   @map("action_description") @db.Text
   ipAddress         String?  @map("ip_address") @db.VarChar(45)
@@ -110,7 +126,10 @@ model ActivityLog {
 
   @@index([userId])
   @@index([jobId])
+  @@index([processId])
+  @@index([actionId])
   @@index([actionType])
+  @@index([logLevel])
   @@index([createdAt(sort: Desc)])
   @@map("activity_logs")
 }
@@ -178,6 +197,7 @@ model SystemSetting {
   settingKey   String   @unique @map("setting_key") @db.VarChar(100)
   settingValue String?  @map("setting_value") @db.Text
   description  String?  @db.Text
+  category     String?  @db.VarChar(50) // e.g., "Database", "AI", "Email", "General"
   isSecret     Boolean  @default(false) @map("is_secret")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
@@ -370,6 +390,58 @@ model PromptVariable {
   @@map("prompt_variables")
 }
 
+model SystemPrompt {
+  id                Int       @id @default(autoincrement())
+  name              String    @db.VarChar(255)
+  featureType       String    @map("feature_type") @db.VarChar(100)
+  description       String?   @db.Text
+  promptTemplate    String    @map("prompt_template") @db.Text
+  variables         Json?
+  processingConfig  Json?     @map("processing_config")
+  isActive          Boolean   @default(true) @map("is_active")
+  version           Int       @default(1)
+  metadata          Json?
+  createdBy         Int?      @map("created_by")
+  updatedBy         Int?      @map("updated_by")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  creator User? @relation("SystemPromptCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  updater User? @relation("SystemPromptUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
+
+  @@unique([featureType, version])
+  @@index([featureType])
+  @@index([isActive])
+  @@map("system_prompts")
+}
+
+model DbAnalysisResult {
+  id               Int       @id @default(autoincrement())
+  connectorId      Int       @map("connector_id")
+  schemaName       String    @map("schema_name") @db.VarChar(255)
+  tableName        String    @map("table_name") @db.VarChar(255)
+  analysisType     String    @map("analysis_type") @db.VarChar(50)
+  scenarioDetected String?   @map("scenario_detected") @db.VarChar(50)
+  healthScore      Int?      @map("health_score")
+  summary          String?   @db.Text
+  tableContext     Json      @map("table_context")
+  aiAnalysis       String    @map("ai_analysis") @db.Text
+  recommendations  Json?
+  actionsTaken     Json?     @map("actions_taken")
+  executedBy       Int?      @map("executed_by")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  connector Connector @relation("AnalysisResults", fields: [connectorId], references: [id], onDelete: Cascade)
+  executor  User?     @relation("AnalysisExecutor", fields: [executedBy], references: [id], onDelete: SetNull)
+
+  @@index([connectorId])
+  @@index([schemaName, tableName])
+  @@index([analysisType])
+  @@index([createdAt(sort: Desc)])
+  @@map("db_analysis_results")
+}
+
 model Flow {
   id          Int      @id @default(autoincrement())
   name        String   @db.VarChar(200)
@@ -413,5 +485,354 @@ model IdpExecution {
   @@index([userId])
   @@index([isActive])
   @@map("idp_executions")
+}
+
+// ==================== ACTION SYSTEM MODELS ====================
+
+model Action {
+  id                 Int      @id @default(autoincrement())
+  name               String   @unique @db.VarChar(200)
+  displayName        String   @map("display_name") @db.VarChar(200)
+  description        String?  @db.Text
+  actionType         String   @map("action_type") @db.VarChar(50) // 'system', 'user_defined', 'connector'
+  category           String   @db.VarChar(100) // 'control_flow', 'data', 'api', 'storage', 'idp'
+  connectorId        Int?     @map("connector_id") // For connector actions
+  connectorOperation String?  @map("connector_operation") @db.VarChar(200) // Operation name for connector actions
+  icon               String?  @db.VarChar(50)
+  iconUrl            String?  @map("icon_url") @db.VarChar(500) // Custom icon URL (uploaded image, inherits from connector if not set)
+  color              String?  @db.VarChar(20)
+  configSchema       Json     @map("config_schema") // JSON schema for action configuration
+  inputSchema        Json     @map("input_schema") // JSON schema for expected inputs
+  outputSchema       Json     @map("output_schema") // JSON schema for outputs
+  executorType       String   @map("executor_type") @db.VarChar(50) // 'builtin', 'rest_api', 'script', 'connector'
+  executorConfig     Json     @map("executor_config") // Execution configuration
+  isSystem           Boolean  @default(false) @map("is_system")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdBy          Int      @map("created_by")
+  sharedWith         Json     @default("[]") @map("shared_with")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  creator          User               @relation("ActionCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  connector        Connector?         @relation("ConnectorActions", fields: [connectorId], references: [id], onDelete: SetNull)
+  actionExecutions ActionExecution[]
+
+  @@index([category])
+  @@index([createdBy])
+  @@index([isActive])
+  @@index([actionType])
+  @@index([connectorId])
+  @@map("actions")
+}
+
+model Process {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(200)
+  processKey      String?  @map("process_key") @db.VarChar(200) // Unique identifier for technical users
+  description     String?  @db.Text
+  version         String   @default("v1.0") @db.VarChar(20)
+  tags            Json     @default("[]") // Array of tags for categorization
+  category        String?  @db.VarChar(100)
+  status          String   @default("draft") @db.VarChar(20) // 'draft', 'published', 'active', 'deprecated', 'archived'
+  priority        String   @default("medium") @db.VarChar(20) // 'high', 'medium', 'low'
+  
+  // Core process definition
+  flowDefinition  Json     @map("flow_definition") // ReactFlow nodes/edges + metadata
+  executionMode   String   @default("sequential") @map("execution_mode") @db.VarChar(20) // 'sequential', 'parallel', 'hybrid'
+  
+  // Execution settings
+  timeoutSeconds  Int?     @default(1800) @map("timeout_seconds")
+  retryPolicy     Json?    @map("retry_policy")
+  concurrencyConfig Json?  @map("concurrency_config") // Max concurrent executions, queue behavior
+  errorHandlingStrategy String @default("stop") @map("error_handling_strategy") @db.VarChar(20) // 'continue', 'stop', 'custom'
+  
+  // Variables & Parameters
+  inputParameters Json?    @map("input_parameters") // Array of input parameter definitions
+  environmentVariables Json? @map("environment_variables") // Key-value pairs
+  globalConstants Json?    @map("global_constants") // Key-value pairs
+  outputVariables Json?    @map("output_variables") // Array of output variable definitions
+  
+  // Security & Permissions
+  permissions     Json?    // Who can view, edit, execute, delete
+  dataClassification String? @map("data_classification") @db.VarChar(20) // 'public', 'internal', 'confidential', 'restricted'
+  complianceTags  Json     @default("[]") @map("compliance_tags") // Array of compliance tags (GDPR, HIPAA, etc.)
+  
+  // Notifications & Alerts
+  notificationConfig Json? @map("notification_config") // On success, failure, approval needed, channels, recipients
+  
+  // Performance & Monitoring
+  loggingConfig   Json?    @map("logging_config") // enabled, logLevel
+  metricsEnabled  Boolean  @default(true) @map("metrics_enabled")
+  performanceSLA  Json?    @map("performance_sla") // expectedDuration, alertThreshold
+  
+  // Documentation
+  documentation   String?  @db.Text // Markdown documentation
+  changelog       String?  @db.Text // Version history
+  relatedProcesses Json?   @map("related_processes") // Array of process IDs or references
+  referenceUrls   Json?    @map("reference_urls") // Array of documentation URLs
+  
+  // Deployment & Environment
+  environment     String   @default("dev") @db.VarChar(20) // 'dev', 'staging', 'production'
+  deploymentStatus String? @map("deployment_status") @db.VarChar(50)
+  
+  // Legacy fields (maintained for compatibility)
+  isActive        Boolean  @default(true) @map("is_active")
+  isTemplate      Boolean  @default(false) @map("is_template")
+  triggerType     String   @default("manual") @map("trigger_type") @db.VarChar(50) // 'manual', 'ui_form', 'api', 'schedule', 'event', 'webhook', 'pubsub', 'stream'
+  triggerConfig   Json?    @map("trigger_config") // Configuration for trigger (form fields, schedule, etc.)
+  triggerUrl      String?  @map("trigger_url") @db.VarChar(500) // Direct URL to execute this process (for menu integration, webhooks, etc.)
+  
+  // Audit fields
+  createdBy       Int      @map("created_by")
+  lastModifiedBy  Int?     @map("last_modified_by") // Track who last modified
+  sharedWith      Json     @default("[]") @map("shared_with")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  creator           User               @relation("ProcessCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  modifier          User?              @relation("ProcessModifier", fields: [lastModifiedBy], references: [id])
+  processExecutions ProcessExecution[]
+  dynamicPages      DynamicPage[]
+
+  @@index([createdBy])
+  @@index([lastModifiedBy])
+  @@index([isActive])
+  @@index([category])
+  @@index([triggerType])
+  @@index([status])
+  @@index([priority])
+  @@index([environment])
+  @@map("processes")
+}
+
+model ProcessExecution {
+  id                Int       @id @default(autoincrement())
+  processId         Int       @map("process_id")
+  executionId       String    @unique @map("execution_id") @db.VarChar(100) // UUID
+  userId            Int       @map("user_id")
+  status            String    @db.VarChar(50) // 'pending', 'running', 'completed', 'failed', 'cancelled'
+  executionContext  Json      @map("execution_context") // Input variables, environment
+  result            Json?     // Final result
+  startedAt         DateTime? @map("started_at")
+  completedAt       DateTime? @map("completed_at")
+  durationMs        Int?      @map("duration_ms")
+  errorMessage      String?   @map("error_message") @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  process          Process           @relation(fields: [processId], references: [id], onDelete: Cascade)
+  user             User              @relation("ProcessExecutionUser", fields: [userId], references: [id], onDelete: Cascade)
+  actionExecutions ActionExecution[]
+
+  @@index([processId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@index([executionId])
+  @@map("process_executions")
+}
+
+model ActionExecution {
+  id                  Int       @id @default(autoincrement())
+  processExecutionId  Int       @map("process_execution_id")
+  actionId            Int       @map("action_id")
+  nodeId              String    @map("node_id") @db.VarChar(100) // Node ID from flow definition
+  stepOrder           Int       @map("step_order")
+  status              String    @db.VarChar(50) // 'pending', 'running', 'completed', 'failed', 'skipped'
+  inputData           Json?     @map("input_data")
+  outputData          Json?     @map("output_data")
+  errorMessage        String?   @map("error_message") @db.Text
+  startedAt           DateTime? @map("started_at")
+  completedAt         DateTime? @map("completed_at")
+  durationMs          Int?      @map("duration_ms")
+  retryCount          Int       @default(0) @map("retry_count")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  processExecution ProcessExecution @relation(fields: [processExecutionId], references: [id], onDelete: Cascade)
+  action           Action           @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  @@index([processExecutionId])
+  @@index([actionId])
+  @@index([status])
+  @@map("action_executions")
+}
+
+model Connector {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(200)
+  connectorType String   @map("connector_type") @db.VarChar(50) // 'rest', 'database', 's3', 'ftp', 'file', 'redis'
+  version       String   @default("1.0.0") @db.VarChar(20)
+  config        Json // Encrypted credentials, connection details
+  authType      String?  @map("auth_type") @db.VarChar(50) // 'basic', 'bearer', 'oauth2', 'api_key'
+  openApiSpec   Json?    @map("open_api_spec") // For REST connectors - OpenAPI/Swagger spec
+  iconUrl       String?  @map("icon_url") @db.VarChar(500) // Custom icon URL (uploaded image)
+  isActive      Boolean  @default(true) @map("is_active")
+  isAutoCreated Boolean  @default(false) @map("is_auto_created") // Auto-detected from env vars
+  category      String?  @db.VarChar(50) // 'System', 'User', 'External'
+  createdBy     Int      @map("created_by")
+  sharedWith    Json     @default("[]") @map("shared_with")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  creator          User              @relation("ConnectorCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  connectorActions ConnectorAction[]
+  actions          Action[]          @relation("ConnectorActions")
+  stores           Store[]
+  dbQueries        DbQuery[]            @relation("ConnectorQueries")
+  dbConnections    DbConnection[]       @relation("ConnectorConnections")
+  analysisResults  DbAnalysisResult[]   @relation("AnalysisResults")
+
+  @@index([createdBy])
+  @@index([connectorType])
+  @@index([isActive])
+  @@index([version])
+  @@map("connectors")
+}
+
+model ConnectorAction {
+  id          Int      @id @default(autoincrement())
+  connectorId Int      @map("connector_id")
+  operation   String   @db.VarChar(200) // e.g., "GET /users", "query", "insert", "read_file"
+  operationId String?  @map("operation_id") @db.VarChar(200) // From OpenAPI operationId
+  displayName String   @map("display_name") @db.VarChar(200)
+  description String?  @db.Text
+  method      String?  @db.VarChar(10) // For REST: GET, POST, PUT, DELETE, PATCH
+  path        String?  @db.VarChar(500) // For REST: /api/users/{id}
+  parameters  Json     @default("{}") // Operation-specific parameters
+  requestBody Json?    @map("request_body") // For REST: request body schema
+  responses   Json?    // Expected responses
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  connector Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@unique([connectorId, operation])
+  @@index([connectorId])
+  @@index([isActive])
+  @@map("connector_actions")
+}
+
+model Store {
+  id          Int      @id @default(autoincrement())
+  connectorId Int      @map("connector_id") // FK to Connector
+  name        String   @db.VarChar(200)
+  storeType   String   @map("store_type") @db.VarChar(50) // 'database', 's3', 'ftp', 'local_file', 'redis'
+  dataType    String   @default("jsonb") @map("data_type") @db.VarChar(50) // 'jsonb', 'text', 'blob'
+  config      Json // Store-specific config (schema name, bucket, folder, etc.)
+  isDefault   Boolean  @default(false) @map("is_default")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdBy   Int      @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  connector Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  creator   User      @relation("StoreCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  dynamicPages DynamicPage[]
+
+  @@index([createdBy])
+  @@index([storeType])
+  @@index([isDefault])
+  @@map("stores")
+}
+
+model DynamicPage {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(200)
+  description  String?  @db.Text
+  slug         String   @unique @db.VarChar(200)
+  
+  // Craft.js page configuration (stored as compressed JSON)
+  pageConfig   String   @map("page_config") @db.Text
+  
+  // Data source configuration
+  processId    Int?     @map("process_id")
+  dataSource   String   @default("static") @db.VarChar(50) // 'static', 'process_execution', 'api', 'store'
+  dataConfig   Json?    @map("data_config") // Additional data source configuration
+  
+  // Storage configuration
+  storageType  String   @default("database") @map("storage_type") @db.VarChar(50) // 'database', 's3', 'filesystem'
+  storagePath  String?  @map("storage_path") @db.VarChar(500) // S3 key or filesystem path
+  storeId      Int?     @map("store_id") // FK to Store for custom storage
+  
+  // Access control
+  isPublic     Boolean  @default(false) @map("is_public")
+  allowedRoles String[] @db.VarChar(50)
+  
+  // Publishing
+  status       String   @default("draft") @db.VarChar(50) // 'draft', 'published', 'archived'
+  publishedAt  DateTime? @map("published_at")
+  
+  // Metadata
+  category     String?  @db.VarChar(100)
+  tags         String[] @db.VarChar(50)
+  thumbnail    String?  @db.Text // Base64 or URL
+  
+  // Audit
+  createdBy    Int      @map("created_by")
+  lastModifiedBy Int?   @map("last_modified_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  process      Process? @relation(fields: [processId], references: [id], onDelete: SetNull)
+  store        Store?   @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  creator      User     @relation("DynamicPageCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  modifier     User?    @relation("DynamicPageModifier", fields: [lastModifiedBy], references: [id])
+  
+  @@index([slug])
+  @@index([processId])
+  @@index([status])
+  @@index([storageType])
+  @@index([createdBy])
+  @@index([category])
+  @@map("dynamic_pages")
+}
+
+// ==================== DATABASE EXPLORER MODELS ====================
+
+model DbQuery {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  connectorId  Int      @map("connector_id")
+  queryText    String   @map("query_text") @db.Text
+  queryName    String?  @map("query_name") @db.VarChar(200)
+  description  String?  @db.Text
+  isFavorite   Boolean  @default(false) @map("is_favorite")
+  executionTime Int?    @map("execution_time") // in milliseconds
+  rowsAffected Int?     @map("rows_affected")
+  status       String?  @db.VarChar(50) // 'success', 'error'
+  errorMessage String?  @map("error_message") @db.Text
+  tags         String[] @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user      User      @relation("UserQueries", fields: [userId], references: [id], onDelete: Cascade)
+  connector Connector @relation("ConnectorQueries", fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([connectorId])
+  @@index([isFavorite])
+  @@index([createdAt(sort: Desc)])
+  @@map("db_queries")
+}
+
+model DbConnection {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  connectorId    Int      @map("connector_id")
+  sessionId      String   @unique @map("session_id") @db.VarChar(100)
+  isActive       Boolean  @default(true) @map("is_active")
+  lastActivityAt DateTime @default(now()) @map("last_activity_at")
+  metadata       Json? // Connection pool info, etc.
+  createdAt      DateTime @default(now()) @map("created_at")
+  expiresAt      DateTime @map("expires_at")
+
+  user      User      @relation("UserDbConnections", fields: [userId], references: [id], onDelete: Cascade)
+  connector Connector @relation("ConnectorConnections", fields: [connectorId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([connectorId])
+  @@index([sessionId])
+  @@index([isActive])
+  @@map("db_connections")
 }
 

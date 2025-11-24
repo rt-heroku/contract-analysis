@@ -7,7 +7,7 @@ import { getClientIp, getUserAgent } from '../utils/helpers';
 
 export const idpExecutionController = {
   /**
-   * Get all user's IDP executions + shared ones
+   * Get all user's IDP executions + shared ones + all others (if admin)
    */
   async getAll(req: AuthenticatedRequest, res: Response) {
     try {
@@ -15,15 +15,30 @@ export const idpExecutionController = {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const [myExecutions, sharedExecutions] = await Promise.all([
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
+
+      const promises: Promise<any>[] = [
         idpExecutionService.getUserExecutions(req.user.id),
         idpExecutionService.getSharedExecutions(req.user.id),
-      ]);
+      ];
 
-      res.json({
-        myExecutions,
-        sharedExecutions,
-      });
+      // Add all other executions for admins
+      if (isAdmin) {
+        promises.push(idpExecutionService.getAllOtherExecutions(req.user.id));
+      }
+
+      const results = await Promise.all(promises);
+
+      const response: any = {
+        myExecutions: results[0],
+        sharedExecutions: results[1],
+      };
+
+      if (isAdmin) {
+        response.allOtherExecutions = results[2];
+      }
+
+      res.json(response);
     } catch (error: any) {
       console.error('Error fetching IDP executions:', error);
       res.status(500).json({ error: error.message });
@@ -62,7 +77,7 @@ export const idpExecutionController = {
         return res.status(401).json({ error: 'Not authenticated' });
       }
 
-      const { name, description, protocol, host, basePath, orgId, actionId, actionVersion, authClientId, authClientSecret } = req.body;
+      const { name, description, protocol, host, basePath, orgId, actionId, actionVersion, authClientId, authClientSecret, anypointUsername, anypointPassword } = req.body;
 
       if (!name || !protocol || !host || !basePath || !orgId || !actionId || !actionVersion || !authClientId || !authClientSecret) {
         return res.status(400).json({ error: 'Missing required fields' });
@@ -79,6 +94,8 @@ export const idpExecutionController = {
         actionVersion,
         authClientId,
         authClientSecret,
+        anypointUsername,
+        anypointPassword,
       });
 
       await loggingService.logActivity({
@@ -95,6 +112,8 @@ export const idpExecutionController = {
         ...execution,
         authClientId: encryption.decrypt(execution.authClientId),
         authClientSecret: encryption.decrypt(execution.authClientSecret),
+        anypointUsername: execution.anypointUsername ? encryption.decrypt(execution.anypointUsername) : null,
+        anypointPassword: execution.anypointPassword ? encryption.decrypt(execution.anypointPassword) : null,
       };
 
       res.status(201).json({ execution: result });
@@ -140,7 +159,8 @@ export const idpExecutionController = {
       }
 
       const id = parseInt(req.params.id);
-      const execution = await idpExecutionService.update(id, req.user.id, req.body);
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
+      const execution = await idpExecutionService.update(id, req.user.id, req.body, isAdmin);
 
       await loggingService.logActivity({
         userId: req.user.id,
@@ -173,7 +193,8 @@ export const idpExecutionController = {
       }
 
       const id = parseInt(req.params.id);
-      await idpExecutionService.delete(id, req.user.id);
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
+      await idpExecutionService.delete(id, req.user.id, isAdmin);
 
       await loggingService.logActivity({
         userId: req.user.id,
@@ -212,7 +233,8 @@ export const idpExecutionController = {
         return res.status(400).json({ error: 'User IDs array is required' });
       }
 
-      await idpExecutionService.share(id, req.user.id, userIds);
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
+      await idpExecutionService.share(id, req.user.id, userIds, isAdmin);
 
       await loggingService.logActivity({
         userId: req.user.id,
@@ -246,8 +268,9 @@ export const idpExecutionController = {
 
       const id = parseInt(req.params.id);
       const userIdToRemove = parseInt(req.params.userId);
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
 
-      await idpExecutionService.unshare(id, req.user.id, userIdToRemove);
+      await idpExecutionService.unshare(id, req.user.id, userIdToRemove, isAdmin);
 
       await loggingService.logActivity({
         userId: req.user.id,

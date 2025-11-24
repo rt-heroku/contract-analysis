@@ -56,7 +56,6 @@ class SystemController {
         },
       });
 
-
       // Build menu tree
       const menuTree = this.buildMenuTree(menuItems);
 

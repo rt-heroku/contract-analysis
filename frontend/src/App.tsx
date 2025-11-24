@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { ToastProvider } from './context/ToastContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { MainLayout } from './components/layout/MainLayout';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
@@ -25,17 +26,32 @@ import { UserManagement } from './pages/admin/UserManagement';
 import { RoleManagement } from './pages/admin/RoleManagement';
 import { MenuManagement } from './pages/admin/MenuManagement';
 import { SystemEnvironment } from './pages/SystemEnvironment';
+import { Processes } from './pages/Processes';
+import { ProcessDesigner } from './pages/ProcessDesigner';
+import { ProcessTriggerForm } from './pages/ProcessTriggerForm';
+import { Actions } from './pages/Actions';
+import { Executions } from './pages/Executions';
+import { Connectors } from './pages/Connectors';
+import { Stores } from './pages/Stores';
+import { ActionCreator } from './pages/ActionCreator';
+import { FirstTimeSetup } from './pages/FirstTimeSetup';
+import { Pages } from './pages/Pages';
+import { PageBuilder } from './pages/PageBuilder';
+import { PageRenderer } from './pages/PageRenderer';
+import { DatabaseExplorer } from './pages/DatabaseExplorer';
 
 const App = () => {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <ToastProvider>
-          <Router>
-          <Routes>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppProvider>
+          <ToastProvider>
+            <Router>
+            <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/first-time-setup" element={<FirstTimeSetup />} />
             <Route path="/sysenv" element={<SystemEnvironment />} />
 
             {/* Protected Routes */}
@@ -45,6 +61,20 @@ const App = () => {
             <Route path="/prompts" element={<MainLayout><Prompts /></MainLayout>} />
             <Route path="/flows" element={<MainLayout><Flows /></MainLayout>} />
             <Route path="/idp-executions" element={<MainLayout><IdpExecutions /></MainLayout>} />
+            <Route path="/processes" element={<MainLayout><Processes /></MainLayout>} />
+            <Route path="/process-designer" element={<MainLayout><ProcessDesigner /></MainLayout>} />
+            <Route path="/process-designer/:id" element={<MainLayout><ProcessDesigner /></MainLayout>} />
+            <Route path="/process/trigger/:id" element={<MainLayout><ProcessTriggerForm /></MainLayout>} />
+            <Route path="/actions" element={<MainLayout><Actions /></MainLayout>} />
+            <Route path="/actions/new" element={<MainLayout><ActionCreator /></MainLayout>} />
+            <Route path="/actions/edit/:id" element={<MainLayout><ActionCreator /></MainLayout>} />
+            <Route path="/executions" element={<MainLayout><Executions /></MainLayout>} />
+            <Route path="/connectors" element={<MainLayout><Connectors /></MainLayout>} />
+            <Route path="/stores" element={<MainLayout><Stores /></MainLayout>} />
+            <Route path="/pages" element={<MainLayout><Pages /></MainLayout>} />
+            <Route path="/page-builder" element={<MainLayout><PageBuilder /></MainLayout>} />
+            <Route path="/page-builder/:id" element={<MainLayout><PageBuilder /></MainLayout>} />
+            <Route path="/page/:slug" element={<MainLayout><PageRenderer /></MainLayout>} />
             <Route path="/profile" element={<MainLayout><Profile /></MainLayout>} />
             <Route path="/history" element={<MainLayout><History /></MainLayout>} />
             <Route path="/idp-response/:analysisRecordId" element={<MainLayout><IDPResponse /></MainLayout>} />
@@ -59,14 +89,18 @@ const App = () => {
             <Route path="/admin/roles" element={<MainLayout><RoleManagement /></MainLayout>} />
             <Route path="/admin/menu" element={<MainLayout><MenuManagement /></MainLayout>} />
             <Route path="/admin/logs" element={<MainLayout><Logs /></MainLayout>} />
+            
+            {/* Database Explorer */}
+            <Route path="/db" element={<MainLayout><DatabaseExplorer /></MainLayout>} />
 
             {/* Default Route */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-          </Router>
-        </ToastProvider>
-      </AppProvider>
-    </AuthProvider>
+            </Routes>
+            </Router>
+          </ToastProvider>
+        </AppProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

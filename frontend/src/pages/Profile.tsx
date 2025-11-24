@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useTheme } from '@/context/ThemeContext';
 import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
 import { AlertDialog } from '@/components/common/AlertDialog';
-import { User, Mail, Calendar, Upload, X, Camera, Save, Send, Lock, Key } from 'lucide-react';
+import { User, Mail, Calendar, Upload, X, Camera, Save, Send, Lock, Key, Moon, Sun } from 'lucide-react';
 
 interface UserProfile {
   id: number;
@@ -26,6 +27,7 @@ interface UserProfile {
 export const Profile: React.FC = () => {
   const { refreshAuth } = useAuth();
   const { can, isViewer } = usePermissions();
+  const { theme, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -253,7 +255,7 @@ export const Profile: React.FC = () => {
   if (!profile) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-500">Failed to load profile</p>
+        <p className="text-gray-500 dark:text-gray-400">Failed to load profile</p>
       </div>
     );
   }
@@ -263,8 +265,8 @@ export const Profile: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">My Profile</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
             {isViewer ? 'View your personal information' : 'Manage your personal information'}
           </p>
         </div>
@@ -300,11 +302,11 @@ export const Profile: React.FC = () => {
               <img
                 src={avatarPreview}
                 alt="Profile"
-                className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
+                className="w-32 h-32 rounded-full object-cover border-4 border-gray-200 dark:border-gray-700"
               />
             ) : (
-              <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-200">
-                <User className="w-16 h-16 text-gray-400" />
+              <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center border-4 border-gray-200 dark:border-gray-700">
+                <User className="w-16 h-16 text-gray-400 dark:text-gray-500" />
               </div>
             )}
             {editMode && (
@@ -318,12 +320,12 @@ export const Profile: React.FC = () => {
           </div>
 
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               {profile.firstName || profile.lastName
                 ? `${profile.firstName} ${profile.lastName}`
                 : 'No name set'}
             </h3>
-            <p className="text-gray-600 mb-4">{profile.email}</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">{profile.email}</p>
             
             {editMode && (
               <div className="flex gap-2">
@@ -356,7 +358,7 @@ export const Profile: React.FC = () => {
                 )}
               </div>
             )}
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
               Recommended: Square image, at least 200x200px, max 5MB
             </p>
           </div>
@@ -367,7 +369,7 @@ export const Profile: React.FC = () => {
       <Card title="Personal Information">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               First Name
             </label>
             {editMode ? (
@@ -377,12 +379,12 @@ export const Profile: React.FC = () => {
                 placeholder="Enter your first name"
               />
             ) : (
-              <p className="text-gray-900">{profile.firstName || 'Not set'}</p>
+              <p className="text-gray-900 dark:text-gray-100">{profile.firstName || 'Not set'}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Last Name
             </label>
             {editMode ? (
@@ -392,22 +394,22 @@ export const Profile: React.FC = () => {
                 placeholder="Enter your last name"
               />
             ) : (
-              <p className="text-gray-900">{profile.lastName || 'Not set'}</p>
+              <p className="text-gray-900 dark:text-gray-100">{profile.lastName || 'Not set'}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Email
             </label>
-            <p className="text-gray-900 flex items-center gap-2">
-              <Mail className="w-4 h-4 text-gray-400" />
+            <p className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <Mail className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               {profile.email}
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Phone
             </label>
             {editMode ? (
@@ -417,12 +419,12 @@ export const Profile: React.FC = () => {
                 placeholder="Enter your phone number"
               />
             ) : (
-              <p className="text-gray-900">{profile.phone || 'Not set'}</p>
+              <p className="text-gray-900 dark:text-gray-100">{profile.phone || 'Not set'}</p>
             )}
           </div>
 
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Bio
             </label>
             {editMode ? (
@@ -431,16 +433,16 @@ export const Profile: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                 placeholder="Tell us about yourself"
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             ) : (
-              <p className="text-gray-900">{profile.bio || 'Not set'}</p>
+              <p className="text-gray-900 dark:text-gray-100">{profile.bio || 'Not set'}</p>
             )}
           </div>
         </div>
 
         {editMode && (
-          <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
+          <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <Button
               onClick={handleSaveProfile}
               isLoading={saving}
@@ -473,6 +475,50 @@ export const Profile: React.FC = () => {
         )}
       </Card>
 
+      {/* Appearance Settings */}
+      <Card title="Appearance">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white dark:bg-gray-700 rounded-lg">
+                {theme === 'dark' ? (
+                  <Moon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                ) : (
+                  <Sun className="w-6 h-6 text-amber-500" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Theme</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {theme === 'dark' ? 'Dark mode is enabled' : 'Light mode is enabled'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={toggleTheme}
+              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                theme === 'dark' ? 'bg-indigo-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                  theme === 'dark' ? 'translate-x-7' : 'translate-x-1'
+                }`}
+              >
+                {theme === 'dark' ? (
+                  <Moon className="w-4 h-4 text-indigo-600 m-1" />
+                ) : (
+                  <Sun className="w-4 h-4 text-amber-500 m-1" />
+                )}
+              </span>
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Choose your preferred theme. Dark mode reduces eye strain in low-light environments.
+          </p>
+        </div>
+      </Card>
+
       {/* Change Password */}
       {can.changePassword && (
         <Card title="Security">
@@ -489,7 +535,7 @@ export const Profile: React.FC = () => {
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Current Password
                   </label>
                   <Input
@@ -501,7 +547,7 @@ export const Profile: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     New Password
                   </label>
                   <Input
@@ -513,7 +559,7 @@ export const Profile: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Confirm New Password
                   </label>
                   <Input
@@ -558,27 +604,27 @@ export const Profile: React.FC = () => {
       <Card title="Account Information">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Account Created
             </label>
-            <p className="text-gray-900 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-400" />
+            <p className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               {formatDate(profile.createdAt)}
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Last Login
             </label>
-            <p className="text-gray-900 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-400" />
+            <p className="text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               {formatDate(profile.lastLogin)}
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Roles
             </label>
             <div className="flex flex-wrap gap-2">

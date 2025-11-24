@@ -248,7 +248,16 @@ export const IDPResponse: React.FC = () => {
         executionId: contractAnalysis.executionId,
         jobId: contractAnalysis.jobId,
         idpExecutionId,
+        idpExecutionIdFromContract: contractAnalysis.idpExecutionId,
+        idpExecutionIdFromState: idpExecutionId,
       });
+      
+      if (!idpExecutionId) {
+        console.error('[IDPResponse] idpExecutionId is null/undefined!', {
+          contractAnalysisIdpExecutionId: contractAnalysis.idpExecutionId,
+          urlSearchParams: searchParams.toString()
+        });
+      }
       
       const response = await api.post('/idp-status/review', {
         executionId: contractAnalysis.executionId,

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import MDEditor from '@uiw/react-md-editor';
 import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
@@ -7,6 +6,7 @@ import { Input } from '@/components/common/Input';
 import { Loading } from '@/components/common/Loading';
 import { AlertDialog } from '@/components/common/AlertDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { MarkdownMonacoEditor } from '@/components/common/MonacoEditor';
 import { Plus, Edit, Trash2, Eye, EyeOff, Search, Save, X, Download, Upload as UploadIcon, Star, Copy } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 
@@ -522,7 +522,7 @@ export const Prompts: React.FC = () => {
       <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Import Prompt</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Import Prompt</h2>
             <button
               onClick={() => setShowImportModal(false)}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -534,7 +534,7 @@ export const Prompts: React.FC = () => {
           <div
             onDrop={handleFileDrop}
             onDragOver={(e) => e.preventDefault()}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-primary-500 transition-colors cursor-pointer"
+            className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-12 text-center hover:border-primary-500 dark:hover:border-primary-400 transition-colors cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
             <UploadIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -684,7 +684,7 @@ export const Prompts: React.FC = () => {
               <select
                 value={formData.flowName}
                 onChange={(e) => handleFlowSelect(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="">Select a flow...</option>
                 {flows.map((flow) => (
@@ -759,12 +759,13 @@ export const Prompts: React.FC = () => {
           <label className="block text-xs font-medium text-gray-700 mb-2">
             Prompt Content * (Markdown) - 💡 Drag variables above into editor
           </label>
-          <div data-color-mode="light" className="flex-1 min-h-0 border border-gray-200 rounded-lg overflow-hidden">
-            <MDEditor
+          <div className="flex-1 min-h-0 border border-gray-200 rounded-lg overflow-hidden">
+            <MarkdownMonacoEditor
               value={formData.content}
               onChange={handleContentChange}
               height="100%"
-              preview="edit"
+              theme="light"
+              wordWrap="on"
             />
           </div>
         </div>
@@ -786,7 +787,7 @@ export const Prompts: React.FC = () => {
     <div className="max-w-6xl mx-auto space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Prompt Library</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Prompt Library</h1>
           <p className="text-gray-600 mt-1">Manage AI prompts with variables for document processing</p>
         </div>
         {can.createPrompts && (
@@ -808,7 +809,7 @@ export const Prompts: React.FC = () => {
             placeholder="Search prompts..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>
@@ -820,7 +821,7 @@ export const Prompts: React.FC = () => {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-gray-900">{prompt.name}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{prompt.name}</h3>
                     {prompt.isDefault && (
                       <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded flex items-center gap-1">
                         <Star className="w-3 h-3 fill-current" />
