@@ -197,7 +197,7 @@ class AnalysisController {
       }
 
       const analysisRecordId = parseInt(req.params.id);
-      const { dataUploadId, prompt, variables, flow } = req.body;
+      const { dataUploadId, prompt, variables, flowId } = req.body;
 
       const result = await documentService.runAnalysis(
         req.user.id,
@@ -205,7 +205,7 @@ class AnalysisController {
         dataUploadId ? parseInt(dataUploadId) : undefined,
         prompt,
         variables,
-        flow
+        flowId ? parseInt(flowId) : undefined
       );
 
       if (!result.success) {
@@ -221,6 +221,7 @@ class AnalysisController {
         userAgent: getUserAgent(req),
         metadata: {
           analysisRecordId,
+          flowId,
         },
       });
 

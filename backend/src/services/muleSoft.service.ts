@@ -29,12 +29,13 @@ class MuleSoftService {
     relatedRecordType?: string,
     relatedRecordId?: number,
     requestBody?: any,
-    idpConfig?: IdpExecutionConfig
+    idpConfig?: IdpExecutionConfig,
+    apiConfig?: any
   ): Promise<T> {
     const startTime = Date.now();
     
-    // Always use MuleSoft API from env/config
-    const muleSoftConfig = await getMuleSoftConfig();
+    // Use provided API config or fall back to system config
+    const muleSoftConfig = apiConfig || (await getMuleSoftConfig());
     const fullUrl = `${muleSoftConfig.baseUrl}${endpoint}?job=${jobId}`;
     
     // Use longer timeout if IDP config is provided (IDP calls can take longer)
@@ -42,6 +43,8 @@ class MuleSoftService {
     
     if (idpConfig) {
       logger.info(`Using IDP Execution configuration for ${endpoint} (IDP config will be sent in body)`);
+    } else if (apiConfig) {
+      logger.info(`Using custom MuleSoft API configuration for ${endpoint}`);
     } else {
       logger.info(`Using default MuleSoft configuration for ${endpoint}`);
     }
@@ -53,8 +56,23 @@ class MuleSoftService {
       },
     };
 
-    // Add basic auth if configured
-    if (muleSoftConfig.username && muleSoftConfig.password) {
+    // Add authentication based on auth type
+    if (apiConfig?.authType === 'basic' && apiConfig.authConfig) {
+      const { encryption } = require('../utils/encryption');
+      const username = encryption.decrypt(apiConfig.authConfig.username);
+      const password = encryption.decrypt(apiConfig.authConfig.password);
+      config.auth = { username, password };
+    } else if (apiConfig?.authType === 'bearer' && apiConfig.authConfig) {
+      const { encryption } = require('../utils/encryption');
+      const token = encryption.decrypt(apiConfig.authConfig.token);
+      config.headers!['Authorization'] = `Bearer ${token}`;
+    } else if (apiConfig?.authType === 'api_key' && apiConfig.authConfig) {
+      const { encryption } = require('../utils/encryption');
+      const apiKey = encryption.decrypt(apiConfig.authConfig.apiKey);
+      const headerName = apiConfig.authConfig.headerName || 'X-API-Key';
+      config.headers![headerName] = apiKey;
+    } else if (muleSoftConfig.username && muleSoftConfig.password) {
+      // Fall back to basic auth from system config
       config.auth = {
         username: muleSoftConfig.username,
         password: muleSoftConfig.password,
@@ -181,11 +199,13 @@ class MuleSoftService {
     contractResult?: MuleSoftContractResponse,
     prompt?: { id: number; name: string },
     variables?: Record<string, any>,
-    flow?: { name: string; url: string; method: string }
+    flow?: { name: string; url: string; method: string },
+    apiConfig?: any
   ): Promise<MuleSoftDataResponse> {
-    const config = await getMuleSoftConfig();
+    // Get default config if no API config provided
+    const config = apiConfig || (await getMuleSoftConfig());
     // Use flow URL if provided, otherwise use default endpoint
-    const endpoint = flow?.url || config.endpoints.analyzeData;
+    const endpoint = flow?.url || (config.endpoints?.analyzeData || '/analyze');
     
     if (flow) {
       logger.info(`Using custom flow endpoint: ${endpoint} (Flow: ${flow.name})`);
@@ -236,7 +256,9 @@ class MuleSoftService {
       jobId,
       'contract_analysis',
       analysisId,
-      requestBody
+      requestBody,
+      undefined,
+      apiConfig
     );
   }
 

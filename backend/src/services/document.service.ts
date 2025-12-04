@@ -409,7 +409,7 @@ class DocumentService {
     dataUploadId?: number,
     prompt?: { id: number; name: string },
     variables?: Record<string, any>,
-    flow?: { name: string; url: string; method: string }
+    flowId?: number
   ): Promise<ProcessingResult> {
     try {
       // Get the analysis record
@@ -449,7 +449,7 @@ class DocumentService {
         dataUploadId,
         prompt,
         variables,
-        flow
+        flowId
       ).catch((error) => {
         logger.error('Analysis failed:', error);
       });
@@ -479,16 +479,45 @@ class DocumentService {
     dataUploadId?: number,
     prompt?: { id: number; name: string },
     variables?: Record<string, any>,
-    flow?: { name: string; url: string; method: string }
+    flowId?: number
   ): Promise<void> {
     try {
+      // Get flow and its parent API if flowId provided
+      let flowConfig: { name: string; url: string; method: string } | undefined;
+      let apiConfig: any;
+      
+      if (flowId) {
+        const flow = await prisma.mulesoftFlow.findUnique({
+          where: { id: flowId },
+          include: {
+            mulesoftApi: true,
+          },
+        });
+
+        if (!flow || !flow.mulesoftApi) {
+          throw new Error('Flow or MuleSoft API not found');
+        }
+
+        flowConfig = {
+          name: flow.name,
+          url: flow.url,
+          method: flow.method,
+        };
+
+        apiConfig = {
+          baseUrl: flow.mulesoftApi.baseUrl,
+          authType: flow.mulesoftApi.authType,
+          authConfig: flow.mulesoftApi.authConfig,
+          timeout: flow.mulesoftApi.timeout,
+        };
+
+        logger.info(`Using flow: ${flow.name} from API: ${flow.mulesoftApi.name} (${flow.mulesoftApi.baseUrl})`);
+      } else {
+        logger.info(`No flow specified - using default configuration`);
+      }
+
       // Step 2: Analyze data with contract context
       logger.info(`[Step 2/2] Running final analysis for jobId: ${jobId}`);
-      if (flow) {
-        logger.info(`Using flow: ${flow.name} (URL: ${flow.url})`);
-      } else {
-        logger.info(`Using default /analyze endpoint`);
-      }
       if (prompt) {
         logger.info(`Using prompt: ${prompt.name} (ID: ${prompt.id})`);
       }
@@ -502,7 +531,8 @@ class DocumentService {
           contractResult,
           prompt,
           variables,
-          flow
+          flowConfig,
+          apiConfig
         );
         logger.info(`[Step 2/2] Analysis successful for jobId: ${jobId}`);
       } catch (error: any) {

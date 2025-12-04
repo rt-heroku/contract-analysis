@@ -60,6 +60,7 @@ model User {
   systemPromptsCreated SystemPrompt[]  @relation("SystemPromptCreator")
   systemPromptsUpdated SystemPrompt[]  @relation("SystemPromptUpdater")
   dbAnalysisResults DbAnalysisResult[] @relation("AnalysisExecutor")
+  mulesoftApis      MulesoftApi[]      @relation("MulesoftApiCreator")
 
   @@map("users")
 }
@@ -834,5 +835,53 @@ model DbConnection {
   @@index([sessionId])
   @@index([isActive])
   @@map("db_connections")
+}
+
+// ==================== MULESOFT API MODELS ====================
+
+model MulesoftApi {
+  id              Int       @id @default(autoincrement())
+  name            String    @db.VarChar(200)
+  description     String?   @db.Text
+  baseUrl         String    @map("base_url") @db.VarChar(500)
+  authType        String    @map("auth_type") @db.VarChar(50) // 'none', 'basic', 'bearer', 'api_key', 'oauth2'
+  authConfig      Json?     @map("auth_config") // Encrypted credentials
+  timeout         Int       @default(180000) // milliseconds
+  isActive        Boolean   @default(true) @map("is_active")
+  flowsStatus     String    @default("pending") @map("flows_status") @db.VarChar(50) // 'pending', 'success', 'error'
+  flowsError      String?   @map("flows_error") @db.Text
+  lastFlowsSync   DateTime? @map("last_flows_sync")
+  createdBy       Int       @map("created_by")
+  sharedWith      Json      @default("[]") @map("shared_with")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  creator User           @relation("MulesoftApiCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  flows   MulesoftFlow[]
+
+  @@index([createdBy])
+  @@index([isActive])
+  @@index([flowsStatus])
+  @@map("mulesoft_apis")
+}
+
+model MulesoftFlow {
+  id            Int      @id @default(autoincrement())
+  mulesoftApiId Int      @map("mulesoft_api_id")
+  name          String   @db.VarChar(200)
+  description   String?  @db.Text
+  url           String   @db.VarChar(500)
+  method        String   @db.VarChar(10) // GET, POST, etc.
+  vars          Json?    // Flow variables from /flows response
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  mulesoftApi MulesoftApi @relation(fields: [mulesoftApiId], references: [id], onDelete: Cascade)
+
+  @@unique([mulesoftApiId, name])
+  @@index([mulesoftApiId])
+  @@index([isActive])
+  @@map("mulesoft_flows")
 }
 

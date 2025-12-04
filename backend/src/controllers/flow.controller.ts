@@ -4,11 +4,12 @@ import flowService from '../services/flow.service';
 
 class FlowController {
   /**
-   * Get all available flows from MuleSoft
+   * Get all available flows from database (filtered by user access)
    */
   async getFlows(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const flows = await flowService.getFlows();
+      const userId = req.user?.id;
+      const flows = await flowService.getFlows(userId);
       res.json({ flows });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -21,7 +22,8 @@ class FlowController {
   async getFlowByName(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { name } = req.params;
-      const flow = await flowService.getFlowByName(name);
+      const userId = req.user?.id;
+      const flow = await flowService.getFlowByName(name, userId);
       
       if (!flow) {
         res.status(404).json({ error: 'Flow not found' });

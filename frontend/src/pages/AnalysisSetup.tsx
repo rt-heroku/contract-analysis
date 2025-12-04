@@ -15,10 +15,13 @@ import {
 } from 'lucide-react';
 
 interface Flow {
+  id: number;
   name: string;
   description?: string;
   url: string;
   method: string;
+  mulesoftApiId: number;
+  apiName: string;
   vars?: Array<{
     name: string;
     type: string;
@@ -241,11 +244,7 @@ export const AnalysisSetup: React.FC = () => {
       }
 
       if (selectedFlow) {
-        payload.flow = {
-          name: selectedFlow.name,
-          url: selectedFlow.url,
-          method: selectedFlow.method,
-        };
+        payload.flowId = selectedFlow.id;
       }
 
       if (selectedPrompt) {
@@ -382,9 +381,9 @@ export const AnalysisSetup: React.FC = () => {
               <span>Choose a MuleSoft flow to process the data</span>
             </div>
             <select
-              value={selectedFlow?.name || ''}
+              value={selectedFlow?.id || ''}
               onChange={(e) => {
-                const flow = flows.find(f => f.name === e.target.value);
+                const flow = flows.find(f => f.id === parseInt(e.target.value));
                 setSelectedFlow(flow || null);
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -392,8 +391,8 @@ export const AnalysisSetup: React.FC = () => {
             >
               <option value="">-- Select a Flow --</option>
               {flows.map(flow => (
-                <option key={flow.name} value={flow.name}>
-                  {flow.name} {flow.description && `- ${flow.description}`}
+                <option key={flow.id} value={flow.id}>
+                  {flow.apiName} - {flow.name} {flow.description && `(${flow.description})`}
                 </option>
               ))}
             </select>

@@ -21,6 +21,7 @@ import { Profile } from './pages/Profile';
 import { Notifications } from './pages/Notifications';
 import { Documents } from './pages/Documents';
 import { IdpExecutions } from './pages/IdpExecutions';
+import { MulesoftApis } from './pages/MulesoftApis';
 import { Logs } from './pages/admin/Logs';
 import { UserManagement } from './pages/admin/UserManagement';
 import { RoleManagement } from './pages/admin/RoleManagement';
@@ -61,6 +62,7 @@ const App = () => {
             <Route path="/prompts" element={<MainLayout><Prompts /></MainLayout>} />
             <Route path="/flows" element={<MainLayout><Flows /></MainLayout>} />
             <Route path="/idp-executions" element={<MainLayout><IdpExecutions /></MainLayout>} />
+            <Route path="/apis" element={<MainLayout><MulesoftApis /></MainLayout>} />
             <Route path="/processes" element={<MainLayout><Processes /></MainLayout>} />
             <Route path="/process-designer" element={<MainLayout><ProcessDesigner /></MainLayout>} />
             <Route path="/process-designer/:id" element={<MainLayout><ProcessDesigner /></MainLayout>} />
