@@ -71,7 +71,7 @@ export const MonacoEditor: React.FC<MonacoEditorProps> = ({
   };
 
   return (
-    <div className={`monaco-editor-wrapper ${className}`}>
+    <div className={`monaco-editor-wrapper ${className}`} style={{ height: '100%' }}>
       <Editor
         height={height}
         language={language}
