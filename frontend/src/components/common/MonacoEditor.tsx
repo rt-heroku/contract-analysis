@@ -120,7 +120,7 @@ export const MarkdownMonacoEditor: React.FC<MonacoEditorProps & {
   ...props
 }) => {
   return (
-    <div className="markdown-monaco-editor">
+    <div className="markdown-monaco-editor" style={{ height: '100%' }}>
       <MonacoEditor
         {...props}
         language="markdown"
