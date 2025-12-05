@@ -20,7 +20,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create trigger that fires BEFORE INSERT OR UPDATE
+-- Drop existing trigger if it exists, then create it
+DROP TRIGGER IF EXISTS trigger_sync_execution_id ON contract_analysis;
+
 CREATE TRIGGER trigger_sync_execution_id
   BEFORE INSERT OR UPDATE OF mulesoft_response
   ON contract_analysis

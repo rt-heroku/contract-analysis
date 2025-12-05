@@ -9,15 +9,3 @@ UPDATE system_settings
 SET updated_at = created_at 
 WHERE updated_at IS NULL;
 
--- Verify the update
-SELECT 
-  setting_key, 
-  created_at,
-  updated_at,
-  CASE 
-    WHEN updated_at IS NULL THEN '❌ NULL'
-    ELSE '✅ Set'
-  END as status
-FROM system_settings 
-ORDER BY setting_key;
-
