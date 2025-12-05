@@ -80,12 +80,16 @@ git push heroku main
 
 #### Step 5: Initialize Database
 
-```bash
-# Push schema to database (creates all tables)
-heroku run "cd backend && npx prisma db push"
+**Note:** With the new automated migration system (v2.0+), database initialization happens automatically during deployment via the `heroku-postbuild` script. The steps below are for reference only.
 
-# Seed initial data (roles, users, menus, settings)
-heroku run "cd backend && npm run seed"
+```bash
+# These steps now run AUTOMATICALLY during deployment:
+# 1. npx prisma db push - Creates/updates tables from schema
+# 2. npm run migrations - Runs SQL migrations
+# 3. npm run postdeploy - Seeds users and actions
+
+# If you need to manually run migrations:
+heroku run "cd backend && npm run migrations"
 ```
 
 #### Step 6: Install Auto-Share Trigger
@@ -340,6 +344,131 @@ These scripts are available for additional setup:
 
 ---
 
+## 🔄 Automated Migration System (v2.0+)
+
+### Overview
+
+The application now uses an automated migration system that tracks and applies database changes during deployment. This ensures all environments stay in sync without manual SQL script execution.
+
+### How It Works
+
+1. **Schema Migrations Table**: A `schema_migrations` table tracks which migrations have been applied
+2. **Migration Files**: SQL files in `backend/migrations/` are automatically detected and run
+3. **Idempotent**: All migrations are safe to run multiple times
+4. **Automatic Execution**: Runs during `heroku-postbuild` between schema push and build
+
+### Deployment Flow
+
+```
+git push heroku main
+  ↓
+heroku-postbuild runs:
+  1. npm install (dependencies)
+  2. cd backend && npm install
+  3. npx prisma generate (Prisma client)
+  4. npx prisma db push (schema from schema.prisma)
+  5. npm run migrations (NEW - runs SQL migrations)
+  6. npm run build (TypeScript compilation)
+  7. cd frontend && npm install && npm run build
+  8. npm run postdeploy (seeds users & actions)
+  ↓
+Application starts
+```
+
+### Adding New Migrations
+
+1. Create a new SQL file in `backend/migrations/` with a descriptive name:
+   ```
+   backend/migrations/add-feature-xyz.sql
+   ```
+
+2. Make the migration idempotent using:
+   ```sql
+   -- For tables/columns
+   CREATE TABLE IF NOT EXISTS ...
+   ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...
+   
+   -- For data
+   INSERT INTO ... ON CONFLICT DO NOTHING
+   
+   -- For functions/triggers
+   CREATE OR REPLACE FUNCTION ...
+   ```
+
+3. Test locally:
+   ```bash
+   cd backend
+   npm run migrations
+   ```
+
+4. Deploy:
+   ```bash
+   git add backend/migrations/add-feature-xyz.sql
+   git commit -m "feat: add feature xyz migration"
+   git push heroku main
+   ```
+
+### Checking Migration Status
+
+```bash
+# View applied migrations
+heroku pg:psql -c "SELECT filename, applied_at, execution_time_ms, success FROM schema_migrations ORDER BY applied_at DESC LIMIT 10;"
+
+# Run migrations manually (if needed)
+heroku run "cd backend && npm run migrations"
+
+# Check for pending migrations locally
+cd backend
+npm run migrations
+```
+
+### Migration Files Included
+
+- `20251023_add_execution_id_trigger.sql` - Auto-populate execution IDs
+- `20251023_remove_anypoint_from_user_profile.sql` - Schema cleanup
+- `add_comprehensive_process_properties.sql` - Process enhancements
+- `fix-system-settings-updated-at.sql` - System settings fix
+- `production-sync-v2.sql` - Beta Features, Pages, Database Explorer menus
+
+### Troubleshooting Migrations
+
+**Migration fails during deployment:**
+```bash
+# Check logs
+heroku logs --tail | grep migration
+
+# Check schema_migrations table
+heroku pg:psql -c "SELECT * FROM schema_migrations WHERE success = false;"
+
+# Get error details
+heroku pg:psql -c "SELECT filename, error_message FROM schema_migrations WHERE success = false ORDER BY applied_at DESC LIMIT 5;"
+```
+
+**Fix failed migration:**
+1. Fix the SQL file locally
+2. Delete the failed record:
+   ```bash
+   heroku pg:psql -c "DELETE FROM schema_migrations WHERE filename = 'problematic-migration.sql';"
+   ```
+3. Redeploy or run manually:
+   ```bash
+   heroku run "cd backend && npm run migrations"
+   ```
+
+**Reset all migrations (DANGER - production only if absolutely necessary):**
+```bash
+# Backup first!
+heroku pg:backups:capture
+
+# Drop migrations table
+heroku pg:psql -c "DROP TABLE IF EXISTS schema_migrations;"
+
+# Re-run migrations
+heroku run "cd backend && npm run migrations"
+```
+
+---
+
 ## 🐛 Troubleshooting
 
 ### Database Connection Issues
@@ -445,19 +574,27 @@ If you encounter issues:
 
 ## ✅ Deployment Checklist
 
-- [ ] PostgreSQL database created
-- [ ] Environment variables set
-- [ ] Application deployed
-- [ ] Database schema pushed (`prisma db push`)
-- [ ] Initial data seeded (`npm run seed`)
-- [ ] Auto-share trigger installed
-- [ ] Permissions seeded (optional)
-- [ ] Additional menus added (optional)
-- [ ] Default passwords changed
-- [ ] System settings configured
+### Pre-Deployment
+- [ ] PostgreSQL database created or accessible
+- [ ] Environment variables set (DATABASE_URL, JWT_SECRET, etc.)
+- [ ] All migrations tested locally
+- [ ] Code committed to git
+
+### Automated During Deployment (v2.0+)
+- [x] Database schema pushed (`prisma db push`) - automatic
+- [x] Migrations applied (`npm run migrations`) - automatic
+- [x] Initial data seeded (`npm run postdeploy`) - automatic
+
+### Post-Deployment Verification
+- [ ] Check deployment logs: `heroku logs --tail`
+- [ ] Verify migrations ran: `heroku pg:psql -c "SELECT * FROM schema_migrations;"`
+- [ ] Health checks passing: `curl https://your-app.herokuapp.com/health`
+- [ ] First login successful (admin@demo.com / Admin@123)
+- [ ] Verify new menus appear (Beta Features, Pages, Database Explorer)
+- [ ] Default passwords changed in production
+- [ ] System settings configured (Admin → Settings)
 - [ ] MuleSoft API URL set
-- [ ] Health checks passing
-- [ ] First login successful
+- [ ] Activity logging working
 
 ---
 

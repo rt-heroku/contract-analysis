@@ -457,7 +457,137 @@ BEGIN
 END $$;
 
 -- ============================================
--- SECTION 6: Database Triggers
+-- SECTION 6: Additional Permissions (Beta Features)
+-- ============================================
+
+INSERT INTO "permissions" (name, description, category, created_at, updated_at) VALUES
+-- Processes
+('processes.view', 'View processes', 'Processes', NOW(), NOW()),
+('processes.create', 'Create processes', 'Processes', NOW(), NOW()),
+('processes.edit', 'Edit processes', 'Processes', NOW(), NOW()),
+('processes.delete', 'Delete processes', 'Processes', NOW(), NOW()),
+('processes.execute', 'Execute processes', 'Processes', NOW(), NOW()),
+
+-- Actions
+('actions.view', 'View actions', 'Actions', NOW(), NOW()),
+('actions.create', 'Create actions', 'Actions', NOW(), NOW()),
+('actions.edit', 'Edit actions', 'Actions', NOW(), NOW()),
+
+-- Executions
+('executions.view', 'View executions', 'Executions', NOW(), NOW()),
+('executions.retry', 'Retry failed executions', 'Executions', NOW(), NOW()),
+
+-- Connectors
+('connectors.view', 'View connectors', 'Connectors', NOW(), NOW()),
+('connectors.create', 'Create connectors', 'Connectors', NOW(), NOW()),
+('connectors.edit', 'Edit connectors', 'Connectors', NOW(), NOW()),
+('connectors.delete', 'Delete connectors', 'Connectors', NOW(), NOW()),
+
+-- Stores
+('stores.view', 'View stores', 'Stores', NOW(), NOW()),
+('stores.create', 'Create stores', 'Stores', NOW(), NOW()),
+('stores.edit', 'Edit stores', 'Stores', NOW(), NOW()),
+('stores.delete', 'Delete stores', 'Stores', NOW(), NOW()),
+
+-- Database
+('database.view', 'View database', 'Database', NOW(), NOW()),
+('database.query', 'Query database', 'Database', NOW(), NOW()),
+
+-- Pages
+('pages.view', 'View pages', 'Pages', NOW(), NOW()),
+('pages.create', 'Create pages', 'Pages', NOW(), NOW()),
+('pages.edit', 'Edit pages', 'Pages', NOW(), NOW()),
+('pages.delete', 'Delete pages', 'Pages', NOW(), NOW())
+ON CONFLICT (name) DO NOTHING;
+
+-- Assign beta features permissions to roles
+DO $$
+DECLARE
+  admin_role_id INT;
+  user_role_id INT;
+  viewer_role_id INT;
+BEGIN
+  SELECT id INTO admin_role_id FROM "roles" WHERE name = 'admin';
+  SELECT id INTO user_role_id FROM "roles" WHERE name = 'user';
+  SELECT id INTO viewer_role_id FROM "roles" WHERE name = 'viewer';
+
+  -- Admin gets all beta permissions
+  INSERT INTO "role_permissions" (role_id, permission_id, created_at)
+  SELECT admin_role_id, id, NOW()
+  FROM "permissions"
+  WHERE name IN (
+    'processes.view', 'processes.create', 'processes.edit', 'processes.delete', 'processes.execute',
+    'actions.view', 'actions.create', 'actions.edit',
+    'executions.view', 'executions.retry',
+    'connectors.view', 'connectors.create', 'connectors.edit', 'connectors.delete',
+    'stores.view', 'stores.create', 'stores.edit', 'stores.delete',
+    'database.view', 'database.query',
+    'pages.view', 'pages.create', 'pages.edit', 'pages.delete'
+  )
+  ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+  -- User gets limited beta permissions
+  INSERT INTO "role_permissions" (role_id, permission_id, created_at)
+  SELECT user_role_id, id, NOW()
+  FROM "permissions"
+  WHERE name IN (
+    'processes.view', 'processes.create', 'processes.execute',
+    'actions.view',
+    'executions.view',
+    'connectors.view',
+    'stores.view',
+    'pages.view', 'pages.create', 'pages.edit'
+  )
+  ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+  -- Viewer gets view-only beta permissions
+  INSERT INTO "role_permissions" (role_id, permission_id, created_at)
+  SELECT viewer_role_id, id, NOW()
+  FROM "permissions"
+  WHERE name IN ('processes.view', 'actions.view', 'executions.view', 'pages.view')
+  ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+  RAISE NOTICE '✓ Beta features permissions assigned';
+END $$;
+
+-- ============================================
+-- SECTION 7: Additional Menus
+-- ============================================
+
+DO $$
+DECLARE
+  admin_role_id INT;
+  user_role_id INT;
+  menu_id INT;
+BEGIN
+  SELECT id INTO admin_role_id FROM "roles" WHERE name = 'admin';
+  SELECT id INTO user_role_id FROM "roles" WHERE name = 'user';
+
+  -- Database Explorer
+  INSERT INTO "menu_items" (parent_id, title, icon, route, order_index, is_active, is_external, created_at, updated_at)
+  VALUES (NULL, 'Database Explorer', 'database', '/db', 10, TRUE, FALSE, NOW(), NOW())
+  ON CONFLICT DO NOTHING;
+  
+  SELECT id INTO menu_id FROM "menu_items" WHERE title = 'Database Explorer' AND parent_id IS NULL;
+  INSERT INTO "menu_permissions" (menu_item_id, role_id, created_at)
+  VALUES (menu_id, admin_role_id, NOW())
+  ON CONFLICT (menu_item_id, role_id) DO NOTHING;
+
+  -- Pages
+  INSERT INTO "menu_items" (parent_id, title, icon, route, order_index, is_active, is_external, created_at, updated_at)
+  VALUES (NULL, 'Pages', 'layout', '/pages', 11, TRUE, FALSE, NOW(), NOW())
+  ON CONFLICT DO NOTHING;
+  
+  SELECT id INTO menu_id FROM "menu_items" WHERE title = 'Pages' AND parent_id IS NULL;
+  INSERT INTO "menu_permissions" (menu_item_id, role_id, created_at)
+  VALUES (menu_id, admin_role_id, NOW()), (menu_id, user_role_id, NOW())
+  ON CONFLICT (menu_item_id, role_id) DO NOTHING;
+
+  RAISE NOTICE '✓ Additional menus created';
+END $$;
+
+-- ============================================
+-- SECTION 8: Database Triggers
 -- ============================================
 
 -- Auto-share analysis trigger (optional - only if needed)
