@@ -885,3 +885,17 @@ model MulesoftFlow {
   @@map("mulesoft_flows")
 }
 
+model SchemaMigration {
+  id               Int      @id @default(autoincrement())
+  filename         String   @unique @db.VarChar(255)
+  appliedAt        DateTime @default(now()) @map("applied_at")
+  checksum         String?  @db.VarChar(64)
+  executionTimeMs  Int?     @map("execution_time_ms")
+  success          Boolean  @default(true)
+  errorMessage     String?  @map("error_message") @db.Text
+
+  @@index([filename])
+  @@index([appliedAt(sort: Desc)])
+  @@map("schema_migrations")
+}
+

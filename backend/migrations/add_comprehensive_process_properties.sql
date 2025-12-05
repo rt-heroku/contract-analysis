@@ -40,9 +40,12 @@ CREATE INDEX IF NOT EXISTS idx_processes_environment ON processes(environment);
 
 -- Update existing processes to have default values
 UPDATE processes 
-SET 
-  status = 'active' WHERE is_active = true AND status IS NULL,
-  status = 'archived' WHERE is_active = false AND status IS NULL;
+SET status = 'active' 
+WHERE is_active = true AND status IS NULL;
+
+UPDATE processes 
+SET status = 'archived' 
+WHERE is_active = false AND status IS NULL;
 
 COMMENT ON COLUMN processes.process_key IS 'Unique technical identifier for the process';
 COMMENT ON COLUMN processes.version IS 'Process version (e.g., v1.0, v1.1)';
