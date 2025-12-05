@@ -1,16 +1,17 @@
 -- Add MuleSoft APIs menu item to Admin section
 
 -- Insert MuleSoft APIs menu item under Admin
-INSERT INTO menu_items (parent_id, title, icon, route, order_index, is_active)
-SELECT 
-    id, 
-    'MuleSoft APIs', 
-    'GitBranch', 
-    '/apis', 
-    50, 
-    true
-FROM menu_items 
-WHERE route = '/admin' AND parent_id IS NULL;
+INSERT INTO menu_items (parent_id, title, icon, route, order_index, is_active, updated_at)
+SELECT
+    id,
+    'MuleSoft APIs',
+    'GitBranch',
+    '/apis',
+    50,
+    true,
+    NOW()
+FROM menu_items
+WHERE title = 'Administration' AND parent_id IS NULL;
 
 -- Grant permissions to Admin role for the new menu item
 INSERT INTO menu_permissions (menu_item_id, role_id)
@@ -20,7 +21,7 @@ SELECT
 FROM menu_items mi
 CROSS JOIN roles r
 WHERE mi.route = '/apis' 
-  AND r.name = 'Admin'
+  AND r.name = 'admin'
   AND NOT EXISTS (
     SELECT 1 FROM menu_permissions mp 
     WHERE mp.menu_item_id = mi.id 

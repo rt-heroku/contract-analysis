@@ -34,5 +34,10 @@ router.delete('/mulesoft-apis/:id/share/:userId', authenticate, mulesoftApiContr
 // Get shared users for an API
 router.get('/mulesoft-apis/:id/shared-users', authenticate, mulesoftApiController.getSharedUsers);
 
+// Flow management
+router.post('/mulesoft-apis/:id/flows', authenticate, mulesoftApiController.createFlow);
+router.put('/mulesoft-apis/:id/flows/:flowId', authenticate, mulesoftApiController.updateFlow);
+router.delete('/mulesoft-apis/:id/flows/:flowId', authenticate, mulesoftApiController.deleteFlow);
+
 export default router;
 

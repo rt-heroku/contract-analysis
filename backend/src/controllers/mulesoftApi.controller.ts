@@ -349,5 +349,102 @@ export const mulesoftApiController = {
       res.status(500).json({ error: error.message });
     }
   },
+
+  /**
+   * Create a new flow for an API
+   */
+  async createFlow(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const apiId = parseInt(req.params.id);
+      const flowData = req.body;
+
+      const flow = await mulesoftApiService.createFlow(apiId, req.user.id, flowData);
+
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: 'mulesoft_flow.create',
+        actionDescription: `Created flow: ${flowData.name}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+        metadata: { mulesoftApiId: apiId, flowId: flow.id },
+      });
+
+      res.status(201).json(flow);
+    } catch (error: any) {
+      console.error('Error creating flow:', error);
+      res.status(error.message.includes('not found') || error.message.includes('access') ? 404 : 500).json({
+        error: error.message || 'Failed to create flow',
+      });
+    }
+  },
+
+  /**
+   * Update a flow
+   */
+  async updateFlow(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const apiId = parseInt(req.params.id);
+      const flowId = parseInt(req.params.flowId);
+      const flowData = req.body;
+
+      const flow = await mulesoftApiService.updateFlow(apiId, flowId, req.user.id, flowData);
+
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: 'mulesoft_flow.update',
+        actionDescription: `Updated flow: ${flowData.name}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+        metadata: { mulesoftApiId: apiId, flowId },
+      });
+
+      res.json(flow);
+    } catch (error: any) {
+      console.error('Error updating flow:', error);
+      res.status(error.message.includes('not found') || error.message.includes('access') ? 404 : 500).json({
+        error: error.message || 'Failed to update flow',
+      });
+    }
+  },
+
+  /**
+   * Delete a flow
+   */
+  async deleteFlow(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const apiId = parseInt(req.params.id);
+      const flowId = parseInt(req.params.flowId);
+
+      await mulesoftApiService.deleteFlow(apiId, flowId, req.user.id);
+
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: 'mulesoft_flow.delete',
+        actionDescription: `Deleted flow ID: ${flowId}`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+        metadata: { mulesoftApiId: apiId, flowId },
+      });
+
+      res.json({ message: 'Flow deleted successfully' });
+    } catch (error: any) {
+      console.error('Error deleting flow:', error);
+      res.status(error.message.includes('not found') || error.message.includes('access') ? 404 : 500).json({
+        error: error.message || 'Failed to delete flow',
+      });
+    }
+  },
 };
 

@@ -633,5 +633,138 @@ export const mulesoftApiService = {
 
     return { ...api, authConfig: decryptedConfig };
   },
+
+  /**
+   * Create a new flow for an API
+   */
+  async createFlow(apiId: number, userId: number, flowData: any) {
+    // Check if user has access to the API
+    const api = await this.getById(apiId, userId);
+    if (!api) {
+      throw new Error('MuleSoft API not found or access denied');
+    }
+
+    // Only the owner can create flows
+    if (api.userId !== userId) {
+      throw new Error('Only the API owner can create flows');
+    }
+
+    // Check if flow with same name already exists
+    const existingFlow = await prisma.mulesoftFlow.findFirst({
+      where: {
+        mulesoftApiId: apiId,
+        name: flowData.name,
+      },
+    });
+
+    if (existingFlow) {
+      throw new Error('A flow with this name already exists for this API');
+    }
+
+    const flow = await prisma.mulesoftFlow.create({
+      data: {
+        mulesoftApiId: apiId,
+        name: flowData.name,
+        description: flowData.description,
+        url: flowData.url,
+        method: flowData.method || 'POST',
+        vars: flowData.vars || [],
+      },
+    });
+
+    logger.info(`Flow created: ${flow.name} for API ${apiId}`);
+    return flow;
+  },
+
+  /**
+   * Update a flow
+   */
+  async updateFlow(apiId: number, flowId: number, userId: number, flowData: any) {
+    // Check if user has access to the API
+    const api = await this.getById(apiId, userId);
+    if (!api) {
+      throw new Error('MuleSoft API not found or access denied');
+    }
+
+    // Only the owner can update flows
+    if (api.userId !== userId) {
+      throw new Error('Only the API owner can update flows');
+    }
+
+    // Check if flow exists and belongs to this API
+    const existingFlow = await prisma.mulesoftFlow.findFirst({
+      where: {
+        id: flowId,
+        mulesoftApiId: apiId,
+      },
+    });
+
+    if (!existingFlow) {
+      throw new Error('Flow not found');
+    }
+
+    // Check if new name conflicts with another flow
+    if (flowData.name && flowData.name !== existingFlow.name) {
+      const nameConflict = await prisma.mulesoftFlow.findFirst({
+        where: {
+          mulesoftApiId: apiId,
+          name: flowData.name,
+          id: { not: flowId },
+        },
+      });
+
+      if (nameConflict) {
+        throw new Error('A flow with this name already exists for this API');
+      }
+    }
+
+    const flow = await prisma.mulesoftFlow.update({
+      where: { id: flowId },
+      data: {
+        name: flowData.name,
+        description: flowData.description,
+        url: flowData.url,
+        method: flowData.method,
+        vars: flowData.vars || [],
+      },
+    });
+
+    logger.info(`Flow updated: ${flow.name} (ID: ${flowId})`);
+    return flow;
+  },
+
+  /**
+   * Delete a flow
+   */
+  async deleteFlow(apiId: number, flowId: number, userId: number) {
+    // Check if user has access to the API
+    const api = await this.getById(apiId, userId);
+    if (!api) {
+      throw new Error('MuleSoft API not found or access denied');
+    }
+
+    // Only the owner can delete flows
+    if (api.userId !== userId) {
+      throw new Error('Only the API owner can delete flows');
+    }
+
+    // Check if flow exists and belongs to this API
+    const existingFlow = await prisma.mulesoftFlow.findFirst({
+      where: {
+        id: flowId,
+        mulesoftApiId: apiId,
+      },
+    });
+
+    if (!existingFlow) {
+      throw new Error('Flow not found');
+    }
+
+    await prisma.mulesoftFlow.delete({
+      where: { id: flowId },
+    });
+
+    logger.info(`Flow deleted: ${existingFlow.name} (ID: ${flowId})`);
+  },
 };
 
