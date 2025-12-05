@@ -2,6 +2,7 @@ import prisma from '../config/database';
 import axios from 'axios';
 import { encryption } from '../utils/encryption';
 import logger from '../utils/logger';
+import flowOpenAPIImporter, { FlowPreview } from './flow-openapi-importer.service';
 
 export const mulesoftApiService = {
   /**
@@ -765,6 +766,158 @@ export const mulesoftApiService = {
     });
 
     logger.info(`Flow deleted: ${existingFlow.name} (ID: ${flowId})`);
+  },
+
+  /**
+   * Parse OpenAPI/RAML spec and return flow previews with duplicate detection
+   */
+  async parseFlowSpec(
+    apiId: number,
+    userId: number,
+    input: { openApiSpec?: any; url?: string },
+    isAdmin: boolean = false
+  ): Promise<{ flows: FlowPreview[]; duplicates: string[] }> {
+    // Check if user has access to the API
+    const api = await this.getById(apiId, userId, isAdmin);
+    if (!api) {
+      throw new Error('MuleSoft API not found or access denied');
+    }
+
+    // Only the owner can import flows
+    if (api.createdBy !== userId && !isAdmin) {
+      throw new Error('Only the API owner can import flows');
+    }
+
+    try {
+      let flows: FlowPreview[];
+
+      if (input.url) {
+        // Parse from URL
+        flows = await flowOpenAPIImporter.parseFlowsFromUrl(input.url);
+      } else if (input.openApiSpec) {
+        // Parse from provided spec
+        flows = await flowOpenAPIImporter.parseFlowsFromSpec(input.openApiSpec);
+      } else {
+        throw new Error('Either openApiSpec or url is required');
+      }
+
+      // Get existing flow names for duplicate detection
+      const existingFlows = await prisma.mulesoftFlow.findMany({
+        where: {
+          mulesoftApiId: apiId,
+          isActive: true,
+        },
+        select: {
+          name: true,
+        },
+      });
+
+      const existingNames = new Set(existingFlows.map(f => f.name));
+      const duplicates = flows
+        .filter(flow => existingNames.has(flow.name))
+        .map(flow => flow.name);
+
+      logger.info(`Parsed ${flows.length} flows from spec, ${duplicates.length} duplicates found`);
+
+      return { flows, duplicates };
+    } catch (error: any) {
+      logger.error('Error parsing flow spec:', error);
+      throw new Error(`Failed to parse flow spec: ${error.message}`);
+    }
+  },
+
+  /**
+   * Bulk create flows from parsed spec with duplicate handling
+   */
+  async bulkCreateFlows(
+    apiId: number,
+    userId: number,
+    flows: FlowPreview[],
+    duplicateAction: 'skip' | 'update' | 'cancel',
+    isAdmin: boolean = false
+  ): Promise<{ created: number; updated: number; skipped: number }> {
+    // Check if user has access to the API
+    const api = await this.getById(apiId, userId, isAdmin);
+    if (!api) {
+      throw new Error('MuleSoft API not found or access denied');
+    }
+
+    // Only the owner can import flows
+    if (api.createdBy !== userId && !isAdmin) {
+      throw new Error('Only the API owner can import flows');
+    }
+
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    // Get existing flow names
+    const existingFlows = await prisma.mulesoftFlow.findMany({
+      where: {
+        mulesoftApiId: apiId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    const existingFlowMap = new Map(existingFlows.map(f => [f.name, f.id]));
+
+    // Check for duplicates if action is 'cancel'
+    if (duplicateAction === 'cancel') {
+      const duplicates = flows.filter(flow => existingFlowMap.has(flow.name));
+      if (duplicates.length > 0) {
+        throw new Error('Import cancelled due to duplicates');
+      }
+    }
+
+    // Process each flow
+    for (const flow of flows) {
+      const isDuplicate = existingFlowMap.has(flow.name);
+
+      if (isDuplicate && duplicateAction === 'skip') {
+        skipped++;
+        logger.info(`Skipping duplicate flow: ${flow.name}`);
+        continue;
+      }
+
+      if (isDuplicate && duplicateAction === 'update') {
+        // Update existing flow
+        const flowId = existingFlowMap.get(flow.name)!;
+        await prisma.mulesoftFlow.update({
+          where: { id: flowId },
+          data: {
+            description: flow.description,
+            url: flow.url,
+            method: flow.method,
+            vars: flow.vars,
+          },
+        });
+        updated++;
+        logger.info(`Updated flow: ${flow.name}`);
+      } else {
+        // Create new flow
+        await prisma.mulesoftFlow.create({
+          data: {
+            mulesoftApiId: apiId,
+            name: flow.name,
+            description: flow.description,
+            url: flow.url,
+            method: flow.method,
+            vars: flow.vars,
+            isActive: true,
+          },
+        });
+        created++;
+        logger.info(`Created flow: ${flow.name}`);
+      }
+    }
+
+    logger.info(`Bulk import complete: ${created} created, ${updated} updated, ${skipped} skipped`);
+
+    return { created, updated, skipped };
   },
 };
 

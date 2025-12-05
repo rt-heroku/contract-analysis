@@ -74,6 +74,18 @@ export const MulesoftApis: React.FC = () => {
     vars: [] as Array<{ name: string; type: string; mandatory: boolean }>,
   });
 
+  // Import flow state
+  const [activeTab, setActiveTab] = useState<'manual' | 'import'>('manual');
+  const [importMethod, setImportMethod] = useState<'paste' | 'upload' | 'url'>('paste');
+  const [specInput, setSpecInput] = useState('');
+  const [specFile, setSpecFile] = useState<File | null>(null);
+  const [parsedFlows, setParsedFlows] = useState<any[]>([]);
+  const [selectedFlows, setSelectedFlows] = useState<Set<string>>(new Set());
+  const [duplicates, setDuplicates] = useState<string[]>([]);
+  const [duplicateAction, setDuplicateAction] = useState<'skip' | 'update' | 'cancel'>('skip');
+  const [importing, setImporting] = useState(false);
+  const [parsing, setParsing] = useState(false);
+
   const [alertDialog, setAlertDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -442,6 +454,167 @@ export const MulesoftApis: React.FC = () => {
   const removeFlowVariable = (index: number) => {
     const newVars = flowFormData.vars.filter((_, i) => i !== index);
     setFlowFormData({ ...flowFormData, vars: newVars });
+  };
+
+  // Import flow helper functions
+  const resetImportForm = () => {
+    setSpecInput('');
+    setSpecFile(null);
+    setParsedFlows([]);
+    setSelectedFlows(new Set<string>());
+    setDuplicates([]);
+    setDuplicateAction('skip');
+    setParsing(false);
+    setImporting(false);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      setSpecInput(content);
+    };
+    reader.readAsText(file);
+    setSpecFile(file);
+  };
+
+  const handleSpecParse = async () => {
+    if (!selectedApiForFlows) return;
+
+    try {
+      setParsing(true);
+
+      let payload: any = {};
+
+      if (importMethod === 'url') {
+        if (!specInput.trim()) {
+          setAlertDialog({
+            isOpen: true,
+            title: 'Validation Error',
+            message: 'Please enter a URL',
+            type: 'warning',
+          });
+          return;
+        }
+        payload.url = specInput.trim();
+      } else {
+        // paste or upload
+        if (!specInput.trim()) {
+          setAlertDialog({
+            isOpen: true,
+            title: 'Validation Error',
+            message: 'Please provide an API specification',
+            type: 'warning',
+          });
+          return;
+        }
+        payload.openApiSpec = specInput;
+      }
+
+      const response = await api.post(`/mulesoft-apis/${selectedApiForFlows.id}/parse-flow-spec`, payload);
+      
+      setParsedFlows(response.data.flows);
+      setDuplicates(response.data.duplicates);
+      
+      // Auto-select all flows
+      const allFlowNames = new Set<string>(response.data.flows.map((f: any) => f.name));
+      setSelectedFlows(allFlowNames);
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Success',
+        message: `Parsed ${response.data.flows.length} flows from specification`,
+        type: 'success',
+      });
+    } catch (error: any) {
+      console.error('Error parsing spec:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Parse Error',
+        message: error.response?.data?.error || 'Failed to parse API specification',
+        type: 'error',
+      });
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const handleToggleFlow = (flowName: string) => {
+    const newSelected = new Set(selectedFlows);
+    if (newSelected.has(flowName)) {
+      newSelected.delete(flowName);
+    } else {
+      newSelected.add(flowName);
+    }
+    setSelectedFlows(newSelected);
+  };
+
+  const handleToggleAll = () => {
+    if (selectedFlows.size === parsedFlows.length) {
+      setSelectedFlows(new Set<string>());
+    } else {
+      const allNames = new Set<string>(parsedFlows.map(f => f.name));
+      setSelectedFlows(allNames);
+    }
+  };
+
+  const handleImportFlows = async () => {
+    if (!selectedApiForFlows) return;
+
+    if (selectedFlows.size === 0) {
+      setAlertDialog({
+        isOpen: true,
+        title: 'Validation Error',
+        message: 'Please select at least one flow to import',
+        type: 'warning',
+      });
+      return;
+    }
+
+    try {
+      setImporting(true);
+
+      const flowsToImport = parsedFlows.filter(f => selectedFlows.has(f.name));
+
+      const response = await api.post(`/mulesoft-apis/${selectedApiForFlows.id}/bulk-create-flows`, {
+        flows: flowsToImport,
+        duplicateAction,
+      });
+
+      const { created, updated, skipped } = response.data;
+      
+      let message = '';
+      if (created > 0) message += `${created} flow(s) created. `;
+      if (updated > 0) message += `${updated} flow(s) updated. `;
+      if (skipped > 0) message += `${skipped} flow(s) skipped.`;
+
+      setAlertDialog({
+        isOpen: true,
+        title: 'Import Complete',
+        message: message || 'No flows were imported',
+        type: 'success',
+      });
+
+      // Reset import form and switch back to manual tab
+      resetImportForm();
+      setActiveTab('manual');
+      
+      // Refresh APIs to show new flows
+      fetchApis();
+    } catch (error: any) {
+      console.error('Error importing flows:', error);
+      setAlertDialog({
+        isOpen: true,
+        title: 'Import Error',
+        message: error.response?.data?.error || 'Failed to import flows',
+        type: 'error',
+      });
+    } finally {
+      setImporting(false);
+    }
   };
 
   const renderApiCard = (api: MulesoftApi, isOwner: boolean) => {
@@ -814,12 +987,41 @@ export const MulesoftApis: React.FC = () => {
           setSelectedApiForFlows(null);
           setShowFlowForm(false);
           setEditingFlow(null);
+          resetImportForm();
+          setActiveTab('manual');
         }}
         title={`Manage Flows - ${selectedApiForFlows?.name || ''}`}
         size="xl"
       >
         <div className="space-y-4">
-          {!showFlowForm ? (
+          {/* Tab Navigation */}
+          {!showFlowForm && (
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => setActiveTab('manual')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'manual'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Manual
+              </button>
+              <button
+                onClick={() => setActiveTab('import')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'import'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Import from Spec
+              </button>
+            </div>
+          )}
+
+          {/* Manual Tab Content */}
+          {activeTab === 'manual' && !showFlowForm && (
             <>
               <div className="flex justify-between items-center">
                 <p className="text-sm text-gray-600">
@@ -892,7 +1094,254 @@ export const MulesoftApis: React.FC = () => {
                 </div>
               )}
             </>
-          ) : (
+          )}
+
+          {/* Import Tab Content */}
+          {activeTab === 'import' && !showFlowForm && (
+            <div className="space-y-4">
+              {/* Input Method Selector */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Import Method
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="paste"
+                      checked={importMethod === 'paste'}
+                      onChange={(e) => setImportMethod(e.target.value as any)}
+                      className="mr-2"
+                    />
+                    Paste Spec
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="upload"
+                      checked={importMethod === 'upload'}
+                      onChange={(e) => setImportMethod(e.target.value as any)}
+                      className="mr-2"
+                    />
+                    Upload File
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="url"
+                      checked={importMethod === 'url'}
+                      onChange={(e) => setImportMethod(e.target.value as any)}
+                      className="mr-2"
+                    />
+                    URL
+                  </label>
+                </div>
+              </div>
+
+              {/* Input Area */}
+              {importMethod === 'paste' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Paste OpenAPI/RAML Specification (YAML or JSON)
+                  </label>
+                  <textarea
+                    value={specInput}
+                    onChange={(e) => setSpecInput(e.target.value)}
+                    placeholder="Paste your API specification here..."
+                    className="w-full h-64 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  />
+                </div>
+              )}
+
+              {importMethod === 'upload' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Upload Specification File
+                  </label>
+                  <input
+                    type="file"
+                    accept=".yaml,.yml,.json,.raml"
+                    onChange={handleFileUpload}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {specFile && (
+                    <p className="mt-2 text-sm text-gray-600">
+                      Selected: {specFile.name}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {importMethod === 'url' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Specification URL
+                  </label>
+                  <Input
+                    value={specInput}
+                    onChange={(e) => setSpecInput(e.target.value)}
+                    placeholder="https://api.example.com/openapi.json"
+                  />
+                </div>
+              )}
+
+              {/* Parse Button */}
+              {parsedFlows.length === 0 && (
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleSpecParse}
+                    disabled={parsing || !specInput.trim()}
+                  >
+                    {parsing ? 'Parsing...' : 'Parse Specification'}
+                  </Button>
+                </div>
+              )}
+
+              {/* Preview Section */}
+              {parsedFlows.length > 0 && (
+                <>
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-lg font-medium">Preview ({parsedFlows.length} flows)</h3>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleToggleAll}
+                        >
+                          {selectedFlows.size === parsedFlows.length ? 'Deselect All' : 'Select All'}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={resetImportForm}
+                        >
+                          Reset
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Duplicate Warning */}
+                    {duplicates.length > 0 && (
+                      <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                        <p className="text-sm font-medium text-yellow-800 mb-2">
+                          ⚠️ {duplicates.length} duplicate flow(s) detected
+                        </p>
+                        <div className="space-y-1">
+                          <label className="flex items-center text-sm">
+                            <input
+                              type="radio"
+                              value="skip"
+                              checked={duplicateAction === 'skip'}
+                              onChange={(e) => setDuplicateAction(e.target.value as any)}
+                              className="mr-2"
+                            />
+                            Skip duplicates (create only new flows)
+                          </label>
+                          <label className="flex items-center text-sm">
+                            <input
+                              type="radio"
+                              value="update"
+                              checked={duplicateAction === 'update'}
+                              onChange={(e) => setDuplicateAction(e.target.value as any)}
+                              className="mr-2"
+                            />
+                            Update existing flows with new data
+                          </label>
+                          <label className="flex items-center text-sm">
+                            <input
+                              type="radio"
+                              value="cancel"
+                              checked={duplicateAction === 'cancel'}
+                              onChange={(e) => setDuplicateAction(e.target.value as any)}
+                              className="mr-2"
+                            />
+                            Cancel import if duplicates exist
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Flow Preview Table */}
+                    <div className="max-h-96 overflow-y-auto border rounded">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              <input
+                                type="checkbox"
+                                checked={selectedFlows.size === parsedFlows.length}
+                                onChange={handleToggleAll}
+                              />
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Path</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Variables</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {parsedFlows.map((flow, index) => {
+                            const isDuplicate = duplicates.includes(flow.name);
+                            return (
+                              <tr
+                                key={index}
+                                className={isDuplicate ? 'bg-yellow-50' : ''}
+                              >
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedFlows.has(flow.name)}
+                                    onChange={() => handleToggleFlow(flow.name)}
+                                  />
+                                </td>
+                                <td className="px-3 py-2 text-sm">
+                                  {flow.name}
+                                  {isDuplicate && (
+                                    <span className="ml-2">
+                                      <Badge variant="warning">Duplicate</Badge>
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-sm font-mono">{flow.method}</td>
+                                <td className="px-3 py-2 text-sm font-mono">{flow.url}</td>
+                                <td className="px-3 py-2 text-sm">
+                                  {flow.vars && flow.vars.length > 0 ? (
+                                    <span className="text-gray-600">{flow.vars.length} var(s)</span>
+                                  ) : (
+                                    <span className="text-gray-400">None</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Import Button */}
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button
+                        variant="secondary"
+                        onClick={resetImportForm}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleImportFlows}
+                        disabled={importing || selectedFlows.size === 0}
+                      >
+                        {importing ? 'Importing...' : `Import ${selectedFlows.size} Flow(s)`}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Manual Flow Form (when adding/editing) */}
+          {showFlowForm && (
             <div className="space-y-4">
               <Input
                 label="Flow Name"

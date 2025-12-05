@@ -446,5 +446,107 @@ export const mulesoftApiController = {
       });
     }
   },
+
+  /**
+   * Parse OpenAPI/RAML spec and return flow previews (no DB writes)
+   */
+  async parseFlowSpec(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const apiId = parseInt(req.params.id);
+      const { openApiSpec, url } = req.body;
+
+      console.log('=== Flow Spec Parse Request ===');
+      console.log('API ID:', apiId);
+      console.log('URL provided:', !!url);
+      console.log('Spec provided:', !!openApiSpec);
+
+      if (!url && !openApiSpec) {
+        return res.status(400).json({ error: 'Either openApiSpec or url is required' });
+      }
+
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
+      const result = await mulesoftApiService.parseFlowSpec(apiId, req.user.id, { openApiSpec, url }, isAdmin);
+
+      console.log('Parse successful:', result);
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('=== Flow Spec Parse Error ===');
+      console.error('Error:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      if (error.message === 'Not authorized') {
+        return res.status(403).json({ error: error.message });
+      }
+      
+      res.status(500).json({ error: error.message || 'Failed to parse flow spec' });
+    }
+  },
+
+  /**
+   * Bulk create flows from parsed spec
+   */
+  async bulkCreateFlows(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const apiId = parseInt(req.params.id);
+      const { flows, duplicateAction } = req.body;
+
+      console.log('=== Bulk Create Flows Request ===');
+      console.log('API ID:', apiId);
+      console.log('Flows to create:', flows?.length);
+      console.log('Duplicate action:', duplicateAction);
+
+      if (!flows || !Array.isArray(flows) || flows.length === 0) {
+        return res.status(400).json({ error: 'Flows array is required and must not be empty' });
+      }
+
+      if (!['skip', 'update', 'cancel'].includes(duplicateAction)) {
+        return res.status(400).json({ error: 'Invalid duplicateAction. Must be: skip, update, or cancel' });
+      }
+
+      const isAdmin = req.user.roles?.includes('admin') || req.user.roles?.includes('Admin');
+      const result = await mulesoftApiService.bulkCreateFlows(apiId, req.user.id, flows, duplicateAction, isAdmin);
+
+      await loggingService.logActivity({
+        userId: req.user.id,
+        actionType: 'mulesoft_flow.bulk_import',
+        actionDescription: `Imported ${result.created} flows from OpenAPI spec`,
+        ipAddress: getClientIp(req),
+        userAgent: getUserAgent(req),
+        metadata: { 
+          mulesoftApiId: apiId, 
+          created: result.created,
+          updated: result.updated,
+          skipped: result.skipped,
+        },
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('=== Bulk Create Flows Error ===');
+      console.error('Error:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      if (error.message === 'Not authorized') {
+        return res.status(403).json({ error: error.message });
+      }
+      
+      if (error.message === 'Import cancelled due to duplicates') {
+        return res.status(409).json({ error: error.message });
+      }
+      
+      res.status(500).json({ error: error.message || 'Failed to create flows' });
+    }
+  },
 };
 

@@ -39,5 +39,9 @@ router.post('/mulesoft-apis/:id/flows', authenticate, mulesoftApiController.crea
 router.put('/mulesoft-apis/:id/flows/:flowId', authenticate, mulesoftApiController.updateFlow);
 router.delete('/mulesoft-apis/:id/flows/:flowId', authenticate, mulesoftApiController.deleteFlow);
 
+// Flow import from OpenAPI/RAML spec
+router.post('/mulesoft-apis/:id/parse-flow-spec', authenticate, mulesoftApiController.parseFlowSpec);
+router.post('/mulesoft-apis/:id/bulk-create-flows', authenticate, mulesoftApiController.bulkCreateFlows);
+
 export default router;
 
