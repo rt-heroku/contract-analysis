@@ -2,24 +2,16 @@
 -- Production Sync v2.0 - Consolidated Migration
 -- ============================================
 -- This migration adds all features developed in dev environment:
--- - Beta Features menu (Processes, Actions, Executions, Connectors, Stores)
 -- - Database Explorer menu
 -- - Pages menu
--- - Process Automation menu with permissions
--- - MuleSoft APIs menu
+-- - Process Automation permissions
 -- ============================================
 -- This script is IDEMPOTENT - safe to run multiple times
 -- ============================================
 
-\echo ''
-\echo '🚀 Starting Production Sync v2.0 Migration...'
-\echo ''
-
 -- ============================================
 -- SECTION 1: Process Automation Permissions
 -- ============================================
-
-\echo '📋 Section 1: Adding Process Automation Permissions...'
 
 INSERT INTO "permissions" (name, description, category, created_at, updated_at)
 VALUES
@@ -48,8 +40,6 @@ VALUES
   ('pages.edit', 'Edit pages', 'Pages', NOW(), NOW()),
   ('pages.delete', 'Delete pages', 'Pages', NOW(), NOW())
 ON CONFLICT (name) DO NOTHING;
-
-\echo '✓ Permissions added'
 
 -- Assign permissions to admin role
 DO $$
@@ -112,9 +102,6 @@ END $$;
 -- SECTION 2: Database Explorer Menu
 -- ============================================
 
-\echo ''
-\echo '📋 Section 3: Adding Database Explorer Menu...'
-
 DO $$
 DECLARE
   admin_role_id INT;
@@ -165,9 +152,6 @@ END $$;
 -- SECTION 3: Pages Menu
 -- ============================================
 
-\echo ''
-\echo '📋 Section 3: Adding Pages Menu...'
-
 DO $$
 DECLARE
   admin_role_id INT;
@@ -207,22 +191,5 @@ BEGIN
   END IF;
 END $$;
 
--- ============================================
--- SECTION 4: Summary
--- ============================================
-
-\echo ''
-\echo '============================================'
-\echo '✅ Production Sync v2.0 Migration Complete!'
-\echo '============================================'
-\echo ''
-\echo 'Changes Applied:'
-\echo '  ✓ Process automation permissions'
-\echo '  ✓ Database Explorer menu'
-\echo '  ✓ Pages menu'
-\echo '  ✓ Role permissions assigned'
-\echo ''
-\echo 'Verify with:'
-\echo '  SELECT title, route FROM menu_items WHERE parent_id IS NULL ORDER BY order_index;'
-\echo ''
+-- Migration complete
 
