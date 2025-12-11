@@ -61,6 +61,8 @@ model User {
   systemPromptsUpdated SystemPrompt[]  @relation("SystemPromptUpdater")
   dbAnalysisResults DbAnalysisResult[] @relation("AnalysisExecutor")
   mulesoftApis      MulesoftApi[]      @relation("MulesoftApiCreator")
+  workflows         Workflow[]          @relation("WorkflowCreator")
+  workflowExecutions WorkflowExecution[] @relation("WorkflowExecutionUser")
 
   @@map("users")
 }
@@ -897,5 +899,137 @@ model SchemaMigration {
   @@index([filename])
   @@index([appliedAt(sort: Desc)])
   @@map("schema_migrations")
+}
+
+// ==================== STEP BUILDER WORKFLOW MODELS ====================
+
+model Workflow {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(200)
+  description     String?  @db.Text
+  category        String?  @db.VarChar(100)
+  
+  // Execution settings
+  timeoutSeconds  Int      @default(1800)
+  
+  // Status
+  isActive        Boolean  @default(true) @map("is_active")
+  isTemplate      Boolean  @default(false) @map("is_template")
+  
+  // Audit
+  createdBy       Int      @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  creator         User                @relation("WorkflowCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  steps           WorkflowStep[]
+  executions      WorkflowExecution[]
+  
+  @@index([createdBy])
+  @@index([isActive])
+  @@map("workflows")
+}
+
+model WorkflowStep {
+  id              Int      @id @default(autoincrement())
+  workflowId      Int      @map("workflow_id")
+  stepOrder       Int      @map("step_order")
+  
+  // Step type (preset)
+  stepType        String   @map("step_type") @db.VarChar(50)
+  // 'file_upload', 'idp_process', 'api_call', 'review', 'analyze', 'store'
+  
+  // Configuration
+  name            String   @db.VarChar(200)
+  description     String?  @db.Text
+  config          Json     // Step-specific configuration
+  
+  // Input/Output tracking
+  inputSource     String?  @map("input_source") @db.VarChar(100)
+  // 'previous_step', 'user_input', 'variable'
+  outputVariable  String?  @map("output_variable") @db.VarChar(100)
+  
+  // UI configuration
+  pageComponent   String?  @map("page_component") @db.VarChar(100)
+  // For review steps: 'IdpReviewModal', 'ManualValidationModal'
+  requiresUserInput Boolean @default(false) @map("requires_user_input")
+  
+  // Conditional execution
+  condition       Json?    // For conditional steps
+  
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  workflow        Workflow           @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  executions      StepExecution[]
+  
+  @@unique([workflowId, stepOrder])
+  @@index([workflowId])
+  @@map("workflow_steps")
+}
+
+model WorkflowExecution {
+  id              Int       @id @default(autoincrement())
+  workflowId      Int       @map("workflow_id")
+  executionId     String    @unique @map("execution_id") @db.VarChar(100)
+  userId          Int       @map("user_id")
+  
+  // Execution state
+  status          String    @db.VarChar(50)
+  // 'pending', 'running', 'waiting_user', 'completed', 'failed', 'cancelled'
+  currentStep     Int?      @map("current_step")
+  
+  // Data context
+  context         Json      // Shared data between steps
+  result          Json?     // Final result
+  
+  // Timing
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  durationMs      Int?      @map("duration_ms")
+  errorMessage    String?   @map("error_message") @db.Text
+  
+  createdAt       DateTime  @default(now()) @map("created_at")
+  
+  workflow        Workflow         @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user            User             @relation("WorkflowExecutionUser", fields: [userId], references: [id], onDelete: Cascade)
+  stepExecutions  StepExecution[]
+  
+  @@index([workflowId])
+  @@index([userId])
+  @@index([status])
+  @@index([executionId])
+  @@map("workflow_executions")
+}
+
+model StepExecution {
+  id                  Int       @id @default(autoincrement())
+  workflowExecutionId Int       @map("workflow_execution_id")
+  stepId              Int       @map("step_id")
+  stepOrder           Int       @map("step_order")
+  
+  // Status
+  status              String    @db.VarChar(50)
+  // 'pending', 'running', 'waiting_user', 'completed', 'failed', 'skipped'
+  
+  // Data
+  inputData           Json?     @map("input_data")
+  outputData          Json?     @map("output_data")
+  errorMessage        String?   @map("error_message") @db.Text
+  
+  // Timing
+  startedAt           DateTime? @map("started_at")
+  completedAt         DateTime? @map("completed_at")
+  durationMs          Int?      @map("duration_ms")
+  
+  createdAt           DateTime  @default(now()) @map("created_at")
+  
+  workflowExecution WorkflowExecution @relation(fields: [workflowExecutionId], references: [id], onDelete: Cascade)
+  step              WorkflowStep      @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  
+  @@index([workflowExecutionId])
+  @@index([stepId])
+  @@index([status])
+  @@map("step_executions")
 }
 

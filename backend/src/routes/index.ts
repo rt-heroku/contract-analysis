@@ -28,6 +28,7 @@ import systemPromptRoutes from './systemPrompt.routes';
 import tableAnalysisRoutes from './tableAnalysis.routes';
 import mulesoftApiRoutes from './mulesoftApi.routes';
 import documentClassifierRoutes from './document-classifier.routes';
+import workflowRoutes from './workflow.routes';
 
 const router = Router();
 
@@ -60,6 +61,7 @@ router.use('/system-prompts', systemPromptRoutes);
 router.use('/table-analysis', tableAnalysisRoutes);
 router.use('/', mulesoftApiRoutes);
 router.use('/document-classifier', documentClassifierRoutes);
+router.use('/workflows', workflowRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {

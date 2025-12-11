@@ -41,6 +41,7 @@ import { PageBuilder } from './pages/PageBuilder';
 import { PageRenderer } from './pages/PageRenderer';
 import { DatabaseExplorer } from './pages/DatabaseExplorer';
 import { OcrTest } from './pages/test/OcrTest';
+import { Workflows } from './pages/Workflows';
 
 const App = () => {
   return (
@@ -96,6 +97,9 @@ const App = () => {
             {/* Database Explorer */}
             <Route path="/db" element={<MainLayout><DatabaseExplorer /></MainLayout>} />
             <Route path="/test/ocr" element={<MainLayout><OcrTest /></MainLayout>} />
+            
+            {/* Workflows (Step Builder) */}
+            <Route path="/workflows" element={<MainLayout><Workflows /></MainLayout>} />
 
             {/* Default Route */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
