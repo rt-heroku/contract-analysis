@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import { getMuleSoftConfig } from '../../../config/muleSoft';
 import { OCRService } from './ocr.service';
 import { ClassifierService } from './classifier.service';
 import { PDFUtils } from '../utils/pdf-utils';
@@ -34,6 +35,21 @@ export class DocumentAnalyzerService {
       useAI = true,
       includeMetadata = true,
     } = options;
+
+    if (useAI) {
+      try {
+        const config = await getMuleSoftConfig();
+        const endpoint = config.endpoints?.llmChatCompletions || '/v1/chat/completions';
+        const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const baseUrl = (config.baseUrl || '').replace(/\/+$/, '');
+        const resolvedEndpoint = `${baseUrl}${normalizedEndpoint}`;
+        // eslint-disable-next-line no-console
+        console.log('[DocumentAnalyzer] MuleSoft classifier endpoint:', resolvedEndpoint);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[DocumentAnalyzer] Failed to resolve MuleSoft classifier endpoint', error);
+      }
+    }
 
     try {
       const ext = filePath.toLowerCase().split('.').pop();
