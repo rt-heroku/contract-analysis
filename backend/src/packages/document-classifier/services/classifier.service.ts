@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import prisma from '../../../config/database';
 import { getMuleSoftConfig, MuleSoftConfig } from '../../../config/muleSoft';
 import {
   ClassificationRequest,
@@ -8,6 +9,7 @@ import {
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const FALLBACK_ENDPOINT = '/v1/chat/completions';
+const DOCUMENT_CLASSIFIER_CATEGORY = 'document_classifier';
 
 /**
  * AI Classifier Service
@@ -64,13 +66,14 @@ export class ClassifierService {
     try {
       const client = await this.clientPromise;
       const endpoint = await this.getChatEndpoint();
+      const prompt = await this.buildPrompt(extractedText, pageNumber);
 
       const response = await client.post(endpoint, {
         model: DEFAULT_MODEL,
         messages: [
           {
             role: 'user',
-            content: this.buildPrompt(extractedText, pageNumber),
+            content: prompt,
           },
         ],
         max_tokens: 500,
@@ -96,13 +99,16 @@ export class ClassifierService {
     }
   }
 
-  private buildPrompt(text: string, pageNumber: number): string {
+  private async buildPrompt(text: string, pageNumber: number): Promise<string> {
     const truncatedText = text.length > 2000 ? `${text.substring(0, 2000)}...(truncated)` : text;
+    const template = await this.getPromptTemplate();
 
-    return `You are a document classification expert. Analyze the following text extracted from page ${pageNumber} of a document and classify it.
-
-DOCUMENT TYPES:
-- purchase_order: Purchase orders, POs
+    return template
+      .replace(/\{\{\s*page_number\s*\}\}/gi, String(pageNumber))
+      .replace(/\{\{\s*extracted_text\s*\}\}/gi, truncatedText)
+      .replace(
+        /\{\{\s*document_types\s*\}\}/gi,
+        `- purchase_order: Purchase orders, POs
 - invoice: Invoices, bills
 - contract: Contracts, agreements, terms
 - receipt: Receipts, payment confirmations
@@ -113,18 +119,55 @@ DOCUMENT TYPES:
 - image: Mostly images with minimal text
 - table: Primarily tables or data grids
 - blank: Empty or nearly empty pages
-- unknown: Cannot determine type
-
-EXTRACTED TEXT:
-${truncatedText}
-
-Respond in JSON format:
-{
+- unknown: Cannot determine type`
+      )
+      .replace(
+        /\{\{\s*response_format\s*\}\}/gi,
+        `{
   "documentType": "one of the types above",
   "confidence": 0-100,
   "reasoning": "brief explanation",
   "suggestedFields": ["field1", "field2"] (optional)
-}`;
+}`
+      );
+  }
+
+  /**
+   * Load prompt template from DB (prompts table) so it can be edited.
+   * Falls back to the built-in template if none is configured.
+   */
+  private async getPromptTemplate(): Promise<string> {
+    try {
+      const prompt = await prisma.prompt.findFirst({
+        where: {
+          category: DOCUMENT_CLASSIFIER_CATEGORY,
+          isActive: true,
+        },
+        orderBy: [
+          { isDefault: 'desc' },
+          { updatedAt: 'desc' },
+        ],
+      });
+
+      if (prompt?.content) {
+        return prompt.content;
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to load document classifier prompt, using default:', error);
+    }
+
+    // Default template mirrors previous inline prompt
+    return `You are a document classification expert. Analyze the following text extracted from page {{page_number}} of a document and classify it.
+
+DOCUMENT TYPES:
+{{document_types}}
+
+EXTRACTED TEXT:
+{{extracted_text}}
+
+Respond in JSON format:
+{{response_format}}`;
   }
 
   private parseResponse(responseText: string): ClassificationResponse {
