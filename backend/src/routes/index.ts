@@ -27,6 +27,7 @@ import dbExplorerRoutes from './dbExplorer.routes';
 import systemPromptRoutes from './systemPrompt.routes';
 import tableAnalysisRoutes from './tableAnalysis.routes';
 import mulesoftApiRoutes from './mulesoftApi.routes';
+import documentClassifierRoutes from './document-classifier.routes';
 
 const router = Router();
 
@@ -58,6 +59,7 @@ router.use('/db-explorer', dbExplorerRoutes);
 router.use('/system-prompts', systemPromptRoutes);
 router.use('/table-analysis', tableAnalysisRoutes);
 router.use('/', mulesoftApiRoutes);
+router.use('/document-classifier', documentClassifierRoutes);
 
 // Health check
 router.get('/health', (_req, res) => {

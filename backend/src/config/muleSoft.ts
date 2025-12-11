@@ -9,6 +9,7 @@ export interface MuleSoftConfig {
   endpoints: {
     processDocument: string;
     analyzeData: string;
+    llmChatCompletions?: string;
   };
 }
 
@@ -41,6 +42,7 @@ export async function getMuleSoftConfig(): Promise<MuleSoftConfig> {
     endpoints: {
       processDocument: '/process/document',
       analyzeData: '/analyze',
+      llmChatCompletions: '/v1/chat/completions',
     },
   };
 }
@@ -54,6 +56,7 @@ const muleSoftConfig: MuleSoftConfig = {
   endpoints: {
     processDocument: '/process/document',
     analyzeData: '/analyze',
+    llmChatCompletions: '/v1/chat/completions',
   },
 };
 
