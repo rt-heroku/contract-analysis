@@ -48,7 +48,7 @@ A modern, full-stack web application for processing PDF contracts and Excel/CSV 
 ## 🛠️ Installation & Setup
 
 ### Prerequisites
-- Node.js 18 or higher
+- Node.js 18.x LTS (pinned for deployment compatibility)
 - PostgreSQL database
 - npm or yarn
 
