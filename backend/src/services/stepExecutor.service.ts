@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 import logger from '../utils/logger';
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '../utils/uuid';
 import { StepHandlerFactory } from './stepHandlers/StepHandlerFactory';
 
 /**
@@ -38,7 +38,7 @@ class StepExecutorService {
       }
 
       // Create execution record
-      const executionId = uuidv4();
+      const executionId = await uuidv4();
       const execution = await prisma.workflowExecution.create({
         data: {
           workflowId,

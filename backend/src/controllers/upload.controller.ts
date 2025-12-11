@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '../utils/uuid';
 import { AuthenticatedRequest } from '../types';
 import fileService from '../services/file.service';
 import loggingService from '../services/logging.service';
@@ -46,7 +46,7 @@ class UploadController {
       // Generate or retrieve jobId from session/body
       let jobId = req.body.jobId || req.session?.jobId;
       if (!jobId) {
-        jobId = `job_${Date.now()}_${uuidv4()}`;
+        jobId = `job_${Date.now()}_${await uuidv4()}`;
         if (req.session) {
           req.session.jobId = jobId;
         }

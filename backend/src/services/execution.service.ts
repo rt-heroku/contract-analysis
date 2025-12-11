@@ -1,6 +1,6 @@
 import prisma from '../config/database';
 import logger from '../utils/logger';
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '../utils/uuid';
 
 class ExecutionService {
   /**
@@ -123,7 +123,7 @@ class ExecutionService {
     executionContext: any
   ) {
     try {
-      const executionId = uuidv4();
+      const executionId = await uuidv4();
 
       const execution = await prisma.processExecution.create({
         data: {

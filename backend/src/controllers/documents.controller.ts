@@ -5,7 +5,7 @@ import loggingService from '../services/logging.service';
 import { ACTION_TYPES } from '../utils/constants';
 import { getClientIp, getUserAgent } from '../utils/helpers';
 import multer from 'multer';
-import { v4 as uuidv4 } from 'uuid';
+import { uuidv4 } from '../utils/uuid';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -99,8 +99,8 @@ class DocumentsController {
       // Generate unique filename and jobId
       const originalFilename = req.file.originalname;
       const fileExtension = originalFilename.split('.').pop();
-      const uniqueFilename = `${uuidv4()}.${fileExtension}`;
-      const jobId = uuidv4();
+      const uniqueFilename = `${await uuidv4()}.${fileExtension}`;
+      const jobId = await uuidv4();
 
       // Convert file to base64
       const fileContentBase64 = req.file.buffer.toString('base64');
