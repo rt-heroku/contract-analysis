@@ -1,9 +1,27 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
 import multer from 'multer';
 import { DocumentAnalyzerService } from '../services/document-analyzer.service';
 
 const router = express.Router();
-const upload = multer({ dest: '/tmp/uploads/' });
+
+const uploadDir = '/tmp/uploads';
+fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (_req, file, cb) => {
+    // Keep original extension so downstream analyzers can detect type
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const timestamp = Date.now();
+    cb(null, `${timestamp}-${safeName}`);
+  },
+});
+
+const upload = multer({ storage });
 
 /**
  * POST /api/document-classifier/analyze
