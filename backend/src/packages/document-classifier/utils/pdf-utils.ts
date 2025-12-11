@@ -33,7 +33,9 @@ export class PDFUtils {
    */
   static async getPageCount(pdfPath: string): Promise<number> {
     const dataBuffer = await fs.readFile(pdfPath);
-    const loadingTask = pdfjsLib.getDocument({ data: dataBuffer });
+    // pdfjs expects Uint8Array, not Node Buffer
+    const data = dataBuffer instanceof Uint8Array ? dataBuffer : new Uint8Array(dataBuffer);
+    const loadingTask = pdfjsLib.getDocument({ data });
     const pdfDocument = await loadingTask.promise;
     return pdfDocument.numPages;
   }
@@ -47,7 +49,8 @@ export class PDFUtils {
     scale: number = 2.0
   ): Promise<Buffer> {
     const dataBuffer = await fs.readFile(pdfPath);
-    const loadingTask = pdfjsLib.getDocument({ data: dataBuffer });
+    const data = dataBuffer instanceof Uint8Array ? dataBuffer : new Uint8Array(dataBuffer);
+    const loadingTask = pdfjsLib.getDocument({ data });
     const pdfDocument = await loadingTask.promise;
 
     const page = await pdfDocument.getPage(pageNumber);
