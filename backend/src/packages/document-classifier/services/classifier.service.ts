@@ -80,7 +80,13 @@ export class ClassifierService {
         temperature: 0.1,
       });
 
-      const content = response.data?.choices?.[0]?.message?.content;
+      // MuleSoft may return OpenAI-compatible or a simple { response: "...json..." }
+      const data = response.data;
+      let content =
+        data?.choices?.[0]?.message?.content ||
+        (typeof data?.response === 'string' ? data.response : undefined) ||
+        (typeof data?.content === 'string' ? data.content : undefined) ||
+        (typeof data === 'string' ? data : undefined);
 
       if (!content) {
         throw new Error('No content in MuleSoft API response');
