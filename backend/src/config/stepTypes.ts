@@ -246,3 +246,7 @@ export function getStepTypesByCategory(category: string): StepTypeDefinition[] {
   return Object.values(STEP_TYPES).filter(st => st.category === category);
 }
 
+
+
+
+
