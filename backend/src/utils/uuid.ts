@@ -1,10 +1,10 @@
-let cachedUuidModule: typeof import('uuid') | null = null;
+import { v4 as uuidv4Generator } from 'uuid';
 
 export async function uuidv4(): Promise<string> {
-  if (!cachedUuidModule) {
-    cachedUuidModule = await import('uuid');
-  }
+  return uuidv4Generator();
+}
 
-  return cachedUuidModule.v4();
+export function uuidv4Sync(): string {
+  return uuidv4Generator();
 }
 
