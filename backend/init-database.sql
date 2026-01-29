@@ -356,7 +356,8 @@ INSERT INTO system_settings (setting_key,setting_value,description,is_secret,cre
 	 ('mulesoft_api_timeout','180000','MuleSoft API timeout in milliseconds',false, NOW(), NOW()),
 	 ('mulesoft_api_username','','MuleSoft API username for basic authentication',true, NOW(), NOW()),
 	 ('powered_by_text','Powered by MuleSoft','Footer text',false, NOW(), NOW()),
-	 ('show_demo_credentials','false','Display demo credentials on login page (true/false)',false, NOW(), NOW())
+	 ('show_demo_credentials','false','Display demo credentials on login page (true/false)',false, NOW(), NOW()),
+	 ('default_signup_role','viewer','Default role assigned to new user registrations (admin, user, or viewer)',false, NOW(), NOW())
   ON CONFLICT (setting_key) DO NOTHING;
 
   RAISE NOTICE '✓ System settings created';
