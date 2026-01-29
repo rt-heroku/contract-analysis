@@ -4,8 +4,9 @@ import api from '@/lib/api';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Input } from '@/components/common/Input';
+import { Select } from '@/components/common/Select';
 import { Loading } from '@/components/common/Loading';
-import { Upload, Save, Image as ImageIcon, Shield } from 'lucide-react';
+import { Upload, Save, Image as ImageIcon, Shield, AlertTriangle } from 'lucide-react';
 
 interface Setting {
   id: number;
@@ -291,7 +292,7 @@ export const Settings: React.FC = () => {
           <div className="space-y-4">
             {otherSettings.map(setting => (
               <div key={setting.id}>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                   {setting.settingKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   {setting.isSecret && (
                     <span title="Secret setting">
@@ -304,19 +305,49 @@ export const Settings: React.FC = () => {
                     </span>
                   )}
                 </label>
-                <Input
-                  type={setting.isSecret ? 'password' : 'text'}
-                  value={setting.hasEnvOverride ? (setting.effectiveValue || '') : (setting.settingValue || '')}
-                  onChange={(e) => handleSettingChange(setting.settingKey, e.target.value)}
-                  placeholder={setting.description || ''}
-                  disabled={setting.hasEnvOverride}
-                  className={setting.hasEnvOverride ? 'bg-gray-50 cursor-not-allowed' : ''}
-                />
-                {setting.hasEnvOverride && (
-                  <p className="text-sm text-green-600 mt-1">This setting is overridden by an environment variable and cannot be changed here.</p>
+                
+                {/* Special handling for default_signup_role - use dropdown */}
+                {setting.settingKey === 'default_signup_role' ? (
+                  <>
+                    <Select
+                      value={setting.hasEnvOverride ? (setting.effectiveValue || 'viewer') : (setting.settingValue || 'viewer')}
+                      onChange={(value) => handleSettingChange(setting.settingKey, value)}
+                      options={[
+                        { value: 'admin', label: 'Admin' },
+                        { value: 'user', label: 'User' },
+                        { value: 'viewer', label: 'Viewer (Recommended)' }
+                      ]}
+                      disabled={setting.hasEnvOverride}
+                      className={setting.hasEnvOverride ? 'bg-gray-50 dark:bg-gray-800 cursor-not-allowed' : ''}
+                    />
+                    {setting.settingValue === 'admin' && !setting.hasEnvOverride && (
+                      <div className="mt-2 flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-amber-800 dark:text-amber-300">
+                          <strong>Security Warning:</strong> Setting default signup role to 'admin' means all new users will have administrator privileges. This is not recommended for production environments.
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <Input
+                    type={setting.isSecret ? 'password' : 'text'}
+                    value={setting.hasEnvOverride ? (setting.effectiveValue || '') : (setting.settingValue || '')}
+                    onChange={(e) => handleSettingChange(setting.settingKey, e.target.value)}
+                    placeholder={setting.description || ''}
+                    disabled={setting.hasEnvOverride}
+                    className={setting.hasEnvOverride ? 'bg-gray-50 dark:bg-gray-800 cursor-not-allowed' : ''}
+                  />
                 )}
-                {setting.description && !setting.hasEnvOverride && (
-                  <p className="text-sm text-gray-500 mt-1">{setting.description}</p>
+                
+                {setting.hasEnvOverride && (
+                  <p className="text-sm text-green-600 dark:text-green-400 mt-1">This setting is overridden by an environment variable and cannot be changed here.</p>
+                )}
+                {setting.description && !setting.hasEnvOverride && setting.settingKey !== 'default_signup_role' && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{setting.description}</p>
+                )}
+                {setting.description && !setting.hasEnvOverride && setting.settingKey === 'default_signup_role' && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{setting.description}</p>
                 )}
               </div>
             ))}
