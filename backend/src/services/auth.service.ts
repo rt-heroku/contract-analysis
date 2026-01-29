@@ -5,13 +5,14 @@ import config from '../config/env';
 import { getJwtSecretSync } from '../config/secrets';
 import { RegisterData, LoginCredentials, JWTPayload } from '../types';
 import { JWT_EXPIRATION, JWT_REFRESH_EXPIRATION, ROLES } from '../utils/constants';
+import { getSetting } from '../utils/getSettings';
 
 class AuthService {
   private readonly SALT_ROUNDS = 10;
 
   /**
    * Register a new user
-   * @param skipDefaultRole - If true, don't assign default viewer role (used for first admin)
+   * @param skipDefaultRole - If true, don't assign default role (used for first admin)
    */
   async register(data: RegisterData, skipDefaultRole: boolean = false) {
     // Check if user exists
@@ -21,6 +22,40 @@ class AuthService {
 
     if (existingUser) {
       throw new Error('User with this email already exists');
+    }
+
+    // Get default role from environment variable or system settings (with fallback to 'viewer')
+    let defaultRoleName: string | null = null;
+    if (!skipDefaultRole) {
+      // Priority: ENV variable > Database setting > Default fallback
+      const envRole = process.env.DEFAULT_SIGNUP_ROLE?.toLowerCase();
+      const dbRole = (await getSetting('default_signup_role', 'viewer'))?.toLowerCase();
+      defaultRoleName = envRole || dbRole || 'viewer';
+    }
+
+    // Validate role name and determine default menu item
+    let defaultMenuItem = 'history';
+    let assignedRoleName = defaultRoleName;
+
+    if (!skipDefaultRole && defaultRoleName) {
+      // Validate that the role exists
+      const roleExists = await prisma.role.findUnique({
+        where: { name: defaultRoleName },
+      });
+
+      if (!roleExists) {
+        // Fallback to viewer if configured role doesn't exist
+        assignedRoleName = 'viewer';
+      }
+
+      // Set default menu item based on role
+      if (assignedRoleName === 'admin') {
+        defaultMenuItem = 'dashboard';
+      } else {
+        defaultMenuItem = 'history';
+      }
+    } else if (skipDefaultRole) {
+      defaultMenuItem = 'dashboard'; // First admin user
     }
 
     // Hash password
@@ -34,7 +69,7 @@ class AuthService {
           passwordHash,
           firstName: data.firstName,
           lastName: data.lastName,
-          defaultMenuItem: skipDefaultRole ? 'dashboard' : 'history', // Admins go to dashboard, viewers to history
+          defaultMenuItem,
         },
       });
 
@@ -45,17 +80,17 @@ class AuthService {
         },
       });
 
-      // Assign viewer role (default for new registrations) unless skipped
-      if (!skipDefaultRole) {
-        const viewerRole = await tx.role.findUnique({
-          where: { name: ROLES.VIEWER },
+      // Assign default role unless skipped
+      if (!skipDefaultRole && assignedRoleName) {
+        const role = await tx.role.findUnique({
+          where: { name: assignedRoleName },
         });
 
-        if (viewerRole) {
+        if (role) {
           await tx.userRole.create({
             data: {
               userId: newUser.id,
-              roleId: viewerRole.id,
+              roleId: role.id,
             },
           });
         }
@@ -70,7 +105,7 @@ class AuthService {
       firstName: user.firstName,
       lastName: user.lastName,
       defaultMenuItem: user.defaultMenuItem,
-      roles: skipDefaultRole ? [] : [ROLES.VIEWER], // Return appropriate roles
+      roles: skipDefaultRole ? [] : [assignedRoleName || 'viewer'], // Return appropriate roles
     };
   }
 

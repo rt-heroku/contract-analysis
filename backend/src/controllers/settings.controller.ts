@@ -96,6 +96,7 @@ class SettingsController {
         'mulesoft_api_username': 'MULESOFT_API_USERNAME',
         'mulesoft_api_password': 'MULESOFT_API_PASSWORD',
         'mulesoft_api_timeout': 'MULESOFT_API_TIMEOUT',
+        'default_signup_role': 'DEFAULT_SIGNUP_ROLE',
       };
 
       const settings = dbSettings.map(setting => {
