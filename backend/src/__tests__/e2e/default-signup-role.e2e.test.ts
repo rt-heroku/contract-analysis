@@ -328,7 +328,7 @@ describe('E2E: Default Signup Role Configuration', () => {
           },
         },
         orderBy: {
-          timestamp: 'desc',
+          createdAt: 'desc',
         },
         take: 1,
       });
