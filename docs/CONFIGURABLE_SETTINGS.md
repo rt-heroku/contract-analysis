@@ -36,6 +36,7 @@ The following settings are automatically seeded during `npm run seed`:
 |------------|-------------|-----------|
 | `app_name` | Application name displayed in sidebar and header | No |
 | `app_logo_url` | Application logo URL (can be uploaded by admin) | No |
+| `default_signup_role` | Default role assigned to new user registrations (admin, user, or viewer) | No |
 | `mulesoft_api_base_url` | MuleSoft API base URL | No |
 | `mulesoft_api_username` | MuleSoft API username for basic authentication | Yes |
 | `mulesoft_api_password` | MuleSoft API password for basic authentication | Yes |
@@ -247,6 +248,161 @@ frontend/
 ✅ **Security**: Secret settings are marked and protected  
 ✅ **Performance**: 1-minute caching reduces database load  
 ✅ **Fallback Safety**: Falls back to environment variables if DB unavailable
+
+## Default Signup Role Configuration
+
+### Overview
+
+The `default_signup_role` setting controls which role is automatically assigned to new users when they register. This feature provides flexibility in managing user permissions based on your organization's security policies.
+
+### Valid Values
+
+| Value | Description | Default Menu Item | Recommended For |
+|-------|-------------|-------------------|-----------------|
+| `viewer` | Read-only access (Recommended) | History | Public-facing applications, trial users |
+| `user` | Standard user access | History | Internal applications, verified users |
+| `admin` | Administrator access ⚠️ | Dashboard | Trusted environments only |
+
+### Configuration
+
+#### Via Admin UI
+
+1. Navigate to **Settings** → **Advanced Settings**
+2. Locate **Default Signup Role** dropdown
+3. Select desired role from dropdown:
+   - **Viewer (Recommended)** - Most restrictive, follows principle of least privilege
+   - **User** - Standard permissions for regular users
+   - **Admin** - Full administrative access
+4. Click **Save All Changes**
+
+#### Via Environment Variable
+
+Set the `DEFAULT_SIGNUP_ROLE` environment variable to override the database setting:
+
+```bash
+DEFAULT_SIGNUP_ROLE=viewer
+```
+
+Priority order: **ENV Variable** > **Database Setting** > **Default (viewer)**
+
+#### Via Database
+
+Directly update the setting in the database:
+
+```sql
+UPDATE system_settings 
+SET setting_value = 'user' 
+WHERE setting_key = 'default_signup_role';
+```
+
+### Security Considerations
+
+⚠️ **Important Security Notes:**
+
+1. **Principle of Least Privilege**: Default to `viewer` role for maximum security
+2. **Admin Role Warning**: Setting default to `admin` means **all new users will have full administrative access**
+   - Only use in trusted, controlled environments
+   - Not recommended for production or public-facing applications
+3. **Validation**: The system validates that the configured role exists in the database
+   - Falls back to `viewer` if configured role is invalid or missing
+4. **Audit Trail**: All role assignments are logged in the activity log
+
+### UI Features
+
+The Settings page provides:
+
+- **Dropdown Selection**: Choose from valid roles (admin, user, viewer)
+- **Visual Warning**: Amber warning message when `admin` is selected
+- **ENV Override Indicator**: Shows when environment variable is overriding database setting
+- **Description**: Inline help text explaining the setting
+- **Theme Support**: Full light and dark theme support
+
+### Behavior
+
+When a new user registers:
+
+1. System checks for `DEFAULT_SIGNUP_ROLE` environment variable
+2. If not set, reads from `system_settings` table
+3. Falls back to `viewer` if setting is missing or invalid
+4. Validates that role exists in `roles` table
+5. If role doesn't exist, defaults to `viewer`
+6. Assigns role to user via `user_roles` table
+7. Sets appropriate `defaultMenuItem` based on role:
+   - `admin` → Dashboard
+   - `user` or `viewer` → History
+
+### Testing
+
+Comprehensive tests are available in:
+
+- **Unit Tests**: `backend/src/services/__tests__/auth.service.test.ts`
+- **E2E Tests**: `backend/src/__tests__/e2e/default-signup-role.e2e.test.ts`
+
+Run tests with:
+
+```bash
+cd backend
+npm test
+npm run test:e2e  # E2E tests only
+```
+
+### Common Use Cases
+
+#### Scenario 1: Public SaaS Application
+```
+default_signup_role = viewer
+```
+New users get read-only access, admin manually upgrades paid customers.
+
+#### Scenario 2: Internal Enterprise Tool
+```
+default_signup_role = user
+```
+All employees get standard access upon registration.
+
+#### Scenario 3: Trusted Development Environment
+```
+default_signup_role = admin
+```
+All team members get full access (not recommended for production).
+
+### Troubleshooting
+
+**Issue**: New users not getting expected role
+
+1. Check current setting:
+   ```sql
+   SELECT * FROM system_settings WHERE setting_key = 'default_signup_role';
+   ```
+
+2. Verify role exists:
+   ```sql
+   SELECT * FROM roles WHERE name = 'user';  -- Replace with your role
+   ```
+
+3. Check environment variable:
+   ```bash
+   echo $DEFAULT_SIGNUP_ROLE
+   ```
+
+4. Check activity logs:
+   ```sql
+   SELECT * FROM activity_logs 
+   WHERE action_type = 'auth.register' 
+   ORDER BY timestamp DESC 
+   LIMIT 10;
+   ```
+
+**Issue**: Setting not updating in UI
+
+- Settings are cached for 60 seconds
+- Restart backend or wait for cache expiration
+- Check browser console for errors
+
+**Issue**: Warning message when selecting admin
+
+- This is expected behavior as a security reminder
+- Only proceed if you understand the security implications
 
 ## Migration Notes
 
