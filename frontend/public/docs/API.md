@@ -193,6 +193,37 @@ Request permission upgrade (for viewer role).
 }
 ```
 
+### GET /users/activity?page=1&limit=50
+Get current user's activity logs (paginated).
+
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `limit`: Items per page (default: 50)
+
+**Response:** `200 OK`
+```json
+{
+  "logs": [
+    {
+      "id": 1,
+      "userId": 1,
+      "jobId": "job_abc123",
+      "actionType": "user.login",
+      "actionDescription": "User logged in",
+      "metadata": {},
+      "status": "success",
+      "createdAt": "2025-10-16T14:00:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 100,
+    "totalPages": 2
+  }
+}
+```
+
 ### GET /users/search?q={searchTerm}
 Search users (for sharing features).
 
@@ -425,6 +456,259 @@ Delete a document.
 ```json
 {
   "message": "Document deleted successfully"
+}
+```
+
+---
+
+## IDP Executions and Review
+
+IDP (Intelligent Document Processing) executions store configuration for MuleSoft IDP actions (credentials, host, org, action version). The IDP status endpoints are used to check processing status and to request/approve manual review when a document requires human review.
+
+### IDP Executions
+
+#### GET /idp-executions
+Get IDP executions available to the current user (own, shared, and for admins all others).
+
+**Response:** `200 OK`
+```json
+{
+  "myExecutions": [
+    {
+      "id": 1,
+      "name": "Production IDP",
+      "description": "Main IDP action",
+      "protocol": "https",
+      "host": "api.example.com",
+      "basePath": "/api/v1",
+      "orgId": "org-id",
+      "actionId": "action-id",
+      "actionVersion": "1.0.0",
+      "createdById": 1,
+      "createdAt": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "sharedExecutions": [],
+  "allOtherExecutions": []
+}
+```
+`allOtherExecutions` is only present for admin users.
+
+#### GET /idp-executions/:id
+Get a single IDP execution by ID (must be owner, shared with user, or admin).
+
+**Response:** `200 OK`
+```json
+{
+  "execution": {
+    "id": 1,
+    "name": "Production IDP",
+    "description": "Main IDP action",
+    "protocol": "https",
+    "host": "api.example.com",
+    "basePath": "/api/v1",
+    "orgId": "org-id",
+    "actionId": "action-id",
+    "actionVersion": "1.0.0",
+    "authClientId": "decrypted-value",
+    "authClientSecret": "decrypted-value",
+    "anypointUsername": null,
+    "anypointPassword": null,
+    "createdById": 1,
+    "createdAt": "2025-01-01T00:00:00Z"
+  }
+}
+```
+
+#### POST /idp-executions/parse-url
+Parse an IDP execution URL to pre-fill create payload. URL format: `protocol://host/api/v1/organizations/ORG_ID/actions/ACTION_ID/versions/VERSION/executions`.
+
+**Request Body:**
+```json
+{
+  "url": "https://api.example.com/api/v1/organizations/123/actions/456/versions/1.0.0/executions"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "parsed": {
+    "protocol": "https",
+    "host": "api.example.com",
+    "basePath": "/api/v1",
+    "orgId": "123",
+    "actionId": "456",
+    "actionVersion": "1.0.0"
+  }
+}
+```
+
+#### POST /idp-executions
+Create a new IDP execution.
+
+**Request Body:**
+```json
+{
+  "name": "Production IDP",
+  "description": "Optional description",
+  "protocol": "https",
+  "host": "api.example.com",
+  "basePath": "/api/v1",
+  "orgId": "org-id",
+  "actionId": "action-id",
+  "actionVersion": "1.0.0",
+  "authClientId": "client-id",
+  "authClientSecret": "client-secret",
+  "anypointUsername": "optional-for-review",
+  "anypointPassword": "optional-for-review"
+}
+```
+Required: `name`, `protocol`, `host`, `basePath`, `orgId`, `actionId`, `actionVersion`, `authClientId`, `authClientSecret`.
+
+**Response:** `201 Created`
+```json
+{
+  "execution": { /* created execution with decrypted credentials in response */ }
+}
+```
+
+#### PUT /idp-executions/:id
+Update an IDP execution (owner or admin).
+
+**Request Body:** Same fields as create (partial update supported).
+
+**Response:** `200 OK`
+```json
+{
+  "execution": { /* updated execution */ }
+}
+```
+
+#### DELETE /idp-executions/:id
+Delete an IDP execution (owner or admin).
+
+**Response:** `200 OK`
+```json
+{
+  "message": "IDP Execution deleted successfully"
+}
+```
+
+#### GET /idp-executions/:id/shared-users
+Get list of users an IDP execution is shared with.
+
+**Response:** `200 OK`
+```json
+{
+  "sharedUsers": [
+    { "id": 2, "email": "user@demo.com", "firstName": "User", "lastName": "Demo" }
+  ]
+}
+```
+
+#### POST /idp-executions/:id/share
+Share an IDP execution with users.
+
+**Request Body:**
+```json
+{
+  "userIds": [2, 3]
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "message": "IDP Execution shared successfully"
+}
+```
+
+#### DELETE /idp-executions/:id/unshare/:userId
+Remove share for a user.
+
+**Response:** `200 OK`
+```json
+{
+  "message": "IDP Execution unshared successfully"
+}
+```
+
+### IDP Status and Manual Review
+
+#### POST /idp-status/status
+Get IDP processing status for a document execution.
+
+**Request Body:**
+```json
+{
+  "executionId": "mulesoft-execution-uuid",
+  "jobId": "job_abc123",
+  "idpExecutionId": 1
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "status": {
+    "status": "SUCCEEDED",
+    "documentStatus": "COMPLETED"
+  }
+}
+```
+
+#### POST /idp-status/review
+Request manual review data from MuleSoft IDP (when document requires human review). Requires Anypoint username/password (from body or stored on IDP execution).
+
+**Request Body:**
+```json
+{
+  "executionId": "mulesoft-execution-uuid",
+  "jobId": "job_abc123",
+  "idpExecutionId": 1,
+  "anypointUsername": "optional-if-stored",
+  "anypointPassword": "optional-if-stored",
+  "saveCredentials": false
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "review": {
+    "results": [
+      { "id": "field-id", "label": "Field Name", "result": "current-value", "type": "text" }
+    ]
+  }
+}
+```
+On success, the client typically navigates to the IDP review UI to display and edit fields, then calls `POST /idp-status/approve` with the approved data.
+
+**Error:** `401` with `needsCredentials: true` or `authFailed: true` when Anypoint credentials are missing or invalid.
+
+#### POST /idp-status/approve
+Submit approved/corrected data from manual review to MuleSoft IDP.
+
+**Request Body:**
+```json
+{
+  "executionId": "mulesoft-execution-uuid",
+  "jobId": "job_abc123",
+  "idpExecutionId": 1,
+  "approvedData": {
+    "results": [
+      { "id": "field-id", "result": "corrected-value" }
+    ]
+  }
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "data": { /* MuleSoft approval response */ }
 }
 ```
 
@@ -974,18 +1258,15 @@ Bulk assign menus to role (admin only).
 }
 ```
 
-### Logs
+### Logs (Audit Trail)
 
-#### GET /admin/logs/activity?page=1&limit=20&search=keyword
-Get activity logs (admin only).
+#### GET /admin/activity-logs?page=1&limit=20&search=keyword
+Get activity logs (admin only). Provides an audit trail of user actions including executions, IDP review, and other operations.
 
 **Query Parameters:**
-- `page`: Page number
-- `limit`: Items per page
-- `search`: Search by action type or description
-- `userId`: Filter by user ID
-- `startDate`: Filter from date
-- `endDate`: Filter to date
+- `page`: Page number (default: 1)
+- `limit`: Items per page (default: 20)
+- `search`: Optional search term; matches action type, action description, or user email (case-insensitive)
 
 **Response:** `200 OK`
 ```json
@@ -994,26 +1275,35 @@ Get activity logs (admin only).
     {
       "id": 1,
       "userId": 1,
-      "actionType": "user.login",
-      "actionDescription": "User logged in",
+      "jobId": "job_abc123",
+      "actionType": "workflow.execute",
+      "actionDescription": "Executed workflow 1",
+      "metadata": { "workflowId": 1, "executionId": "uuid-here", "status": "completed" },
+      "status": "success",
       "ipAddress": "192.168.1.1",
       "userAgent": "Mozilla/5.0...",
       "createdAt": "2025-10-16T14:00:00Z",
       "user": {
-        "email": "admin@demo.com",
-        "firstName": "Admin",
-        "lastName": "User"
+        "email": "admin@demo.com"
       }
     }
   ],
-  "total": 1000,
-  "page": 1,
-  "limit": 20
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 1000,
+    "totalPages": 50
+  }
 }
 ```
 
-#### GET /admin/logs/api?page=1&limit=20
-Get API call logs (admin only).
+#### GET /admin/api-logs?page=1&limit=20&search=keyword
+Get API call logs (admin only). Logs of outbound MuleSoft/API requests.
+
+**Query Parameters:**
+- `page`: Page number (default: 1)
+- `limit`: Items per page (default: 20)
+- `search`: Optional search term; matches request URL, jobId, or user email (case-insensitive)
 
 **Response:** `200 OK`
 ```json
@@ -1026,13 +1316,19 @@ Get API call logs (admin only).
       "requestMethod": "POST",
       "requestUrl": "http://localhost:8081/analyze",
       "responseStatus": 200,
-      "responseTime": 1500,
-      "createdAt": "2025-10-16T14:00:00Z"
+      "responseTimeMs": 1500,
+      "createdAt": "2025-10-16T14:00:00Z",
+      "user": {
+        "email": "admin@demo.com"
+      }
     }
   ],
-  "total": 500,
-  "page": 1,
-  "limit": 20
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 500,
+    "totalPages": 25
+  }
 }
 ```
 
