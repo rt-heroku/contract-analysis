@@ -34,6 +34,7 @@ export class DocumentAnalyzerService {
       language = 'eng',
       useAI = true,
       includeMetadata = true,
+      promptId,
     } = options;
 
     if (useAI) {
@@ -58,10 +59,10 @@ export class DocumentAnalyzerService {
       let totalPages: number;
 
       if (ext === 'pdf') {
-        pages = await this.analyzePDF(filePath, language, useAI, includeMetadata);
+        pages = await this.analyzePDF(filePath, language, useAI, includeMetadata, promptId);
         totalPages = pages.length;
       } else if (ext && ['png', 'jpg', 'jpeg', 'tiff', 'bmp', 'gif'].includes(ext)) {
-        pages = [await this.analyzeImage(filePath, 1, language, useAI, includeMetadata)];
+        pages = [await this.analyzeImage(filePath, 1, language, useAI, includeMetadata, promptId)];
         totalPages = 1;
       } else {
         throw new Error(`Unsupported file type: ${ext}`);
@@ -111,7 +112,8 @@ export class DocumentAnalyzerService {
     pdfPath: string,
     language: string,
     useAI: boolean,
-    includeMetadata: boolean
+    includeMetadata: boolean,
+    promptId?: number
   ): Promise<PageClassification[]> {
     // eslint-disable-next-line no-console
     console.log('Analyzing PDF:', pdfPath);
@@ -122,7 +124,7 @@ export class DocumentAnalyzerService {
       // eslint-disable-next-line no-console
       console.log('PDF has embedded text, using direct extraction');
       const pages = this.splitTextIntoPages(directText);
-      return this.classifyPages(pages, language, useAI, includeMetadata);
+      return this.classifyPages(pages, language, useAI, includeMetadata, promptId);
     }
 
     // eslint-disable-next-line no-console
@@ -139,7 +141,8 @@ export class DocumentAnalyzerService {
             extractedText: ocr.text,
             pageNumber: idx + 1,
             textLength: ocr.text.length,
-          }))
+          })),
+          promptId
         )
       : ocrResults.map(() => ({
           documentType: 'unknown' as DocumentType,
@@ -173,7 +176,8 @@ export class DocumentAnalyzerService {
     pageNumber: number,
     language: string,
     useAI: boolean,
-    includeMetadata: boolean
+    includeMetadata: boolean,
+    promptId?: number
   ): Promise<PageClassification> {
     // eslint-disable-next-line no-console
     console.log('Analyzing image:', imagePath);
@@ -181,11 +185,14 @@ export class DocumentAnalyzerService {
     const ocr = await OCRService.extractText(imagePath, language);
 
     const classification = useAI
-      ? await this.classifier.classifyDocument({
-          extractedText: ocr.text,
-          pageNumber,
-          textLength: ocr.text.length,
-        })
+      ? await this.classifier.classifyDocument(
+          {
+            extractedText: ocr.text,
+            pageNumber,
+            textLength: ocr.text.length,
+          },
+          promptId
+        )
       : {
           documentType: 'unknown' as DocumentType,
           confidence: 0,
@@ -219,7 +226,8 @@ export class DocumentAnalyzerService {
     pages: string[],
     language: string,
     useAI: boolean,
-    includeMetadata: boolean
+    includeMetadata: boolean,
+    promptId?: number
   ): Promise<PageClassification[]> {
     const classifications: ClassificationResponse[] = useAI
       ? await this.classifier.classifyBatch(
@@ -227,7 +235,8 @@ export class DocumentAnalyzerService {
             extractedText: text,
             pageNumber: idx + 1,
             textLength: text.length,
-          }))
+          })),
+          promptId
         )
       : pages.map(() => ({
           documentType: 'unknown' as DocumentType,

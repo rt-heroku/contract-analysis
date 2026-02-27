@@ -199,6 +199,7 @@ class AdminController {
             isActive: user.isActive,
             createdAt: user.createdAt,
             lastLogin: user.lastLogin,
+            defaultMenuItem: user.defaultMenuItem,
           };
         })
       );
@@ -319,8 +320,8 @@ class AdminController {
         return res.status(400).json({ error: 'Email and password are required' });
       }
 
-      if (!role || !['admin', 'user', 'viewer'].includes(role)) {
-        return res.status(400).json({ error: 'Valid role is required (admin, user, or viewer)' });
+      if (!role) {
+        return res.status(400).json({ error: 'Role is required' });
       }
 
       // Check if email already exists
@@ -411,11 +412,7 @@ class AdminController {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      // Validate role if provided
-      if (role && !['admin', 'user', 'viewer'].includes(role)) {
-        return res.status(400).json({ error: 'Valid role is required (admin, user, or viewer)' });
-      }
-
+      // Validate role if provided (roleRecord lookup below will validate it exists)
       // Check if email is being changed and if it's already taken
       if (email && email !== existingUser.email) {
         const emailExists = await prisma.user.findUnique({

@@ -36,14 +36,22 @@ router.post('/analyze', upload.single('file'), async (req, res) => {
       });
     }
 
-    const { language = 'eng', useAI = 'true', includeMetadata = 'true' } = req.body;
-
-    const analyzer = new DocumentAnalyzerService();
-    const result = await analyzer.analyzeDocument(req.file.path, {
+    const { language = 'eng', useAI = 'true', includeMetadata = 'true', promptId: promptIdRaw } = req.body;
+    const promptId =
+      promptIdRaw != null && promptIdRaw !== ''
+        ? parseInt(String(promptIdRaw), 10)
+        : undefined;
+    const options: { language: string; useAI: boolean; includeMetadata: boolean; promptId?: number } = {
       language,
       useAI: useAI === 'true' || useAI === true,
       includeMetadata: includeMetadata === 'true' || includeMetadata === true,
-    });
+    };
+    if (Number.isInteger(promptId) && promptId > 0) {
+      options.promptId = promptId;
+    }
+
+    const analyzer = new DocumentAnalyzerService();
+    const result = await analyzer.analyzeDocument(req.file.path, options);
 
     return res.json(result);
   } catch (error) {

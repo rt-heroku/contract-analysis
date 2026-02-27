@@ -52,7 +52,7 @@ export class ClassifierService {
     return axios.create(axiosConfig);
   }
 
-  async classifyDocument(request: ClassificationRequest): Promise<ClassificationResponse> {
+  async classifyDocument(request: ClassificationRequest, promptId?: number): Promise<ClassificationResponse> {
     const { extractedText, pageNumber, textLength } = request;
 
     if (textLength < 20) {
@@ -66,7 +66,7 @@ export class ClassifierService {
     try {
       const client = await this.clientPromise;
       const endpoint = await this.getChatEndpoint();
-      const prompt = await this.buildPrompt(extractedText, pageNumber);
+      const prompt = await this.buildPrompt(extractedText, pageNumber, promptId);
 
       const response = await client.post(endpoint, {
         model: DEFAULT_MODEL,
@@ -105,9 +105,9 @@ export class ClassifierService {
     }
   }
 
-  private async buildPrompt(text: string, pageNumber: number): Promise<string> {
+  private async buildPrompt(text: string, pageNumber: number, promptId?: number): Promise<string> {
     const truncatedText = text.length > 2000 ? `${text.substring(0, 2000)}...(truncated)` : text;
-    const template = await this.getPromptTemplate();
+    const template = await this.getPromptTemplate(promptId);
 
     return template
       .replace(/\{\{\s*page_number\s*\}\}/gi, String(pageNumber))
@@ -140,10 +140,24 @@ export class ClassifierService {
 
   /**
    * Load prompt template from DB (prompts table) so it can be edited.
-   * Falls back to the built-in template if none is configured.
+   * If promptId is provided, use that prompt (must be category document_classifier, isActive).
+   * Otherwise use first by category (default or latest). Falls back to built-in template.
    */
-  private async getPromptTemplate(): Promise<string> {
+  private async getPromptTemplate(promptId?: number): Promise<string> {
     try {
+      if (promptId != null && Number.isInteger(promptId) && promptId > 0) {
+        const prompt = await prisma.prompt.findFirst({
+          where: {
+            id: promptId,
+            category: DOCUMENT_CLASSIFIER_CATEGORY,
+            isActive: true,
+          },
+        });
+        if (prompt?.content) {
+          return prompt.content;
+        }
+      }
+
       const prompt = await prisma.prompt.findFirst({
         where: {
           category: DOCUMENT_CLASSIFIER_CATEGORY,
@@ -208,7 +222,7 @@ Respond in JSON format:
     }
   }
 
-  async classifyBatch(requests: ClassificationRequest[]): Promise<ClassificationResponse[]> {
+  async classifyBatch(requests: ClassificationRequest[], promptId?: number): Promise<ClassificationResponse[]> {
     // eslint-disable-next-line no-console
     console.log(`Classifying ${requests.length} pages...`);
 
@@ -217,7 +231,7 @@ Respond in JSON format:
 
     for (let i = 0; i < requests.length; i += batchSize) {
       const batch = requests.slice(i, i + batchSize);
-      const batchResults = await Promise.all(batch.map((req) => this.classifyDocument(req)));
+      const batchResults = await Promise.all(batch.map((req) => this.classifyDocument(req, promptId)));
       results.push(...batchResults);
     }
 

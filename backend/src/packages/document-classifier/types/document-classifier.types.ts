@@ -71,5 +71,7 @@ export interface DocumentAnalyzerOptions {
   useAI?: boolean;
   includeMetadata?: boolean;
   ocrQuality?: 'fast' | 'balanced' | 'accurate';
+  /** Optional prompt ID from prompts table (category document_classifier). If not set, uses default/latest. */
+  promptId?: number;
 }
 

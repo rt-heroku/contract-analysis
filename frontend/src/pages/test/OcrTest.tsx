@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import { JSONMonacoEditor } from '../../components/common/MonacoEditor';
 import { Loading } from '../../components/common/Loading';
@@ -11,14 +11,33 @@ interface AnalysisResponse {
   error?: string;
 }
 
+interface PromptOption {
+  id: number;
+  name: string;
+}
+
 export const OcrTest: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [language, setLanguage] = useState('eng');
   const [useAI, setUseAI] = useState(true);
   const [includeMetadata, setIncludeMetadata] = useState(true);
+  const [prompts, setPrompts] = useState<PromptOption[]>([]);
+  const [promptId, setPromptId] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      try {
+        const { data } = await api.get('/prompts', { params: { category: 'document_classifier' } });
+        setPrompts(data.prompts || []);
+      } catch {
+        setPrompts([]);
+      }
+    };
+    fetchPrompts();
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -37,6 +56,9 @@ export const OcrTest: React.FC = () => {
       formData.append('language', language);
       formData.append('useAI', String(useAI));
       formData.append('includeMetadata', String(includeMetadata));
+      if (promptId !== '' && Number.isInteger(promptId)) {
+        formData.append('promptId', String(promptId));
+      }
 
       const { data } = await api.post('/document-classifier/analyze', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -100,6 +122,23 @@ export const OcrTest: React.FC = () => {
             />
             Include metadata
           </label>
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">Classification prompt</label>
+          <select
+            value={promptId === '' ? '' : String(promptId)}
+            onChange={(e) => setPromptId(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+            className="block w-full max-w-xs rounded border border-gray-300 px-2 py-1 text-sm"
+          >
+            <option value="">Use default</option>
+            {prompts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500">Only prompts with category document_classifier are listed.</p>
         </div>
 
         <div className="flex items-center gap-3">

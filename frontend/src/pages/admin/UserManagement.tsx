@@ -18,6 +18,7 @@ interface UserData {
   isActive: boolean;
   createdAt: string;
   lastLogin?: string;
+  defaultMenuItem?: string;
 }
 
 interface Pagination {
@@ -52,6 +53,7 @@ export const UserManagement: React.FC = () => {
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [saving, setSaving] = useState(false);
   const [roles, setRoles] = useState<RoleData[]>([]);
+  const [roleMenuItems, setRoleMenuItems] = useState<{ value: string; label: string }[]>([]);
   const [userFormData, setUserFormData] = useState({
     email: '',
     password: '',
@@ -78,6 +80,36 @@ export const UserManagement: React.FC = () => {
     fetchUsers();
     fetchRoles();
   }, [pagination.page]);
+
+  // Fetch menu items for the selected role (for Default Landing Page dropdown)
+  useEffect(() => {
+    const roleId = roles.find((r) => r.name === userFormData.role)?.id;
+    if (!roleId || !showUserModal) {
+      setRoleMenuItems([]);
+      return;
+    }
+    const fetchRoleMenu = async () => {
+      try {
+        const response = await api.get(`/menu/role/${roleId}`);
+        const permissions = response.data.menuPermissions || [];
+        const items: { value: string; label: string }[] = [];
+        const seen = new Set<string>();
+        for (const p of permissions) {
+          const menuItem = p.menuItem;
+          if (!menuItem?.route) continue;
+          const value = menuItem.route.replace(/^\//, '');
+          if (seen.has(value)) continue;
+          seen.add(value);
+          items.push({ value, label: menuItem.title || value });
+        }
+        items.sort((a, b) => a.label.localeCompare(b.label));
+        setRoleMenuItems(items);
+      } catch {
+        setRoleMenuItems([]);
+      }
+    };
+    fetchRoleMenu();
+  }, [userFormData.role, roles, showUserModal]);
 
   const fetchRoles = async () => {
     try {
@@ -191,7 +223,7 @@ export const UserManagement: React.FC = () => {
       firstName: user.firstName || '',
       lastName: user.lastName || '',
       role: user.role,
-      defaultMenuItem: '',
+      defaultMenuItem: user.defaultMenuItem || '',
     });
     setShowUserModal(true);
   };
@@ -523,14 +555,14 @@ export const UserManagement: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
               <option value="">Use role default</option>
-              <option value="dashboard">Dashboard</option>
-              <option value="history">History</option>
-              <option value="processing">Processing</option>
-              <option value="prompts">Prompts</option>
-              <option value="profile">Profile</option>
+              {roleMenuItems.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
             </select>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Page to show after login (viewers default to History)
+              Page to show after login (only menu items this role can access)
             </p>
           </div>
           
