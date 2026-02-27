@@ -37,17 +37,19 @@ router.post('/analyze', upload.single('file'), async (req, res) => {
     }
 
     const { language = 'eng', useAI = 'true', includeMetadata = 'true', promptId: promptIdRaw } = req.body;
-    const promptId =
+    const parsed =
       promptIdRaw != null && promptIdRaw !== ''
         ? parseInt(String(promptIdRaw), 10)
         : undefined;
+    const validPromptId =
+      typeof parsed === 'number' && Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
     const options: { language: string; useAI: boolean; includeMetadata: boolean; promptId?: number } = {
       language,
       useAI: useAI === 'true' || useAI === true,
       includeMetadata: includeMetadata === 'true' || includeMetadata === true,
     };
-    if (Number.isInteger(promptId) && promptId > 0) {
-      options.promptId = promptId;
+    if (validPromptId !== undefined) {
+      options.promptId = validPromptId;
     }
 
     const analyzer = new DocumentAnalyzerService();
